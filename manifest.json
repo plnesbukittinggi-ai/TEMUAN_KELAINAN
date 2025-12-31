@@ -1,7 +1,7 @@
 {
   "name": "Input Temuan Gangguan & Eksekusi",
-  "short_name": "Temuan PLN",
-  "description": "Sistem monitoring temuan kelainan jaringan PLN ES Bukittinggi",
+  "short_name": "Temuan PLN ES",
+  "description": "Sistem Monitoring Temuan Kelainan Jaringan PLN ES Bukittinggi",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",
