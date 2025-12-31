@@ -14,6 +14,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList }) =
   const [formData, setFormData] = useState<Partial<LoginSession>>({});
   const [password, setPassword] = useState('');
 
+  const LOGO_URL = "https://lh3.googleusercontent.com/d/1kpaHfckdo0GhhCXtANR_Q38KWuBc0T9u";
+
   const handleStart = () => {
     if (activeMenu === AppRole.ADMIN) {
       if (password === ADMIN_PASSWORD) {
@@ -55,7 +57,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList }) =
         <div className="inline-block mb-6">
           <div className="w-24 h-24 bg-white rounded-2xl flex items-center justify-center shadow-md border border-slate-100 overflow-hidden">
              <img 
-               src="https://lh3.googleusercontent.com/d/1kpaHfckdo0GhhCXtANR_Q38KWuBc0T9u" 
+               src={LOGO_URL} 
                alt="Logo" 
                className="w-4/5 h-4/5 object-contain" 
                referrerPolicy="no-referrer"
