@@ -154,14 +154,14 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen max-w-lg mx-auto bg-slate-50 shadow-2xl relative pb-32 overflow-x-hidden">
+    <div className="min-h-screen max-w-lg mx-auto bg-slate-50 shadow-2xl relative pb-40 overflow-x-hidden">
       <header className="bg-slate-900 text-white p-5 sticky top-0 z-50 flex items-center justify-between border-b border-slate-800">
         <div className="flex items-center gap-3">
-           <div className="w-10 h-10 bg-white rounded-lg p-1.5 flex items-center justify-center">
+           <div className="w-10 h-10 bg-white rounded-lg p-1.5 flex items-center justify-center shadow-inner">
              <img src={LOGO_URL} alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
            </div>
            <div>
-             <h1 className="font-bold text-sm tracking-tight uppercase">Input Temuan Gangguan & Eksekusi</h1>
+             <h1 className="font-bold text-sm tracking-tight uppercase">Manajemen Temuan & Eksekusi</h1>
              <p className="text-[10px] text-slate-400 font-medium">PLN ES Bukittinggi</p>
            </div>
         </div>
@@ -177,7 +177,7 @@ const App: React.FC = () => {
       
       <main className="p-5 animate-fade-in">{renderContent()}</main>
 
-      <footer className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white border-t border-slate-200 p-6 flex flex-col items-center justify-center z-40">
+      <footer className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white/95 backdrop-blur-sm border-t border-slate-200 p-6 flex flex-col items-center justify-center z-10">
         <div className="flex items-center gap-2 mb-2">
           <div className={`w-2 h-2 rounded-full ${connectionError ? 'bg-red-500' : 'bg-emerald-500'}`}></div>
           <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
