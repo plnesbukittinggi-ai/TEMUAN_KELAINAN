@@ -12,7 +12,6 @@ interface EksekusiPageProps {
 const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSave }) => {
   const [selectedTemuan, setSelectedTemuan] = useState<TemuanData | null>(null);
   const [executionPhoto, setExecutionPhoto] = useState<string>('');
-  const [executionDate, setExecutionDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [isSaving, setIsSaving] = useState(false);
 
   const formatDriveUrl = (url?: string) => {
@@ -130,9 +129,9 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
 
               <button 
                 onClick={() => setSelectedTemuan(item)}
-                className={`w-full ${item.status === 'BUTUH PADAM' ? 'bg-amber-600' : 'bg-slate-900'} text-white font-bold py-4 text-[10px] hover:opacity-90 transition-all uppercase tracking-[0.2em] border-t border-white/10`}
+                className={`w-full ${item.status === 'BUTUH PADAM' ? 'bg-amber-600' : 'bg-slate-900'} text-white font-bold py-4 text-xs hover:opacity-90 transition-all uppercase tracking-[0.2em] border-t border-white/10`}
               >
-                Update Laporan Perbaikan
+                PROSES EKSEKUSI
               </button>
             </div>
           ))}
@@ -140,25 +139,26 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       )}
 
       {selectedTemuan && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-4" onClick={() => !isSaving && setSelectedTemuan(null)}>
-          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 overflow-y-auto max-h-[95vh] shadow-2xl animate-slide-up" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold text-slate-900">Form Laporan Perbaikan</h3>
-              {!isSaving && <button onClick={() => setSelectedTemuan(null)} className="text-slate-400 hover:text-red-500 text-xl">✕</button>}
+        <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-md z-[999] flex items-center justify-center p-4 overflow-y-auto" onClick={() => !isSaving && setSelectedTemuan(null)}>
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl animate-slide-up flex flex-col my-8" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center p-6 border-b border-slate-100">
+              <h3 className="text-lg font-bold text-slate-900">Form Laporan Eksekusi</h3>
+              {!isSaving && <button onClick={() => setSelectedTemuan(null)} className="text-slate-400 hover:text-red-500 text-xl p-2">✕</button>}
             </div>
 
-            <div className="space-y-5">
+            <div className="p-6 space-y-6 overflow-y-auto">
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Aset Yang Diperbaiki</p>
-                <p className="font-bold text-slate-900 text-sm">{selectedTemuan.noTiang} • {selectedTemuan.feeder}</p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Aset Target</p>
+                <p className="font-bold text-slate-900 text-sm uppercase">{selectedTemuan.noTiang} • {selectedTemuan.feeder}</p>
+                <p className="text-[10px] text-red-600 font-bold mt-1">Kelainan: {selectedTemuan.keterangan}</p>
               </div>
 
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest ml-1">Bukti Foto Perbaikan *</label>
                 <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl p-2 bg-slate-50/50 min-h-[200px]">
                   {executionPhoto ? (
-                    <div className="relative w-full h-48 group">
-                      <img src={executionPhoto} alt="Preview" className="w-full h-full object-cover rounded-xl shadow-inner" />
+                    <div className="relative w-full">
+                      <img src={executionPhoto} alt="Preview" className="w-full h-56 object-cover rounded-xl shadow-inner" />
                       {!isSaving && (
                         <button 
                           onClick={() => setExecutionPhoto('')}
@@ -169,7 +169,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                   ) : (
                     <label className="w-full h-full cursor-pointer flex flex-col items-center justify-center py-10 transition-colors hover:bg-slate-100/50">
                       <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center text-2xl mb-3 border border-emerald-100">📷</div>
-                      <span className="text-[10px] font-bold text-slate-900 uppercase tracking-widest">Ambil Foto Hasil Kerja</span>
+                      <span className="text-[10px] font-bold text-slate-900 uppercase tracking-widest">Klik Ambil Foto Hasil Kerja</span>
                       <input 
                         type="file" accept="image/*" capture="environment"
                         className="hidden" onChange={handleFileChange}
@@ -178,23 +178,26 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                   )}
                 </div>
               </div>
+            </div>
 
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <button 
-                  onClick={() => handleAction('SUDAH EKSEKUSI')}
-                  disabled={isSaving}
-                  className={`py-4 rounded-xl shadow-lg transition-all uppercase tracking-widest text-[10px] font-bold ${isSaving ? 'bg-slate-300 text-slate-500' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
-                >
-                  {isSaving ? 'Menyimpan...' : 'SUDAH EKSEKUSI'}
-                </button>
-                <button 
-                  onClick={() => handleAction('BUTUH PADAM')}
-                  disabled={isSaving}
-                  className={`py-4 rounded-xl shadow-lg transition-all uppercase tracking-widest text-[10px] font-bold ${isSaving ? 'bg-slate-300 text-slate-500' : 'bg-amber-500 text-white hover:bg-amber-600'}`}
-                >
-                  {isSaving ? '...' : 'BUTUH PADAM'}
-                </button>
-              </div>
+            <div className="p-6 bg-slate-50 border-t border-slate-100 rounded-b-3xl">
+               <div className="grid grid-cols-2 gap-3 mb-2">
+                  <button 
+                    onClick={() => handleAction('SUDAH EKSEKUSI')}
+                    disabled={isSaving}
+                    className={`py-4 rounded-xl shadow-lg transition-all uppercase tracking-widest text-[10px] font-bold flex items-center justify-center gap-2 ${isSaving ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95'}`}
+                  >
+                    {isSaving ? '⏳ Menyimpan...' : '✅ SELESAI'}
+                  </button>
+                  <button 
+                    onClick={() => handleAction('BUTUH PADAM')}
+                    disabled={isSaving}
+                    className={`py-4 rounded-xl shadow-lg transition-all uppercase tracking-widest text-[10px] font-bold flex items-center justify-center gap-2 ${isSaving ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-amber-500 text-white hover:bg-amber-600 active:scale-95'}`}
+                  >
+                    {isSaving ? '...' : '⚡ BUTUH PADAM'}
+                  </button>
+                </div>
+                <p className="text-[9px] text-slate-400 text-center font-medium italic">Pastikan data sudah benar sebelum menyimpan.</p>
             </div>
           </div>
         </div>
