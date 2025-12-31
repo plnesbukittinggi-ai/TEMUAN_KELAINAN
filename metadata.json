@@ -1,0 +1,9 @@
+{
+  "name": "Input Temuan Gangguan dan Eksekusi",
+  "description": "A comprehensive system for reporting electricity distribution disturbances (Inspeksi) and tracking their resolution (Eksekusi). Features include geolocation, photo reporting, and an administrative dashboard.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
