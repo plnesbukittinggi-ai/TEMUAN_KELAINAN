@@ -37,7 +37,10 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
         setFormData(p => ({ ...p, geotag: `${pos.coords.latitude.toFixed(7)}, ${pos.coords.longitude.toFixed(7)}` }));
         setIsLocating(false);
       },
-      () => setIsLocating(false),
+      () => {
+        setIsLocating(false);
+        alert("Gagal mengambil lokasi otomatis. Silakan ketik koordinat secara manual.");
+      },
       { enableHighAccuracy: true, timeout: 10000 }
     );
   };
@@ -66,7 +69,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
   return (
     <div className="pb-10">
       <div className="flex items-center gap-4 mb-8">
-        <button onClick={onBack} className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50">←</button>
+        <button onClick={onBack} className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">←</button>
         <h2 className="text-lg font-bold text-slate-900 tracking-tight">Formulir Temuan Baru</h2>
       </div>
 
@@ -91,7 +94,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5 ml-1">No. Tiang / Gardu *</label>
               <input 
-                type="text" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-500 transition-all"
+                type="text" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-500 transition-all uppercase"
                 placeholder="Ex: T.44A" value={formData.noTiang} onChange={e => setFormData({ ...formData, noTiang: e.target.value })}
               />
             </div>
@@ -121,10 +124,16 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
             <div className="flex justify-between items-center mb-2">
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Koordinat Geotagging</label>
               <button type="button" onClick={fetchLocation} disabled={isLocating} className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800">
-                {isLocating ? 'Mencari...' : '🔄 Sinkronisasi GPS'}
+                {isLocating ? 'Mencari...' : '🔄 Dapatkan GPS'}
               </button>
             </div>
-            <input type="text" className="w-full p-3 bg-slate-100 border-none rounded-xl text-xs font-mono text-slate-600" value={formData.geotag || 'Menunggu sinyal GPS...'} readOnly />
+            <input 
+              type="text" 
+              className="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs font-mono text-slate-700 outline-none focus:border-indigo-500 shadow-inner" 
+              placeholder="Ketik Koordinat Manual jika GPS Gagal"
+              value={formData.geotag || ''} 
+              onChange={e => setFormData({ ...formData, geotag: e.target.value })}
+            />
           </div>
         </div>
 
