@@ -28,8 +28,9 @@ export interface Keterangan {
 }
 
 export interface TemuanData {
-  id: string; // KODE
+  id: string; 
   tanggal: string;
+  pekerjaan: string; // NEW
   inspektor1: string;
   inspektor2: string;
   ulp: string;
@@ -38,10 +39,9 @@ export interface TemuanData {
   feeder: string;
   lokasi: string;
   geotag?: string;
-  fotoTemuan: string; // Base64 or URL
+  fotoTemuan: string; 
   keterangan: string;
   status: 'BELUM EKSEKUSI' | 'SUDAH EKSEKUSI' | 'BUTUH PADAM';
-  // Execution data
   tanggalEksekusi?: string;
   fotoEksekusi?: string;
   timEksekusi?: string;
@@ -50,6 +50,7 @@ export interface TemuanData {
 export interface LoginSession {
   role: AppRole;
   ulp?: string;
+  pekerjaan?: string; // NEW
   inspektor1?: string;
   inspektor2?: string;
   team?: string;
