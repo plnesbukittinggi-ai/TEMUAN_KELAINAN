@@ -9,7 +9,9 @@ import { Inspector, ULP, Feeder, Keterangan } from './types';
  * 4. Deploy sebagai Web App dengan akses "Anyone".
  * 5. Tempel URL-nya di bawah ini.
  */
-export const SPREADSHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycby4sFdS5hPHSrvgYeHKFlYvZ_-voSHRBAHaXE9TkUnzh1rNqBqL37yUBi9WoKDevvaC/exec';
+export const SPREADSHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzdwwoI_Ejc-3QLhFafDBZXp8yukSps3ZtHJqXicm4h0KHiwPhk_vAByiUXAYytlioB/exec';
+
+export const APP_VERSION = '1.0.2'; // Update Versi
 
 export const INITIAL_INSPECTORS: Inspector[] = [
   { id: '1', name: 'Ahmad Subarjo' },
