@@ -5,10 +5,8 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   define: {
-    // Menghindari error "process is not defined" di browser
-    'process.env': {
-      API_KEY: JSON.stringify(process.env.API_KEY || '')
-    }
+    // Memastikan process.env.API_KEY tersedia secara global di client-side
+    'process.env.API_KEY': JSON.stringify(process.env.API_KEY || '')
   },
   server: {
     port: 3000
