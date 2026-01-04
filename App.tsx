@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AppRole, TemuanData, LoginSession, Inspector, ULP, Feeder, Keterangan } from './types';
-import { INITIAL_INSPECTORS, INITIAL_ULP, INITIAL_FEEDERS, INITIAL_KETERANGAN } from './constants';
+import { INITIAL_INSPECTORS, INITIAL_ULP, INITIAL_FEEDERS, INITIAL_KETERANGAN, APP_VERSION } from './constants';
 import { SpreadsheetService } from './services/spreadsheetService';
 import LoginPage from './pages/LoginPage';
 import InspeksiPage from './pages/InspeksiPage';
@@ -184,7 +184,7 @@ const App: React.FC = () => {
             Sistem Terkoneksi
           </p>
         </div>
-        <p className="text-[11px] font-bold text-slate-900">VERSI 1.0.0</p>
+        <p className="text-[11px] font-bold text-slate-900 uppercase">VERSI {APP_VERSION}</p>
         <p className="text-[9px] text-slate-400 mt-0.5">©Jan 2026, IT PLN ES Bukittinggi</p>
       </footer>
     </div>
