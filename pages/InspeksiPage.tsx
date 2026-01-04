@@ -16,6 +16,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
   const [formData, setFormData] = useState<Partial<TemuanData>>({
     id: `ID-${Date.now().toString().slice(-8)}`,
     tanggal: new Date().toLocaleString('id-ID'),
+    pekerjaan: session.pekerjaan || 'UMUM',
     inspektor1: session.inspektor1 || '-',
     inspektor2: session.inspektor2 || '-',
     ulp: session.ulp || '-',
@@ -70,7 +71,10 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
     <div className="pb-10">
       <div className="flex items-center gap-4 mb-8">
         <button onClick={onBack} className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">←</button>
-        <h2 className="text-lg font-bold text-slate-900 tracking-tight">Formulir Temuan Baru</h2>
+        <div>
+          <h2 className="text-lg font-bold text-slate-900 tracking-tight">Formulir Temuan Baru</h2>
+          <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-widest">{formData.pekerjaan}</p>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -89,19 +93,19 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5 ml-1">No. Tiang / Gardu *</label>
               <input 
-                type="text" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-500 transition-all uppercase"
+                type="text" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 transition-all uppercase"
                 placeholder="Ex: T.44A" value={formData.noTiang} onChange={e => setFormData({ ...formData, noTiang: e.target.value })}
               />
             </div>
             <div>
               <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5 ml-1">No. WO</label>
               <input 
-                type="text" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-500 transition-all"
+                type="text" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 transition-all"
                 placeholder="2024xx" value={formData.noWO} onChange={e => setFormData({ ...formData, noWO: e.target.value })}
               />
             </div>
@@ -109,7 +113,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
 
           <div>
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5 ml-1">Penyulang (Feeder) *</label>
-            <select className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-500" value={formData.feeder} onChange={e => setFormData({ ...formData, feeder: e.target.value })}>
+            <select className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-500" value={formData.feeder} onChange={e => setFormData({ ...formData, feeder: e.target.value })}>
               <option value="">-- Pilih Feeder --</option>
               {feeders.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
             </select>
@@ -117,7 +121,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
 
           <div>
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5 ml-1">Lokasi Detail *</label>
-            <textarea rows={2} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-500 resize-none" placeholder="Patokan lokasi lapangan..." value={formData.lokasi} onChange={e => setFormData({ ...formData, lokasi: e.target.value })} />
+            <textarea rows={2} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 resize-none" placeholder="Patokan lokasi lapangan..." value={formData.lokasi} onChange={e => setFormData({ ...formData, lokasi: e.target.value })} />
           </div>
 
           <div className="pt-2 border-t border-slate-100">
@@ -129,7 +133,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
             </div>
             <input 
               type="text" 
-              className="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs font-mono text-slate-700 outline-none focus:border-indigo-500 shadow-inner" 
+              className="w-full p-3.5 bg-white border border-slate-300 rounded-xl text-xs font-mono text-slate-700 outline-none focus:border-indigo-500 shadow-inner" 
               placeholder="Ketik Koordinat Manual jika GPS Gagal"
               value={formData.geotag || ''} 
               onChange={e => setFormData({ ...formData, geotag: e.target.value })}
@@ -137,17 +141,17 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
           </div>
         </div>
 
-        <div className="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-2 min-h-[200px] flex items-center justify-center relative shadow-sm">
+        <div className="bg-white border-2 border-dashed border-slate-200 rounded-3xl p-2 min-h-[220px] flex items-center justify-center relative shadow-sm overflow-hidden group">
           {formData.fotoTemuan ? (
             <div className="w-full h-full relative p-1">
-              <img src={formData.fotoTemuan} className="w-full h-64 object-cover rounded-xl" alt="Preview" />
-              <button type="button" onClick={() => setFormData({ ...formData, fotoTemuan: '' })} className="absolute top-4 right-4 bg-slate-900/80 text-white w-8 h-8 rounded-lg flex items-center justify-center">✕</button>
+              <img src={formData.fotoTemuan} className="w-full h-72 object-cover rounded-2xl" alt="Preview" />
+              <button type="button" onClick={() => setFormData({ ...formData, fotoTemuan: '' })} className="absolute top-4 right-4 bg-slate-900/80 text-white w-8 h-8 rounded-lg flex items-center justify-center backdrop-blur-sm">✕</button>
             </div>
           ) : (
-            <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer py-10">
-              <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center text-2xl mb-3 border border-indigo-100">📷</div>
-              <p className="text-[11px] font-bold text-slate-900 uppercase tracking-wider">Lampirkan Foto Temuan</p>
-              <p className="text-[9px] text-slate-400 mt-1">Gunakan kamera depan atau upload galeri</p>
+            <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer py-10 transition-all hover:bg-slate-50">
+              <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center text-3xl mb-3 border border-indigo-100 shadow-sm group-hover:scale-110 transition-transform">📷</div>
+              <p className="text-[11px] font-bold text-slate-900 uppercase tracking-widest">Ambil Foto Temuan Lapangan</p>
+              <p className="text-[9px] text-slate-400 mt-1 uppercase font-bold tracking-tighter">Kamera Belakang atau Galeri</p>
               <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFile} />
             </label>
           )}
@@ -155,14 +159,14 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
 
         <div>
           <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2 ml-1">Kategori Kelainan *</label>
-          <select className="w-full p-3.5 bg-white border border-red-200 rounded-xl text-sm font-bold text-red-700 outline-none focus:ring-2 focus:ring-red-100" value={formData.keterangan} onChange={e => setFormData({ ...formData, keterangan: e.target.value })}>
+          <select className="w-full p-4 bg-white border-2 border-red-100 rounded-xl text-sm font-bold text-red-700 outline-none focus:ring-4 focus:ring-red-50 shadow-sm" value={formData.keterangan} onChange={e => setFormData({ ...formData, keterangan: e.target.value })}>
             <option value="">-- Pilih Kategori --</option>
             {keteranganList.map(k => <option key={k.id} value={k.text}>{k.text}</option>)}
           </select>
         </div>
 
-        <button type="submit" disabled={isSubmitting} className={`w-full py-4 rounded-xl shadow-lg font-bold uppercase tracking-widest text-sm flex items-center justify-center gap-3 transition-all ${isSubmitting ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 active:scale-95'}`}>
-          {isSubmitting ? 'Mengirim Data...' : 'Simpan Laporan'}
+        <button type="submit" disabled={isSubmitting} className={`w-full py-4.5 rounded-2xl shadow-2xl font-bold uppercase tracking-[0.2em] text-sm flex items-center justify-center gap-3 transition-all ${isSubmitting ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 active:scale-95'}`}>
+          {isSubmitting ? '⏳ Mengirim Laporan...' : 'Simpan Laporan Temuan'}
         </button>
       </form>
     </div>
