@@ -10,14 +10,27 @@ interface LoginPageProps {
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList }) => {
-  const [activeMenu, setActiveMenu] = useState<AppRole | null>(null);
+  const [view, setView] = useState<'MENU' | 'CONFIG'>('MENU');
+  const [selectedRole, setSelectedRole] = useState<AppRole | null>(null);
   const [formData, setFormData] = useState<Partial<LoginSession>>({});
   const [password, setPassword] = useState('');
 
   const LOGO_URL = "https://lh3.googleusercontent.com/d/1kpaHfckdo0GhhCXtANR_Q38KWuBc0T9u";
 
-  const handleStart = () => {
-    if (activeMenu === AppRole.ADMIN) {
+  const handleSelectRole = (role: AppRole) => {
+    setSelectedRole(role);
+    setView('CONFIG');
+  };
+
+  const handleBack = () => {
+    setView('MENU');
+    setSelectedRole(null);
+    setFormData({});
+    setPassword('');
+  };
+
+  const handleFinalLogin = () => {
+    if (selectedRole === AppRole.ADMIN) {
       if (password === ADMIN_PASSWORD) {
         onLogin({ role: AppRole.ADMIN });
       } else {
@@ -26,132 +39,159 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList }) =
       return;
     }
 
-    if (activeMenu === AppRole.INSPEKSI && (!formData.inspektor1 || !formData.inspektor2 || !formData.ulp)) {
-      alert('⚠️ Mohon lengkapi detail inspeksi!');
+    if (selectedRole === AppRole.INSPEKSI && (!formData.inspektor1 || !formData.inspektor2 || !formData.ulp || !formData.pekerjaan)) {
+      alert('⚠️ Mohon lengkapi seluruh detail inspeksi dan Jenis Pekerjaan!');
       return;
     }
 
-    if (activeMenu === AppRole.EKSEKUSI && (!formData.ulp || !formData.team)) {
-      alert('⚠️ Mohon lengkapi detail eksekusi!');
+    if (selectedRole === AppRole.EKSEKUSI && (!formData.ulp || !formData.team)) {
+      alert('⚠️ Mohon lengkapi detail unit dan tim eksekusi!');
       return;
     }
 
-    if (activeMenu === AppRole.VIEWER && !formData.ulp) {
-      alert('⚠️ Pilih ULP terlebih dahulu!');
+    if (selectedRole === AppRole.VIEWER && !formData.ulp) {
+      alert('⚠️ Pilih Unit (ULP) terlebih dahulu!');
       return;
     }
 
-    onLogin({ role: activeMenu!, ...formData });
+    onLogin({ role: selectedRole!, ...formData });
   };
 
   const menuItems = [
-    { role: AppRole.INSPEKSI, title: 'Input Inspeksi', desc: 'Laporkan temuan kelainan jaringan', icon: '📝', color: 'indigo' },
-    { role: AppRole.EKSEKUSI, title: 'Update Eksekusi', desc: 'Laporan perbaikan lapangan', icon: '🛠️', color: 'emerald' },
-    { role: AppRole.ADMIN, title: 'Panel Admin', desc: 'Kelola data & Analitik AI', icon: '📊', color: 'slate' },
-    { role: AppRole.VIEWER, title: 'Monitoring Data', desc: 'Rekapitulasi status real-time', icon: '🖥️', color: 'slate' }
+    { role: AppRole.INSPEKSI, title: 'Input Inspeksi', desc: 'Lapor temuan kelainan jaringan', icon: '📝' },
+    { role: AppRole.EKSEKUSI, title: 'Update Eksekusi', desc: 'Update hasil perbaikan lapangan', icon: '🛠️' },
+    { role: AppRole.VIEWER, title: 'Monitoring Data', desc: 'Rekapitulasi status real-time', icon: '🖥️' },
+    { role: AppRole.ADMIN, title: 'Panel Admin', desc: 'Kelola master & Analitik', icon: '📊' }
   ];
 
-  return (
-    <div className="py-4">
-      <div className="text-center mb-10">
-        <div className="inline-block mb-6">
-          <div className="w-24 h-24 bg-white rounded-2xl flex items-center justify-center shadow-md border border-slate-100 overflow-hidden">
-             <img 
-               src={LOGO_URL} 
-               alt="Logo" 
-               className="w-4/5 h-4/5 object-contain" 
-               referrerPolicy="no-referrer"
-             />
+  if (view === 'MENU') {
+    return (
+      <div className="py-6 animate-fade-in">
+        <div className="text-center mb-10">
+          <div className="inline-block mb-6 p-3 bg-white rounded-[2rem] shadow-xl border border-slate-100">
+            <img src={LOGO_URL} alt="Logo" className="w-20 h-20 object-contain" />
           </div>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Aplikasi Temuan</h2>
+          <p className="text-slate-500 text-[10px] mt-1 font-bold uppercase tracking-[0.2em] opacity-70">PLN ES BUKITTINGGI</p>
         </div>
-        <h2 className="text-xl font-bold text-slate-900 tracking-tight">Portal Manajemen Temuan Kelainan</h2>
-        <p className="text-slate-500 text-xs mt-1.5 font-medium uppercase tracking-wide">Pilih Departemen Akses</p>
-      </div>
 
-      <div className="grid grid-cols-1 gap-3 mb-8">
-        {menuItems.map((item) => (
-          <button 
-            key={item.role}
-            onClick={() => setActiveMenu(item.role)}
-            className={`flex items-center p-4 rounded-xl border transition-all duration-200 ${
-              activeMenu === item.role 
-                ? 'border-indigo-600 bg-white shadow-md ring-1 ring-indigo-600' 
-                : 'border-slate-200 bg-white hover:border-slate-300'
-            }`}
-          >
-            <div className={`w-12 h-12 bg-slate-50 rounded-lg flex items-center justify-center text-xl mr-4`}>
-              {item.icon}
-            </div>
-            <div className="text-left flex-1">
-              <p className="font-bold text-slate-900 text-sm leading-tight">{item.title}</p>
-              <p className="text-[11px] text-slate-500 mt-0.5">{item.desc}</p>
-            </div>
-            {activeMenu === item.role && <div className="text-indigo-600">●</div>}
-          </button>
-        ))}
+        <div className="grid grid-cols-1 gap-4">
+          {menuItems.map((item) => (
+            <button 
+              key={item.role}
+              onClick={() => handleSelectRole(item.role)}
+              className="group flex items-center p-5 rounded-[2rem] bg-white border border-slate-200 hover:border-indigo-500 hover:shadow-2xl transition-all duration-300 active:scale-95"
+            >
+              <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-2xl mr-4 shadow-inner group-hover:bg-indigo-50 transition-colors">
+                {item.icon}
+              </div>
+              <div className="text-left flex-1">
+                <p className="font-bold text-slate-900 text-sm tracking-tight">{item.title}</p>
+                <p className="text-[11px] text-slate-400 mt-0.5 font-medium">{item.desc}</p>
+              </div>
+              <div className="text-slate-300 group-hover:text-indigo-500 transition-colors">→</div>
+            </button>
+          ))}
+        </div>
       </div>
+    );
+  }
 
-      {activeMenu && (
-        <div className="animate-slide-up space-y-4 bg-white p-6 rounded-2xl border border-indigo-100 shadow-lg mb-8">
-          <p className="font-bold text-[11px] text-indigo-600 uppercase tracking-widest mb-4">Detail Konfigurasi</p>
-          
-          {activeMenu === AppRole.INSPEKSI && (
-            <div className="space-y-3">
-              <select className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-500" onChange={(e) => setFormData({ ...formData, inspektor1: e.target.value })}>
-                <option value="">Inspektor 1</option>
-                {inspectors.map(i => <option key={i.id} value={i.name}>{i.name}</option>)}
+  return (
+    <div className="py-4 animate-slide-up">
+      <button onClick={handleBack} className="flex items-center gap-2 text-slate-400 text-[10px] font-black uppercase tracking-widest mb-8 hover:text-indigo-600 transition-colors">
+        <span className="text-lg">←</span> Kembali
+      </button>
+
+      <div className="bg-white p-8 rounded-[3rem] border border-slate-200 shadow-2xl space-y-6">
+        <div className="text-center mb-4">
+          <p className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.3em] mb-1">Konfigurasi Akses</p>
+          <h3 className="text-xl font-black text-slate-900 uppercase">{selectedRole?.replace('_', ' ')}</h3>
+        </div>
+
+        {selectedRole === AppRole.INSPEKSI && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Jenis Pekerjaan *</label>
+              <select 
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-100"
+                value={formData.pekerjaan || ''}
+                onChange={(e) => setFormData({ ...formData, pekerjaan: e.target.value })}
+              >
+                <option value="">-- Pilih Pekerjaan --</option>
+                <option value="JTR T1">JTR T1</option>
+                <option value="JTR T2">JTR T2</option>
+                <option value="GARDU T1">GARDU T1</option>
+                <option value="GARDU T2">GARDU T2</option>
               </select>
-              <select className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-500" onChange={(e) => setFormData({ ...formData, inspektor2: e.target.value })}>
-                <option value="">Inspektor 2</option>
-                {inspectors.map(i => <option key={i.id} value={i.name}>{i.name}</option>)}
-              </select>
-              <select className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-500" onChange={(e) => setFormData({ ...formData, ulp: e.target.value })}>
-                <option value="">Pilih Unit (ULP)</option>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Unit Pelaksana (ULP) *</label>
+              <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" onChange={(e) => setFormData({ ...formData, ulp: e.target.value })}>
+                <option value="">Pilih Unit</option>
                 {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
               </select>
             </div>
-          )}
 
-          {activeMenu === AppRole.EKSEKUSI && (
-            <div className="space-y-3">
-              <select className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-emerald-500" onChange={(e) => setFormData({ ...formData, ulp: e.target.value })}>
-                <option value="">Pilih Unit (ULP)</option>
-                {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
-              </select>
-              <select className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-emerald-500" onChange={(e) => setFormData({ ...formData, team: e.target.value })}>
-                <option value="">Pilih Tim Kerja</option>
-                <option value="Team ROW">Team ROW</option>
-                <option value="Team Yandal">Team Yandal</option>
-                <option value="Team Pemeliharaan">Team PLN</option>
-              </select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Inspektur 1</label>
+                <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-[10px] font-bold outline-none" onChange={(e) => setFormData({ ...formData, inspektor1: e.target.value })}>
+                  <option value="">Nama</option>
+                  {inspectors.map(i => <option key={i.id} value={i.name}>{i.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Inspektur 2</label>
+                <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-[10px] font-bold outline-none" onChange={(e) => setFormData({ ...formData, inspektor2: e.target.value })}>
+                  <option value="">Nama</option>
+                  {inspectors.map(i => <option key={i.id} value={i.name}>{i.name}</option>)}
+                </select>
+              </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {activeMenu === AppRole.ADMIN && (
-            <input 
-              type="password" 
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-indigo-500"
-              placeholder="Kode Akses Administrator"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          )}
-
-          {activeMenu === AppRole.VIEWER && (
-            <select className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-slate-500" onChange={(e) => setFormData({ ...formData, ulp: e.target.value })}>
+        {selectedRole === AppRole.EKSEKUSI && (
+          <div className="space-y-4">
+            <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" onChange={(e) => setFormData({ ...formData, ulp: e.target.value })}>
               <option value="">Pilih Unit (ULP)</option>
               {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
             </select>
-          )}
+            <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" onChange={(e) => setFormData({ ...formData, team: e.target.value })}>
+              <option value="">Pilih Tim Kerja</option>
+              <option value="Team ROW">Team ROW</option>
+              <option value="Team Yandal">Team Yandal</option>
+              <option value="Team Pemeliharaan">Team PLN</option>
+            </select>
+          </div>
+        )}
 
-          <button 
-            onClick={handleStart}
-            className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-xl shadow-md active:scale-95 transition-all text-sm uppercase tracking-wider mt-4"
-          >
-            Masuk Sekarang
-          </button>
-        </div>
-      )}
+        {selectedRole === AppRole.ADMIN && (
+          <input 
+            type="password" 
+            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-indigo-500"
+            placeholder="Masukkan Kode Admin"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        )}
+
+        {selectedRole === AppRole.VIEWER && (
+          <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" onChange={(e) => setFormData({ ...formData, ulp: e.target.value })}>
+            <option value="">Pilih Unit (ULP)</option>
+            {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+          </select>
+        )}
+
+        <button 
+          onClick={handleFinalLogin}
+          className="w-full bg-slate-900 text-white font-black py-5 rounded-2xl shadow-2xl active:scale-95 transition-all text-xs uppercase tracking-[0.3em] mt-4"
+        >
+          Masuk Sistem →
+        </button>
+      </div>
     </div>
   );
 };
