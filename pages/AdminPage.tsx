@@ -163,8 +163,19 @@ const AdminPage: React.FC<AdminPageProps> = ({
             <div className="h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={8} dataKey="value" stroke="none">
-                    {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} cornerRadius={6} />)}
+                  {/* FIX: Move cornerRadius to Pie component as Cell does not support it */}
+                  <Pie 
+                    data={pieData} 
+                    cx="50%" 
+                    cy="50%" 
+                    innerRadius={55} 
+                    outerRadius={80} 
+                    paddingAngle={8} 
+                    dataKey="value" 
+                    stroke="none"
+                    cornerRadius={6}
+                  >
+                    {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                   </Pie>
                   <Tooltip />
                 </PieChart>
