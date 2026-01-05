@@ -28,7 +28,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
   }, [tab, data]);
 
   // Statistik Per Pekerjaan per ULP
-  const workTypes = ['JTR T1', 'JTR T2', 'GARDU T1', 'GARDU T2'];
+  const workTypes = ['JTM T1', 'JTM T2', 'GARDU T1', 'GARDU T2'];
   const statsWorkByUlp = ulpList.map(u => {
     const result: any = { name: u.name.replace('ULP ', '') };
     workTypes.forEach(w => {
