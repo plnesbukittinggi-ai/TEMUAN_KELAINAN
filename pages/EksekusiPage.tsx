@@ -171,7 +171,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                       <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center text-2xl mb-3 border border-emerald-100">📷</div>
                       <span className="text-[10px] font-bold text-slate-900 uppercase tracking-widest">Klik Ambil Foto Hasil Kerja</span>
                       <input 
-                        type="file" accept="image/*" capture="environment"
+                        type="file" accept="image/*"
                         className="hidden" onChange={handleFileChange}
                       />
                     </label>
