@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { LoginSession, TemuanData } from '../types';
 
 interface EksekusiPageProps {
@@ -13,6 +13,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const [selectedTemuan, setSelectedTemuan] = useState<TemuanData | null>(null);
   const [executionPhoto, setExecutionPhoto] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const formatDriveUrl = (url?: string) => {
     if (!url) return '';
@@ -33,6 +34,17 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       const reader = new FileReader();
       reader.onloadend = () => setExecutionPhoto(reader.result as string);
       reader.readAsDataURL(file);
+    }
+  };
+
+  const openPicker = (mode: 'camera' | 'gallery') => {
+    if (fileInputRef.current) {
+      if (mode === 'camera') {
+        fileInputRef.current.setAttribute('capture', 'environment');
+      } else {
+        fileInputRef.current.removeAttribute('capture');
+      }
+      fileInputRef.current.click();
     }
   };
 
@@ -155,7 +167,15 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
 
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest ml-1">Bukti Foto Perbaikan *</label>
-                <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl p-2 bg-slate-50/50 min-h-[200px]">
+                <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl p-4 bg-slate-50/50 min-h-[220px]">
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    className="hidden" 
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                  />
+                  
                   {executionPhoto ? (
                     <div className="relative w-full">
                       <img src={executionPhoto} alt="Preview" className="w-full h-56 object-cover rounded-xl shadow-inner" />
@@ -167,14 +187,28 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                       )}
                     </div>
                   ) : (
-                    <label className="w-full h-full cursor-pointer flex flex-col items-center justify-center py-10 transition-colors hover:bg-slate-100/50">
-                      <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center text-2xl mb-3 border border-emerald-100">📷</div>
-                      <span className="text-[10px] font-bold text-slate-900 uppercase tracking-widest">Klik Ambil Foto Hasil Kerja</span>
-                      <input 
-                        type="file" accept="image/*"
-                        className="hidden" onChange={handleFileChange}
-                      />
-                    </label>
+                    <div className="w-full flex flex-col items-center">
+                      <div className="grid grid-cols-2 gap-3 w-full">
+                        <button 
+                          type="button" 
+                          onClick={() => openPicker('camera')}
+                          className="flex flex-col items-center justify-center p-5 bg-white border border-slate-200 rounded-2xl transition-all hover:bg-indigo-50 hover:border-indigo-200 active:scale-95 group"
+                        >
+                          <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center text-xl mb-2 shadow-sm group-hover:scale-110 transition-transform">📷</div>
+                          <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Kamera</span>
+                        </button>
+                        
+                        <button 
+                          type="button" 
+                          onClick={() => openPicker('gallery')}
+                          className="flex flex-col items-center justify-center p-5 bg-white border border-slate-200 rounded-2xl transition-all hover:bg-emerald-50 hover:border-emerald-200 active:scale-95 group"
+                        >
+                          <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center text-xl mb-2 shadow-sm group-hover:scale-110 transition-transform">🖼️</div>
+                          <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Galeri</span>
+                        </button>
+                      </div>
+                      <span className="text-[9px] font-bold text-slate-400 mt-4 uppercase tracking-tighter">Klik salah satu untuk lampirkan foto</span>
+                    </div>
                   )}
                 </div>
               </div>
