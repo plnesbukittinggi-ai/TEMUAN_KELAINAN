@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { LoginSession, TemuanData, Feeder, Keterangan } from '../types';
 
 interface InspeksiPageProps {
@@ -13,6 +13,8 @@ interface InspeksiPageProps {
 const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranganList, onBack, onSave }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [formData, setFormData] = useState<Partial<TemuanData>>({
     id: `ID-${Date.now().toString().slice(-8)}`,
     tanggal: new Date().toLocaleString('id-ID'),
@@ -54,6 +56,17 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
       const reader = new FileReader();
       reader.onloadend = () => setFormData(p => ({ ...p, fotoTemuan: reader.result as string }));
       reader.readAsDataURL(file);
+    }
+  };
+
+  const openPicker = (mode: 'camera' | 'gallery') => {
+    if (fileInputRef.current) {
+      if (mode === 'camera') {
+        fileInputRef.current.setAttribute('capture', 'environment');
+      } else {
+        fileInputRef.current.removeAttribute('capture');
+      }
+      fileInputRef.current.click();
     }
   };
 
@@ -141,19 +154,46 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
           </div>
         </div>
 
-        <div className="bg-white border-2 border-dashed border-slate-200 rounded-3xl p-2 min-h-[220px] flex items-center justify-center relative shadow-sm overflow-hidden group">
+        <div className="bg-white border-2 border-dashed border-slate-200 rounded-3xl p-4 min-h-[220px] flex flex-col items-center justify-center relative shadow-sm overflow-hidden group">
+          <input 
+            type="file" 
+            accept="image/*" 
+            className="hidden" 
+            ref={fileInputRef} 
+            onChange={handleFile} 
+          />
+          
           {formData.fotoTemuan ? (
-            <div className="w-full h-full relative p-1">
+            <div className="w-full h-full relative">
               <img src={formData.fotoTemuan} className="w-full h-72 object-cover rounded-2xl" alt="Preview" />
               <button type="button" onClick={() => setFormData({ ...formData, fotoTemuan: '' })} className="absolute top-4 right-4 bg-slate-900/80 text-white w-8 h-8 rounded-lg flex items-center justify-center backdrop-blur-sm">✕</button>
             </div>
           ) : (
-            <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer py-10 transition-all hover:bg-slate-50">
-              <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center text-3xl mb-3 border border-indigo-100 shadow-sm group-hover:scale-110 transition-transform">📷</div>
-              <p className="text-[11px] font-bold text-slate-900 uppercase tracking-widest">Ambil Foto Temuan Lapangan</p>
-              <p className="text-[9px] text-slate-400 mt-1 uppercase font-bold tracking-tighter">Kamera atau Galeri</p>
-              <input type="file" accept="image/*" className="hidden" onChange={handleFile} />
-            </label>
+            <div className="w-full py-6 flex flex-col items-center">
+              <p className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-6 text-center">Lampirkan Foto Temuan *</p>
+              
+              <div className="grid grid-cols-2 gap-4 w-full">
+                <button 
+                  type="button" 
+                  onClick={() => openPicker('camera')}
+                  className="flex flex-col items-center justify-center p-6 bg-slate-50 border border-slate-200 rounded-2xl transition-all hover:bg-indigo-50 hover:border-indigo-200 active:scale-95 group"
+                >
+                  <div className="w-12 h-12 bg-white text-indigo-600 rounded-xl flex items-center justify-center text-2xl mb-3 shadow-sm border border-slate-100 group-hover:scale-110 transition-transform">📷</div>
+                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Kamera</span>
+                </button>
+                
+                <button 
+                  type="button" 
+                  onClick={() => openPicker('gallery')}
+                  className="flex flex-col items-center justify-center p-6 bg-slate-50 border border-slate-200 rounded-2xl transition-all hover:bg-emerald-50 hover:border-emerald-200 active:scale-95 group"
+                >
+                  <div className="w-12 h-12 bg-white text-emerald-600 rounded-xl flex items-center justify-center text-2xl mb-3 shadow-sm border border-slate-100 group-hover:scale-110 transition-transform">🖼️</div>
+                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Galeri</span>
+                </button>
+              </div>
+              
+              <p className="text-[9px] text-slate-400 mt-6 uppercase font-bold tracking-tighter">Wajib melampirkan foto hasil temuan</p>
+            </div>
           )}
         </div>
 
