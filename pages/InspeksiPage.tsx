@@ -151,8 +151,8 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
             <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer py-10 transition-all hover:bg-slate-50">
               <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center text-3xl mb-3 border border-indigo-100 shadow-sm group-hover:scale-110 transition-transform">📷</div>
               <p className="text-[11px] font-bold text-slate-900 uppercase tracking-widest">Ambil Foto Temuan Lapangan</p>
-              <p className="text-[9px] text-slate-400 mt-1 uppercase font-bold tracking-tighter">Kamera Belakang atau Galeri</p>
-              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFile} />
+              <p className="text-[9px] text-slate-400 mt-1 uppercase font-bold tracking-tighter">Kamera atau Galeri</p>
+              <input type="file" accept="image/*" className="hidden" onChange={handleFile} />
             </label>
           )}
         </div>
