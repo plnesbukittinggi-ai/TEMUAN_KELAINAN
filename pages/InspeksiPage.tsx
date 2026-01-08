@@ -23,6 +23,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
   );
 
   // Jika tidak ada filter yang cocok, tampilkan semua (opsional, untuk mencegah dropdown benar-benar kosong)
+  // Ini menangani kasus jika teks di Spreadsheet sedikit berbeda dengan teks di Login
   const displayKeterangan = filteredKeteranganList.length > 0 ? filteredKeteranganList : keteranganList;
 
   const [formData, setFormData] = useState<Partial<TemuanData>>({
@@ -237,8 +238,8 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
               <option value="">Tidak ada data Keterangan untuk {session.pekerjaan}</option>
             )}
           </select>
-          {displayKeterangan.length === 0 && (
-            <p className="text-[9px] text-red-500 mt-2 font-bold italic">* Cek header di Sheet Keterangan: 'Kategori Kelainan' & 'Jenis Pekerjaan'</p>
+          {filteredKeteranganList.length === 0 && keteranganList.length > 0 && (
+            <p className="text-[9px] text-amber-600 mt-2 font-bold italic">* Menampilkan seluruh kategori karena filter "{session.pekerjaan}" tidak cocok.</p>
           )}
         </div>
 
