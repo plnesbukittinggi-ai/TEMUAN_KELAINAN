@@ -17,13 +17,13 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
   const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // LOGIKA FILTER: Mengambil keterangan yang kategorinya cocok dengan session.pekerjaan
+  // LOGIKA FILTER: Filter Keterangan berdasarkan Pekerjaan yang dipilih saat login
   const filteredKeteranganList = keteranganList.filter(k => 
     k.category?.toString().trim().toLowerCase() === session.pekerjaan?.toString().trim().toLowerCase()
   );
 
-  // Jika tidak ada filter yang cocok, tampilkan semua (opsional, untuk mencegah dropdown benar-benar kosong)
-  // Ini menangani kasus jika teks di Spreadsheet sedikit berbeda dengan teks di Login
+  // Jika hasil filter kosong (mungkin karena nama kategori di spreadsheet tidak sama persis), 
+  // maka tampilkan semua data sebagai cadangan agar dropdown tidak kosong.
   const displayKeterangan = filteredKeteranganList.length > 0 ? filteredKeteranganList : keteranganList;
 
   const [formData, setFormData] = useState<Partial<TemuanData>>({
@@ -53,7 +53,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
       },
       () => {
         setIsLocating(false);
-        alert("Gagal mengambil lokasi otomatis.");
+        console.warn("Gagal mengambil lokasi otomatis.");
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
@@ -113,6 +113,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Info Box */}
         <div className="bg-slate-900 rounded-2xl p-5 text-white shadow-lg grid grid-cols-2 gap-y-4">
           <div className="col-span-2 flex justify-between border-b border-slate-800 pb-3 mb-1">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID: {formData.id}</p>
@@ -128,6 +129,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
           </div>
         </div>
 
+        {/* Input Aset */}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -161,90 +163,82 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
 
           <div className="pt-2 border-t border-slate-100">
             <div className="flex justify-between items-center mb-2">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Koordinat Geotagging</label>
-              <button type="button" onClick={fetchLocation} disabled={isLocating} className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800">
-                {isLocating ? 'Mencari...' : '🔄 Dapatkan GPS'}
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Geotagging</label>
+              <button type="button" onClick={fetchLocation} disabled={isLocating} className="text-[10px] font-bold text-indigo-600">
+                {isLocating ? 'Mencari...' : '🔄 Update GPS'}
               </button>
             </div>
-            <input 
-              type="text" 
-              className="w-full p-3.5 bg-white border border-slate-300 rounded-xl text-xs font-mono text-slate-700 outline-none focus:border-indigo-500 shadow-inner" 
-              placeholder="Koordinat Geotag"
-              value={formData.geotag || ''} 
-              onChange={e => setFormData({ ...formData, geotag: e.target.value })}
-            />
+            <input type="text" className="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs font-mono" value={formData.geotag || ''} readOnly />
           </div>
         </div>
 
-        <div className="bg-white border-2 border-dashed border-slate-200 rounded-3xl p-4 min-h-[220px] flex flex-col items-center justify-center relative shadow-sm overflow-hidden group">
-          <input 
-            type="file" 
-            accept="image/*" 
-            className="hidden" 
-            ref={fileInputRef} 
-            onChange={handleFile} 
-          />
-          
+        {/* Foto Box */}
+        <div className="bg-white border-2 border-dashed border-slate-200 rounded-3xl p-4 min-h-[200px] flex flex-col items-center justify-center relative overflow-hidden shadow-sm">
+          <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFile} />
           {isCompressing ? (
-             <div className="flex flex-col items-center py-12">
-               <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full mb-4"></div>
-               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Mengompresi Foto...</p>
-             </div>
+             <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full"></div>
           ) : formData.fotoTemuan ? (
             <div className="w-full h-full relative">
-              <img src={formData.fotoTemuan} className="w-full h-72 object-cover rounded-2xl" alt="Preview" />
-              <button type="button" onClick={() => setFormData({ ...formData, fotoTemuan: '' })} className="absolute top-4 right-4 bg-slate-900/80 text-white w-8 h-8 rounded-lg flex items-center justify-center backdrop-blur-sm">✕</button>
+              <img src={formData.fotoTemuan} className="w-full h-64 object-cover rounded-2xl" alt="Preview" />
+              <button type="button" onClick={() => setFormData({ ...formData, fotoTemuan: '' })} className="absolute top-2 right-2 bg-slate-900/80 text-white w-8 h-8 rounded-lg flex items-center justify-center">✕</button>
             </div>
           ) : (
-            <div className="w-full py-6 flex flex-col items-center">
-              <p className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-6 text-center">Lampirkan Foto Temuan *</p>
-              
-              <div className="grid grid-cols-2 gap-4 w-full">
-                <button 
-                  type="button" 
-                  onClick={() => openPicker('camera')}
-                  className="flex flex-col items-center justify-center p-6 bg-slate-50 border border-slate-200 rounded-2xl transition-all hover:bg-indigo-50 hover:border-indigo-200 active:scale-95 group"
-                >
-                  <div className="w-12 h-12 bg-white text-indigo-600 rounded-xl flex items-center justify-center text-2xl mb-3 shadow-sm border border-slate-100 group-hover:scale-110 transition-transform">📷</div>
-                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Kamera</span>
-                </button>
-                
-                <button 
-                  type="button" 
-                  onClick={() => openPicker('gallery')}
-                  className="flex flex-col items-center justify-center p-6 bg-slate-50 border border-slate-200 rounded-2xl transition-all hover:bg-emerald-50 hover:border-emerald-200 active:scale-95 group"
-                >
-                  <div className="w-12 h-12 bg-white text-emerald-600 rounded-xl flex items-center justify-center text-2xl mb-3 shadow-sm border border-slate-100 group-hover:scale-110 transition-transform">🖼️</div>
-                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Galeri</span>
-                </button>
-              </div>
+            <div className="grid grid-cols-2 gap-4 w-full">
+              <button type="button" onClick={() => openPicker('camera')} className="flex flex-col items-center p-6 bg-slate-50 rounded-2xl border border-slate-100 transition-all hover:bg-indigo-50">
+                <span className="text-2xl mb-2">📷</span>
+                <span className="text-[10px] font-bold text-slate-600 uppercase">Kamera</span>
+              </button>
+              <button type="button" onClick={() => openPicker('gallery')} className="flex flex-col items-center p-6 bg-slate-50 rounded-2xl border border-slate-100 transition-all hover:bg-emerald-50">
+                <span className="text-2xl mb-2">🖼️</span>
+                <span className="text-[10px] font-bold text-slate-600 uppercase">Galeri</span>
+              </button>
             </div>
           )}
         </div>
 
-        <div>
-          <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2 ml-1">Kategori Kelainan *</label>
+        {/* DROPDOWN KATEGORI KELAINAN */}
+        <div className="space-y-2">
+          <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1">Kategori Kelainan *</label>
           <select 
-            className="w-full p-4 bg-white border-2 border-red-100 rounded-xl text-sm font-bold text-red-700 outline-none focus:ring-4 focus:ring-red-50 shadow-sm" 
+            className={`w-full p-4 bg-white border-2 rounded-xl text-sm font-bold shadow-sm outline-none transition-all ${displayKeterangan.length === 0 ? 'border-red-200 text-red-400' : 'border-indigo-100 focus:border-indigo-500'}`}
             value={formData.keterangan} 
             onChange={e => setFormData({ ...formData, keterangan: e.target.value })}
           >
             {displayKeterangan.length > 0 ? (
               <>
-                <option value="">-- Pilih Kategori --</option>
-                {displayKeterangan.map(k => <option key={k.id} value={k.text}>{k.text}</option>)}
+                <option value="">-- Pilih Kelainan --</option>
+                {displayKeterangan.map(k => (
+                  <option key={k.id} value={k.text}>{k.text}</option>
+                ))}
               </>
             ) : (
-              <option value="">Tidak ada data Keterangan untuk {session.pekerjaan}</option>
+              <option value="">(Data Keterangan Kosong di Server)</option>
             )}
           </select>
-          {filteredKeteranganList.length === 0 && keteranganList.length > 0 && (
-            <p className="text-[9px] text-amber-600 mt-2 font-bold italic">* Menampilkan seluruh kategori karena filter "{session.pekerjaan}" tidak cocok.</p>
+          
+          {/* Debugging / Helper Message */}
+          {displayKeterangan.length > 0 && filteredKeteranganList.length === 0 && (
+            <div className="bg-amber-50 border border-amber-100 p-3 rounded-xl">
+              <p className="text-[10px] text-amber-700 font-bold leading-tight">
+                ⚠️ Menampilkan seluruh kategori. <br/>
+                <span className="font-normal">Kategori spesifik untuk "{session.pekerjaan}" tidak ditemukan di Spreadsheet.</span>
+              </p>
+            </div>
+          )}
+          
+          {displayKeterangan.length === 0 && (
+            <p className="text-[10px] text-red-500 font-bold italic ml-1 animate-pulse">
+              Data sheet "Keterangan" tidak terbaca. Pastikan sheet tersedia di Spreadsheet.
+            </p>
           )}
         </div>
 
-        <button type="submit" disabled={isSubmitting || isCompressing} className={`w-full py-4.5 rounded-2xl shadow-2xl font-bold uppercase tracking-[0.2em] text-sm flex items-center justify-center gap-3 transition-all ${isSubmitting || isCompressing ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 active:scale-95'}`}>
-          {isSubmitting ? '⏳ Mengirim Laporan...' : 'Simpan Laporan Temuan'}
+        <button 
+          type="submit" 
+          disabled={isSubmitting || isCompressing} 
+          className={`w-full py-5 rounded-2xl shadow-xl font-bold uppercase tracking-[0.2em] text-xs transition-all ${isSubmitting || isCompressing ? 'bg-slate-300 text-slate-500' : 'bg-slate-900 text-white hover:bg-slate-800 active:scale-95'}`}
+        >
+          {isSubmitting ? '⏳ Menyimpan...' : 'Simpan Laporan Temuan'}
         </button>
       </form>
     </div>
