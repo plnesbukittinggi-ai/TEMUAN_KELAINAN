@@ -6,6 +6,11 @@ export enum AppRole {
   VIEWER = 'VIEWER'
 }
 
+export interface Pekerjaan {
+  id: string;
+  name: string;
+}
+
 export interface Inspector {
   id: string;
   name: string;
@@ -24,13 +29,14 @@ export interface Feeder {
 
 export interface Keterangan {
   id: string;
-  text: string;
+  text: string; // Diambil dari kolom 'name' di sheet
+  idPekerjaan: string; // Relasi ke Pekerjaan.id
 }
 
 export interface TemuanData {
   id: string; 
   tanggal: string;
-  pekerjaan: string; // NEW
+  pekerjaan: string;
   inspektor1: string;
   inspektor2: string;
   ulp: string;
@@ -50,7 +56,8 @@ export interface TemuanData {
 export interface LoginSession {
   role: AppRole;
   ulp?: string;
-  pekerjaan?: string; // NEW
+  pekerjaan?: string; // Nama pekerjaan (untuk display)
+  idPekerjaan?: string; // ID pekerjaan (untuk filter)
   inspektor1?: string;
   inspektor2?: string;
   team?: string;
