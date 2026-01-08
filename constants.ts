@@ -1,17 +1,9 @@
 
 import { Inspector, ULP, Feeder, Keterangan } from './types';
 
-/**
- * CARA SETUP:
- * 1. Buka Google Spreadsheet.
- * 2. Buat sheet: 'Temuan', 'Inspectors', 'ULP', 'Feeders', 'Keterangan'.
- * 3. Masukkan kode Apps Script yang disediakan.
- * 4. Deploy sebagai Web App dengan akses "Anyone".
- * 5. Tempel URL-nya di bawah ini.
- */
 export const SPREADSHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzdwwoI_Ejc-3QLhFafDBZXp8yukSps3ZtHJqXicm4h0KHiwPhk_vAByiUXAYytlioB/exec';
 
-export const APP_VERSION = '1.0.2'; // Update Versi
+export const APP_VERSION = '1.0.4';
 
 export const INITIAL_INSPECTORS: Inspector[] = [
   { id: '1', name: 'Ahmad Subarjo' },
@@ -30,11 +22,15 @@ export const INITIAL_FEEDERS: Feeder[] = [
 ];
 
 export const INITIAL_KETERANGAN: Keterangan[] = [
-  { id: 'K-01', text: 'Pohon mendekati jaringan (ROW)' },
-  { id: 'K-02', text: 'Tiang Miring' },
-  { id: 'K-03', text: 'Isolator Flash' },
-  { id: 'K-04', text: 'Andongan Kendor' },
-  { id: 'K-05', text: 'Jumperan Terbakar' }
+  // Contoh data awal (akan digantikan oleh data dari Spreadsheet)
+  // JTM Tier 1 (ID Pekerjaan diasumsikan: PEK01)
+  { id: 'K01', text: 'Pohon mendekati jaringan (ROW)', idPekerjaan: 'PEK01' },
+  { id: 'K02', text: 'Tiang Miring', idPekerjaan: 'PEK01' },
+  { id: 'K03', text: 'Isolator Flash', idPekerjaan: 'PEK01' },
+  
+  // GARDU Tier 1 (ID Pekerjaan diasumsikan: PEK03)
+  { id: 'K08', text: 'Level Oli Rendah', idPekerjaan: 'PEK03' },
+  { id: 'K09', text: 'Bushing Kotor', idPekerjaan: 'PEK03' }
 ];
 
 export const ADMIN_PASSWORD = 'Admbkt';
