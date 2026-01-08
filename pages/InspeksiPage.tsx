@@ -17,14 +17,11 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
   const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // LOGIKA FILTER: Filter Keterangan berdasarkan Pekerjaan yang dipilih saat login
+  // LOGIKA FILTER: Filter Keterangan berdasarkan idPekerjaan (ID) yang dipilih saat login
+  // k.idPekerjaan di Sheet Keterangan harus sama dengan id di Sheet Pekerjaan
   const filteredKeteranganList = keteranganList.filter(k => 
-    k.category?.toString().trim().toLowerCase() === session.pekerjaan?.toString().trim().toLowerCase()
+    String(k.idPekerjaan).trim() === String(session.idPekerjaan).trim()
   );
-
-  // Jika hasil filter kosong (mungkin karena nama kategori di spreadsheet tidak sama persis), 
-  // maka tampilkan semua data sebagai cadangan agar dropdown tidak kosong.
-  const displayKeterangan = filteredKeteranganList.length > 0 ? filteredKeteranganList : keteranganList;
 
   const [formData, setFormData] = useState<Partial<TemuanData>>({
     id: `ID-${Date.now().toString().slice(-8)}`,
@@ -200,37 +197,25 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
         <div className="space-y-2">
           <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1">Kategori Kelainan *</label>
           <select 
-            className={`w-full p-4 bg-white border-2 rounded-xl text-sm font-bold shadow-sm outline-none transition-all ${displayKeterangan.length === 0 ? 'border-red-200 text-red-400' : 'border-indigo-100 focus:border-indigo-500'}`}
+            className={`w-full p-4 bg-white border-2 rounded-xl text-sm font-bold shadow-sm outline-none transition-all ${filteredKeteranganList.length === 0 ? 'border-red-200 text-red-400' : 'border-indigo-100 focus:border-indigo-500'}`}
             value={formData.keterangan} 
             onChange={e => setFormData({ ...formData, keterangan: e.target.value })}
           >
-            {displayKeterangan.length > 0 ? (
+            {filteredKeteranganList.length > 0 ? (
               <>
                 <option value="">-- Pilih Kelainan --</option>
-                {displayKeterangan.map(k => (
+                {filteredKeteranganList.map(k => (
                   <option key={k.id} value={k.text}>{k.text}</option>
                 ))}
               </>
             ) : (
-              <option value="">(Data Keterangan Kosong di Server)</option>
+              <option value="">Tidak ada kelainan untuk pekerjaan ini</option>
             )}
           </select>
           
-          {/* Debugging / Helper Message */}
-          {displayKeterangan.length > 0 && filteredKeteranganList.length === 0 && (
-            <div className="bg-amber-50 border border-amber-100 p-3 rounded-xl">
-              <p className="text-[10px] text-amber-700 font-bold leading-tight">
-                ⚠️ Menampilkan seluruh kategori. <br/>
-                <span className="font-normal">Kategori spesifik untuk "{session.pekerjaan}" tidak ditemukan di Spreadsheet.</span>
-              </p>
-            </div>
-          )}
-          
-          {displayKeterangan.length === 0 && (
-            <p className="text-[10px] text-red-500 font-bold italic ml-1 animate-pulse">
-              Data sheet "Keterangan" tidak terbaca. Pastikan sheet tersedia di Spreadsheet.
-            </p>
-          )}
+          <p className="text-[10px] text-slate-400 font-bold italic ml-1">
+            * Menampilkan {filteredKeteranganList.length} kategori yang sesuai.
+          </p>
         </div>
 
         <button 
