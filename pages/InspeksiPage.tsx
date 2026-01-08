@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { LoginSession, TemuanData, Feeder, Keterangan } from '../types';
+import { compressImage } from '../utils/imageUtils';
 
 interface InspeksiPageProps {
   session: LoginSession;
@@ -13,6 +14,7 @@ interface InspeksiPageProps {
 const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranganList, onBack, onSave }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState<Partial<TemuanData>>({
@@ -53,8 +55,19 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setIsCompressing(true);
       const reader = new FileReader();
-      reader.onloadend = () => setFormData(p => ({ ...p, fotoTemuan: reader.result as string }));
+      reader.onloadend = async () => {
+        try {
+          const base64 = reader.result as string;
+          const compressed = await compressImage(base64);
+          setFormData(p => ({ ...p, fotoTemuan: compressed }));
+        } catch (err) {
+          alert('Gagal memproses gambar. Coba lagi.');
+        } finally {
+          setIsCompressing(false);
+        }
+      };
       reader.readAsDataURL(file);
     }
   };
@@ -163,7 +176,12 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
             onChange={handleFile} 
           />
           
-          {formData.fotoTemuan ? (
+          {isCompressing ? (
+             <div className="flex flex-col items-center py-12">
+               <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full mb-4"></div>
+               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Mengompresi Foto...</p>
+             </div>
+          ) : formData.fotoTemuan ? (
             <div className="w-full h-full relative">
               <img src={formData.fotoTemuan} className="w-full h-72 object-cover rounded-2xl" alt="Preview" />
               <button type="button" onClick={() => setFormData({ ...formData, fotoTemuan: '' })} className="absolute top-4 right-4 bg-slate-900/80 text-white w-8 h-8 rounded-lg flex items-center justify-center backdrop-blur-sm">✕</button>
@@ -192,7 +210,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
                 </button>
               </div>
               
-              <p className="text-[9px] text-slate-400 mt-6 uppercase font-bold tracking-tighter">Wajib melampirkan foto hasil temuan</p>
+              <p className="text-[9px] text-slate-400 mt-6 uppercase font-bold tracking-tighter">Ukuran akan otomatis dikompresi</p>
             </div>
           )}
         </div>
@@ -205,7 +223,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
           </select>
         </div>
 
-        <button type="submit" disabled={isSubmitting} className={`w-full py-4.5 rounded-2xl shadow-2xl font-bold uppercase tracking-[0.2em] text-sm flex items-center justify-center gap-3 transition-all ${isSubmitting ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 active:scale-95'}`}>
+        <button type="submit" disabled={isSubmitting || isCompressing} className={`w-full py-4.5 rounded-2xl shadow-2xl font-bold uppercase tracking-[0.2em] text-sm flex items-center justify-center gap-3 transition-all ${isSubmitting || isCompressing ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 active:scale-95'}`}>
           {isSubmitting ? '⏳ Mengirim Laporan...' : 'Simpan Laporan Temuan'}
         </button>
       </form>
