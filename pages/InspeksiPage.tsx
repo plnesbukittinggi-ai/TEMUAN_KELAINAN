@@ -18,12 +18,11 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // LOGIKA FILTER: Mengambil keterangan yang kategorinya cocok dengan session.pekerjaan
-  // Menggunakan .trim() untuk memastikan tidak ada masalah spasi dari data spreadsheet
   const filteredKeteranganList = keteranganList.filter(k => 
-    k.category?.toString().trim() === session.pekerjaan?.toString().trim()
+    k.category?.toString().trim().toLowerCase() === session.pekerjaan?.toString().trim().toLowerCase()
   );
 
-  // Fallback: Jika filter menghasilkan daftar kosong, tampilkan semua (untuk keamanan data)
+  // Jika tidak ada filter yang cocok, tampilkan semua (opsional, untuk mencegah dropdown benar-benar kosong)
   const displayKeterangan = filteredKeteranganList.length > 0 ? filteredKeteranganList : keteranganList;
 
   const [formData, setFormData] = useState<Partial<TemuanData>>({
@@ -53,7 +52,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
       },
       () => {
         setIsLocating(false);
-        alert("Gagal mengambil lokasi otomatis. Silakan ketik koordinat secara manual.");
+        alert("Gagal mengambil lokasi otomatis.");
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
@@ -72,7 +71,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
           const compressed = await compressImage(base64);
           setFormData(p => ({ ...p, fotoTemuan: compressed }));
         } catch (err) {
-          alert('Gagal memproses gambar. Coba lagi.');
+          alert('Gagal memproses gambar.');
         } finally {
           setIsCompressing(false);
         }
@@ -169,7 +168,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
             <input 
               type="text" 
               className="w-full p-3.5 bg-white border border-slate-300 rounded-xl text-xs font-mono text-slate-700 outline-none focus:border-indigo-500 shadow-inner" 
-              placeholder="Ketik Koordinat Manual jika GPS Gagal"
+              placeholder="Koordinat Geotag"
               value={formData.geotag || ''} 
               onChange={e => setFormData({ ...formData, geotag: e.target.value })}
             />
@@ -218,18 +217,29 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
                   <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Galeri</span>
                 </button>
               </div>
-              
-              <p className="text-[9px] text-slate-400 mt-6 uppercase font-bold tracking-tighter">Ukuran akan otomatis dikompresi</p>
             </div>
           )}
         </div>
 
         <div>
           <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2 ml-1">Kategori Kelainan *</label>
-          <select className="w-full p-4 bg-white border-2 border-red-100 rounded-xl text-sm font-bold text-red-700 outline-none focus:ring-4 focus:ring-red-50 shadow-sm" value={formData.keterangan} onChange={e => setFormData({ ...formData, keterangan: e.target.value })}>
-            <option value="">-- Pilih Kategori --</option>
-            {displayKeterangan.map(k => <option key={k.id} value={k.text}>{k.text}</option>)}
+          <select 
+            className="w-full p-4 bg-white border-2 border-red-100 rounded-xl text-sm font-bold text-red-700 outline-none focus:ring-4 focus:ring-red-50 shadow-sm" 
+            value={formData.keterangan} 
+            onChange={e => setFormData({ ...formData, keterangan: e.target.value })}
+          >
+            {displayKeterangan.length > 0 ? (
+              <>
+                <option value="">-- Pilih Kategori --</option>
+                {displayKeterangan.map(k => <option key={k.id} value={k.text}>{k.text}</option>)}
+              </>
+            ) : (
+              <option value="">Tidak ada data Keterangan untuk {session.pekerjaan}</option>
+            )}
           </select>
+          {displayKeterangan.length === 0 && (
+            <p className="text-[9px] text-red-500 mt-2 font-bold italic">* Cek header di Sheet Keterangan: 'Kategori Kelainan' & 'Jenis Pekerjaan'</p>
+          )}
         </div>
 
         <button type="submit" disabled={isSubmitting || isCompressing} className={`w-full py-4.5 rounded-2xl shadow-2xl font-bold uppercase tracking-[0.2em] text-sm flex items-center justify-center gap-3 transition-all ${isSubmitting || isCompressing ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800 active:scale-95'}`}>
