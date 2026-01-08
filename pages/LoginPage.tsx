@@ -8,9 +8,10 @@ interface LoginPageProps {
   inspectors: Inspector[];
   ulpList: ULP[];
   pekerjaanList: Pekerjaan[];
+  isLoading?: boolean;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pekerjaanList }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pekerjaanList, isLoading }) => {
   const [view, setView] = useState<'MENU' | 'CONFIG'>('MENU');
   const [selectedRole, setSelectedRole] = useState<AppRole | null>(null);
   const [formData, setFormData] = useState<Partial<LoginSession>>({});
@@ -116,14 +117,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
 
       <div className="bg-white p-8 rounded-[3rem] border border-slate-200 shadow-2xl space-y-6">
         <div className="text-center mb-4">
-          <p className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.3em] mb-1">Konfigurasi Akses</p>
+          <p className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.3em] mb-1">Konfigurasi Akses {isLoading && '(Syncing...)'}</p>
           <h3 className="text-xl font-black text-slate-900 uppercase">{selectedRole?.replace('_', ' ')}</h3>
         </div>
 
         {selectedRole === AppRole.INSPEKSI && (
           <div className="space-y-4">
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Jenis Pekerjaan *</label>
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">
+                Jenis Pekerjaan * {pekerjaanList.length === 0 && <span className="text-red-500 italic">(Memuat data...)</span>}
+              </label>
               <select 
                 className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-100"
                 value={formData.idPekerjaan || ''}
@@ -197,9 +200,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
 
         <button 
           onClick={handleFinalLogin}
-          className="w-full bg-slate-900 text-white font-black py-5 rounded-2xl shadow-2xl active:scale-95 transition-all text-xs uppercase tracking-[0.3em] mt-4"
+          disabled={isLoading && pekerjaanList.length === 0}
+          className={`w-full ${isLoading && pekerjaanList.length === 0 ? 'bg-slate-400' : 'bg-slate-900'} text-white font-black py-5 rounded-2xl shadow-2xl active:scale-95 transition-all text-xs uppercase tracking-[0.3em] mt-4`}
         >
-          Masuk Sistem →
+          {isLoading && pekerjaanList.length === 0 ? 'Mohon Tunggu...' : 'Masuk Sistem →'}
         </button>
       </div>
     </div>
