@@ -1,9 +1,16 @@
 
-import { Inspector, ULP, Feeder, Keterangan } from './types';
+import { Inspector, ULP, Feeder, Keterangan, Pekerjaan } from './types';
 
 export const SPREADSHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzdwwoI_Ejc-3QLhFafDBZXp8yukSps3ZtHJqXicm4h0KHiwPhk_vAByiUXAYytlioB/exec';
 
-export const APP_VERSION = '1.0.4';
+export const APP_VERSION = '1.0.5';
+
+export const INITIAL_PEKERJAAN: Pekerjaan[] = [
+  { id: 'PEK01', name: 'JTM Tier 1' },
+  { id: 'PEK02', name: 'JTM Tier 1 - Tier 2' },
+  { id: 'PEK03', name: 'GARDU Tier 1' },
+  { id: 'PEK04', name: 'GARDU Tier 1 - Tier 2' }
+];
 
 export const INITIAL_INSPECTORS: Inspector[] = [
   { id: '1', name: 'Ahmad Subarjo' },
@@ -22,13 +29,12 @@ export const INITIAL_FEEDERS: Feeder[] = [
 ];
 
 export const INITIAL_KETERANGAN: Keterangan[] = [
-  // Contoh data awal (akan digantikan oleh data dari Spreadsheet)
-  // JTM Tier 1 (ID Pekerjaan diasumsikan: PEK01)
+  // JTM Tier 1
   { id: 'K01', text: 'Pohon mendekati jaringan (ROW)', idPekerjaan: 'PEK01' },
   { id: 'K02', text: 'Tiang Miring', idPekerjaan: 'PEK01' },
   { id: 'K03', text: 'Isolator Flash', idPekerjaan: 'PEK01' },
   
-  // GARDU Tier 1 (ID Pekerjaan diasumsikan: PEK03)
+  // GARDU Tier 1
   { id: 'K08', text: 'Level Oli Rendah', idPekerjaan: 'PEK03' },
   { id: 'K09', text: 'Bushing Kotor', idPekerjaan: 'PEK03' }
 ];
