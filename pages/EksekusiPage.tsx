@@ -1,6 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { LoginSession, TemuanData } from '../types';
+import { compressImage } from '../utils/imageUtils';
 
 interface EksekusiPageProps {
   session: LoginSession;
@@ -13,6 +14,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const [selectedTemuan, setSelectedTemuan] = useState<TemuanData | null>(null);
   const [executionPhoto, setExecutionPhoto] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const formatDriveUrl = (url?: string) => {
@@ -31,8 +33,19 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setIsCompressing(true);
       const reader = new FileReader();
-      reader.onloadend = () => setExecutionPhoto(reader.result as string);
+      reader.onloadend = async () => {
+        try {
+          const base64 = reader.result as string;
+          const compressed = await compressImage(base64);
+          setExecutionPhoto(compressed);
+        } catch (err) {
+          alert('Gagal memproses gambar perbaikan.');
+        } finally {
+          setIsCompressing(false);
+        }
+      };
       reader.readAsDataURL(file);
     }
   };
@@ -176,7 +189,12 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                     onChange={handleFileChange}
                   />
                   
-                  {executionPhoto ? (
+                  {isCompressing ? (
+                    <div className="flex flex-col items-center">
+                      <div className="animate-spin h-6 w-6 border-4 border-emerald-500 border-t-transparent rounded-full mb-3"></div>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Memproses Foto...</p>
+                    </div>
+                  ) : executionPhoto ? (
                     <div className="relative w-full">
                       <img src={executionPhoto} alt="Preview" className="w-full h-56 object-cover rounded-xl shadow-inner" />
                       {!isSaving && (
@@ -207,7 +225,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                           <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Galeri</span>
                         </button>
                       </div>
-                      <span className="text-[9px] font-bold text-slate-400 mt-4 uppercase tracking-tighter">Klik salah satu untuk lampirkan foto</span>
+                      <span className="text-[9px] font-bold text-slate-400 mt-4 uppercase tracking-tighter text-center">Ukuran akan otomatis dikompresi</span>
                     </div>
                   )}
                 </div>
@@ -218,15 +236,15 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                <div className="grid grid-cols-2 gap-3 mb-2">
                   <button 
                     onClick={() => handleAction('SUDAH EKSEKUSI')}
-                    disabled={isSaving}
-                    className={`py-4 rounded-xl shadow-lg transition-all uppercase tracking-widest text-[10px] font-bold flex items-center justify-center gap-2 ${isSaving ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95'}`}
+                    disabled={isSaving || isCompressing}
+                    className={`py-4 rounded-xl shadow-lg transition-all uppercase tracking-widest text-[10px] font-bold flex items-center justify-center gap-2 ${isSaving || isCompressing ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95'}`}
                   >
                     {isSaving ? '⏳ Menyimpan...' : '✅ SELESAI'}
                   </button>
                   <button 
                     onClick={() => handleAction('BUTUH PADAM')}
-                    disabled={isSaving}
-                    className={`py-4 rounded-xl shadow-lg transition-all uppercase tracking-widest text-[10px] font-bold flex items-center justify-center gap-2 ${isSaving ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-amber-500 text-white hover:bg-amber-600 active:scale-95'}`}
+                    disabled={isSaving || isCompressing}
+                    className={`py-4 rounded-xl shadow-lg transition-all uppercase tracking-widest text-[10px] font-bold flex items-center justify-center gap-2 ${isSaving || isCompressing ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-amber-500 text-white hover:bg-amber-600 active:scale-95'}`}
                   >
                     {isSaving ? '...' : '⚡ BUTUH PADAM'}
                   </button>
