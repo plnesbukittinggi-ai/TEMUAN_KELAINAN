@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { AppRole, TemuanData, LoginSession, Inspector, ULP, Feeder, Keterangan } from './types';
+import { AppRole, TemuanData, LoginSession, Inspector, ULP, Feeder, Keterangan, Pekerjaan } from './types';
 import { INITIAL_INSPECTORS, INITIAL_ULP, INITIAL_FEEDERS, INITIAL_KETERANGAN, APP_VERSION } from './constants';
 import { SpreadsheetService } from './services/spreadsheetService';
 import LoginPage from './pages/LoginPage';
@@ -15,6 +15,7 @@ const App: React.FC = () => {
   const [inspectors, setInspectors] = useState<Inspector[]>(INITIAL_INSPECTORS);
   const [ulpList, setUlpList] = useState<ULP[]>(INITIAL_ULP);
   const [feeders, setFeeders] = useState<Feeder[]>(INITIAL_FEEDERS);
+  const [pekerjaanList, setPekerjaanList] = useState<Pekerjaan[]>([]);
   const [keteranganList, setKeteranganList] = useState<Keterangan[]>(INITIAL_KETERANGAN);
   const [isLoading, setIsLoading] = useState(true);
   const [connectionError, setConnectionError] = useState<boolean>(false);
@@ -25,11 +26,14 @@ const App: React.FC = () => {
     setIsLoading(true);
     setConnectionError(false);
     try {
-      const config = await SpreadsheetService.fetchAllData();
-      if (config.inspectors) setInspectors(config.inspectors);
-      if (config.ulpList) setUlpList(config.ulpList);
-      if (config.feeders) setFeeders(config.feeders);
-      if (config.keteranganList) setKeteranganList(config.keteranganList);
+      const config = await SpreadsheetService.fetchAllData() as any;
+      
+      if (config.inspectors && config.inspectors.length > 0) setInspectors(config.inspectors);
+      if (config.ulpList && config.ulpList.length > 0) setUlpList(config.ulpList);
+      if (config.feeders && config.feeders.length > 0) setFeeders(config.feeders);
+      if (config.pekerjaanList && config.pekerjaanList.length > 0) setPekerjaanList(config.pekerjaanList);
+      if (config.keteranganList && config.keteranganList.length > 0) setKeteranganList(config.keteranganList);
+      
       setAllData(config.allData || []);
     } catch (err) {
       console.error("Connection failed:", err);
@@ -102,7 +106,7 @@ const App: React.FC = () => {
     }
 
     if (!session) {
-      return <LoginPage onLogin={setSession} inspectors={inspectors} ulpList={ulpList} />;
+      return <LoginPage onLogin={setSession} inspectors={inspectors} ulpList={ulpList} pekerjaanList={pekerjaanList} />;
     }
 
     switch (session.role) {
