@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AppRole, TemuanData, LoginSession, Inspector, ULP, Feeder, Keterangan, Pekerjaan } from './types';
-import { INITIAL_INSPECTORS, INITIAL_ULP, INITIAL_FEEDERS, INITIAL_KETERANGAN, APP_VERSION } from './constants';
+import { INITIAL_INSPECTORS, INITIAL_ULP, INITIAL_FEEDERS, INITIAL_KETERANGAN, INITIAL_PEKERJAAN, APP_VERSION } from './constants';
 import { SpreadsheetService } from './services/spreadsheetService';
 import LoginPage from './pages/LoginPage';
 import InspeksiPage from './pages/InspeksiPage';
@@ -15,7 +15,7 @@ const App: React.FC = () => {
   const [inspectors, setInspectors] = useState<Inspector[]>(INITIAL_INSPECTORS);
   const [ulpList, setUlpList] = useState<ULP[]>(INITIAL_ULP);
   const [feeders, setFeeders] = useState<Feeder[]>(INITIAL_FEEDERS);
-  const [pekerjaanList, setPekerjaanList] = useState<Pekerjaan[]>([]);
+  const [pekerjaanList, setPekerjaanList] = useState<Pekerjaan[]>(INITIAL_PEKERJAAN);
   const [keteranganList, setKeteranganList] = useState<Keterangan[]>(INITIAL_KETERANGAN);
   const [isLoading, setIsLoading] = useState(true);
   const [connectionError, setConnectionError] = useState<boolean>(false);
@@ -34,7 +34,7 @@ const App: React.FC = () => {
       if (config.pekerjaanList && config.pekerjaanList.length > 0) setPekerjaanList(config.pekerjaanList);
       if (config.keteranganList && config.keteranganList.length > 0) setKeteranganList(config.keteranganList);
       
-      setAllData(config.allData || []);
+      if (config.allData) setAllData(config.allData);
     } catch (err) {
       console.error("Connection failed:", err);
       setConnectionError(true);
@@ -106,7 +106,15 @@ const App: React.FC = () => {
     }
 
     if (!session) {
-      return <LoginPage onLogin={setSession} inspectors={inspectors} ulpList={ulpList} pekerjaanList={pekerjaanList} />;
+      return (
+        <LoginPage 
+          onLogin={setSession} 
+          inspectors={inspectors} 
+          ulpList={ulpList} 
+          pekerjaanList={pekerjaanList} 
+          isLoading={isLoading}
+        />
+      );
     }
 
     switch (session.role) {
