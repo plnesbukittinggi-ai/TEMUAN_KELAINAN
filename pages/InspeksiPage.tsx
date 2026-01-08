@@ -17,6 +17,15 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
   const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // LOGIKA FILTER: Mengambil keterangan yang kategorinya cocok dengan session.pekerjaan
+  // Menggunakan .trim() untuk memastikan tidak ada masalah spasi dari data spreadsheet
+  const filteredKeteranganList = keteranganList.filter(k => 
+    k.category?.toString().trim() === session.pekerjaan?.toString().trim()
+  );
+
+  // Fallback: Jika filter menghasilkan daftar kosong, tampilkan semua (untuk keamanan data)
+  const displayKeterangan = filteredKeteranganList.length > 0 ? filteredKeteranganList : keteranganList;
+
   const [formData, setFormData] = useState<Partial<TemuanData>>({
     id: `ID-${Date.now().toString().slice(-8)}`,
     tanggal: new Date().toLocaleString('id-ID'),
@@ -219,7 +228,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
           <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2 ml-1">Kategori Kelainan *</label>
           <select className="w-full p-4 bg-white border-2 border-red-100 rounded-xl text-sm font-bold text-red-700 outline-none focus:ring-4 focus:ring-red-50 shadow-sm" value={formData.keterangan} onChange={e => setFormData({ ...formData, keterangan: e.target.value })}>
             <option value="">-- Pilih Kategori --</option>
-            {keteranganList.map(k => <option key={k.id} value={k.text}>{k.text}</option>)}
+            {displayKeterangan.map(k => <option key={k.id} value={k.text}>{k.text}</option>)}
           </select>
         </div>
 
