@@ -1,15 +1,16 @@
 
 import React, { useState } from 'react';
-import { AppRole, LoginSession, Inspector, ULP } from '../types';
+import { AppRole, LoginSession, Inspector, ULP, Pekerjaan } from '../types';
 import { ADMIN_PASSWORD } from '../constants';
 
 interface LoginPageProps {
   onLogin: (session: LoginSession) => void;
   inspectors: Inspector[];
   ulpList: ULP[];
+  pekerjaanList: Pekerjaan[];
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pekerjaanList }) => {
   const [view, setView] = useState<'MENU' | 'CONFIG'>('MENU');
   const [selectedRole, setSelectedRole] = useState<AppRole | null>(null);
   const [formData, setFormData] = useState<Partial<LoginSession>>({});
@@ -29,6 +30,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList }) =
     setPassword('');
   };
 
+  const handlePekerjaanChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedId = e.target.value;
+    const selectedPek = pekerjaanList.find(p => p.id === selectedId);
+    setFormData({
+      ...formData,
+      idPekerjaan: selectedId,
+      pekerjaan: selectedPek ? selectedPek.name : ''
+    });
+  };
+
   const handleFinalLogin = () => {
     if (selectedRole === AppRole.ADMIN) {
       if (password === ADMIN_PASSWORD) {
@@ -39,7 +50,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList }) =
       return;
     }
 
-    if (selectedRole === AppRole.INSPEKSI && (!formData.inspektor1 || !formData.inspektor2 || !formData.ulp || !formData.pekerjaan)) {
+    if (selectedRole === AppRole.INSPEKSI && (!formData.inspektor1 || !formData.inspektor2 || !formData.ulp || !formData.idPekerjaan)) {
       alert('⚠️ Mohon lengkapi seluruh detail inspeksi dan Jenis Pekerjaan!');
       return;
     }
@@ -115,14 +126,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList }) =
               <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Jenis Pekerjaan *</label>
               <select 
                 className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-100"
-                value={formData.pekerjaan || ''}
-                onChange={(e) => setFormData({ ...formData, pekerjaan: e.target.value })}
+                value={formData.idPekerjaan || ''}
+                onChange={handlePekerjaanChange}
               >
                 <option value="">-- Pilih Pekerjaan --</option>
-                <option value="JTM Tier 1">JTM Tier 1</option>
-                <option value="JTM Tier 1 - Tier 2">JTM Tier 1 - Tier 2</option>
-                <option value="GARDU Tier 1">GARDU Tier 1</option>
-                <option value="GARDU Tier 1 - Tier 2">GARDU Tier 1 - Tier 2</option>
+                {pekerjaanList.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
               </select>
             </div>
 
