@@ -119,10 +119,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList }) =
                 onChange={(e) => setFormData({ ...formData, pekerjaan: e.target.value })}
               >
                 <option value="">-- Pilih Pekerjaan --</option>
-                <option value="JTM T1">JTM T1</option>
-                <option value="JTM T2">JTM T2</option>
-                <option value="GARDU T1">GARDU T1</option>
-                <option value="GARDU T2">GARDU T2</option>
+                <option value="JTM Tier 1">JTM Tier 1</option>
+                <option value="JTM Tier 1 - Tier 2">JTM Tier 1 - Tier 2</option>
+                <option value="GARDU Tier 1">GARDU Tier 1</option>
+                <option value="GARDU Tier 1 - Tier 2">GARDU Tier 1 - Tier 2</option>
               </select>
             </div>
 
