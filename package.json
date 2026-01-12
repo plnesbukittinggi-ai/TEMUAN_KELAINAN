@@ -2,7 +2,7 @@
 {
   "name": "input-temuan-gangguan-eksekusi",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,7 +13,10 @@
     "@google/genai": "^1.34.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "recharts": "^3.6.0"
+    "recharts": "^3.6.0",
+    "exceljs": "^4.4.0",
+    "jspdf": "^4.0.0",
+    "jspdf-autotable": "^5.0.7"
   },
   "devDependencies": {
     "@types/node": "^22.10.7",
