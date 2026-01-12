@@ -34,7 +34,6 @@ export const ReportService = {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Laporan');
 
-    // Headers Styling - Mencakup 11 Kolom (A-K)
     worksheet.mergeCells('A1:K1');
     worksheet.getCell('A1').value = 'LAPORAN BULANAN';
     worksheet.getCell('A1').font = { bold: true, size: 14 };
@@ -55,7 +54,6 @@ export const ReportService = {
     worksheet.addRow(['BULAN', `: ${filters.bulan || '-'}`]);
     worksheet.addRow([]);
 
-    // Table Header
     const headerRow = worksheet.addRow([
       'NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEBELUM', 'FOTO SESUDAH', 'KET', 'SARAN'
     ]);
@@ -66,17 +64,17 @@ export const ReportService = {
       cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
     });
 
-    worksheet.getColumn(1).width = 5;   // NO
-    worksheet.getColumn(2).width = 15;  // TANGGAL
-    worksheet.getColumn(3).width = 15;  // NO TIANG
-    worksheet.getColumn(4).width = 10;  // NO WO
-    worksheet.getColumn(5).width = 20;  // FEEDER
-    worksheet.getColumn(6).width = 35;  // ALAMAT (Disesuaikan berdasarkan isi LOKASI)
-    worksheet.getColumn(7).width = 25;  // GEOTAG
-    worksheet.getColumn(8).width = 25;  // Foto Sebelum
-    worksheet.getColumn(9).width = 25;  // Foto Sesudah
-    worksheet.getColumn(10).width = 30; // KET
-    worksheet.getColumn(11).width = 25; // SARAN
+    worksheet.getColumn(1).width = 5;
+    worksheet.getColumn(2).width = 15;
+    worksheet.getColumn(3).width = 15;
+    worksheet.getColumn(4).width = 10;
+    worksheet.getColumn(5).width = 20;
+    worksheet.getColumn(6).width = 35;
+    worksheet.getColumn(7).width = 25;
+    worksheet.getColumn(8).width = 25;
+    worksheet.getColumn(9).width = 25;
+    worksheet.getColumn(10).width = 30;
+    worksheet.getColumn(11).width = 25;
 
     for (let i = 0; i < data.length; i++) {
       const item = data[i];
@@ -86,10 +84,10 @@ export const ReportService = {
         item.noTiang,
         item.noWO,
         item.feeder,
-        item.lokasi || "-", // Mengisi kolom Alamat berdasarkan field 'lokasi' dari sheet
-        item.geotag || "-",  // Kolom Geotag setelah Alamat
-        "", // Foto Sebelum (Kolom H)
-        "", // Foto Sesudah (Kolom I)
+        item.lokasi || "-",
+        item.geotag || "-",
+        "",
+        "",
         item.keterangan,
         ""
       ]);
@@ -99,14 +97,13 @@ export const ReportService = {
         cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
       });
 
-      // Insert Images (Indeks kolom mulai dari 0)
       if (item.fotoTemuan) {
         try {
           const base64 = await getBase64FromUrl(formatDriveUrl(item.fotoTemuan));
           if (base64) {
             const imgId = workbook.addImage({ base64, extension: 'png' });
             worksheet.addImage(imgId, {
-              tl: { col: 7, row: row.number - 1 }, // Kolom H (Index 7)
+              tl: { col: 7, row: row.number - 1 },
               ext: { width: 180, height: 130 }
             });
           }
@@ -119,7 +116,7 @@ export const ReportService = {
           if (base64) {
             const imgId = workbook.addImage({ base64, extension: 'png' });
             worksheet.addImage(imgId, {
-              tl: { col: 8, row: row.number - 1 }, // Kolom I (Index 8)
+              tl: { col: 8, row: row.number - 1 },
               ext: { width: 180, height: 130 }
             });
           }
@@ -127,7 +124,6 @@ export const ReportService = {
       }
     }
 
-    // Footer
     worksheet.addRow([]);
     worksheet.addRow(['', '', '', '', '', '', '', '', 'DILAKSANAKAN', `: ${filters.bulan || '-'}`]);
     worksheet.addRow(['', '', '', '', '', '', '', '', 'JAM', ': 07.30 S/D 17.00 WIB']);
@@ -164,10 +160,10 @@ export const ReportService = {
         item.noTiang,
         item.noWO,
         item.feeder,
-        item.lokasi || "-", // Isi Alamat dari LOKASI
-        item.geotag || "-",  // Isi Geotag
-        '', // Foto 1
-        '', // Foto 2
+        item.lokasi || "-",
+        item.geotag || "-",
+        '',
+        '',
         item.keterangan,
         ''
       ];
@@ -181,10 +177,10 @@ export const ReportService = {
       headStyles: { fillColor: [40, 40, 40], fontSize: 7, halign: 'center' },
       styles: { fontSize: 6, cellPadding: 1.5, minCellHeight: 25, valign: 'middle' },
       columnStyles: {
-        5: { cellWidth: 30 }, // Alamat (Lokasi)
-        6: { cellWidth: 25 }, // Geotag
-        7: { cellWidth: 30 }, // Foto 1
-        8: { cellWidth: 30 }, // Foto 2
+        5: { cellWidth: 30 },
+        6: { cellWidth: 25 },
+        7: { cellWidth: 30 },
+        8: { cellWidth: 30 },
       }
     });
 
