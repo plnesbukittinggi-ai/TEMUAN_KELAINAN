@@ -21,13 +21,14 @@ export const getDashboardInsights = async (data: TemuanData[]): Promise<string> 
     Rincian per ULP: ${JSON.stringify(summary)}
     Tentukan unit mana yang kinerjanya paling rendah (temuan belum selesai terbanyak) dan berikan saran singkat.`;
 
-    // Call generateContent directly on ai.models as per guidelines
+    // Use gemini-3-pro-preview for complex reasoning and analysis tasks as per guidelines
+    // Call generateContent directly on ai.models
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-pro-preview',
       contents: prompt,
     });
 
-    // Access .text property directly (not a method) as per guidelines
+    // Access .text property directly (it is a getter, not a method) as per guidelines
     return response.text || "AI memberikan respons kosong.";
   } catch (error: any) {
     console.error("Gemini Error:", error);
