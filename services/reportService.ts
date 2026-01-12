@@ -1,0 +1,200 @@
+
+import ExcelJS from 'exceljs';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
+import { TemuanData } from '../types';
+
+const formatDriveUrl = (url?: string) => {
+  if (!url) return '';
+  if (url.indexOf('data:image') === 0) return url;
+  if (url.includes('drive.google.com/file/d/')) {
+    const id = url.split('/d/')[1]?.split('/')[0];
+    if (id) return `https://lh3.googleusercontent.com/d/${id}`;
+  }
+  return url;
+};
+
+const getBase64FromUrl = async (url: string): Promise<string> => {
+  if (url.indexOf('data:image') === 0) return url;
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    return "";
+  }
+};
+
+export const ReportService = {
+  async downloadExcel(data: TemuanData[], filters: any) {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Laporan');
+
+    // Headers Styling - Mencakup 11 Kolom (A-K)
+    worksheet.mergeCells('A1:K1');
+    worksheet.getCell('A1').value = 'LAPORAN BULANAN';
+    worksheet.getCell('A1').font = { bold: true, size: 14 };
+    worksheet.getCell('A1').alignment = { horizontal: 'center' };
+
+    worksheet.mergeCells('A2:K2');
+    worksheet.getCell('A2').value = `FOTO INSPEKSI TEMUAN KELAINAN KONTRUKSI ${filters.pekerjaan || 'SEMUA'}`;
+    worksheet.getCell('A2').font = { bold: true, size: 12 };
+    worksheet.getCell('A2').alignment = { horizontal: 'center' };
+
+    worksheet.mergeCells('A3:K3');
+    worksheet.getCell('A3').value = 'TIM DIVISI INSPEKSI PLN ELECTRICITY SERVICES UL BUKITTINGGI';
+    worksheet.getCell('A3').font = { bold: true, size: 11 };
+    worksheet.getCell('A3').alignment = { horizontal: 'center' };
+
+    worksheet.addRow([]);
+    worksheet.addRow(['NAMA FEEDER', `: ${filters.feeder || 'SEMUA'}`]);
+    worksheet.addRow(['BULAN', `: ${filters.bulan || '-'}`]);
+    worksheet.addRow([]);
+
+    // Table Header
+    const headerRow = worksheet.addRow([
+      'NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEBELUM', 'FOTO SESUDAH', 'KET', 'SARAN'
+    ]);
+    headerRow.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: 'FFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '333333' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    });
+
+    worksheet.getColumn(1).width = 5;   // NO
+    worksheet.getColumn(2).width = 15;  // TANGGAL
+    worksheet.getColumn(3).width = 15;  // NO TIANG
+    worksheet.getColumn(4).width = 10;  // NO WO
+    worksheet.getColumn(5).width = 20;  // FEEDER
+    worksheet.getColumn(6).width = 35;  // ALAMAT (Disesuaikan berdasarkan isi LOKASI)
+    worksheet.getColumn(7).width = 25;  // GEOTAG
+    worksheet.getColumn(8).width = 25;  // Foto Sebelum
+    worksheet.getColumn(9).width = 25;  // Foto Sesudah
+    worksheet.getColumn(10).width = 30; // KET
+    worksheet.getColumn(11).width = 25; // SARAN
+
+    for (let i = 0; i < data.length; i++) {
+      const item = data[i];
+      const row = worksheet.addRow([
+        i + 1,
+        item.tanggal.split(',')[0],
+        item.noTiang,
+        item.noWO,
+        item.feeder,
+        item.lokasi || "-", // Mengisi kolom Alamat berdasarkan field 'lokasi' dari sheet
+        item.geotag || "-",  // Kolom Geotag setelah Alamat
+        "", // Foto Sebelum (Kolom H)
+        "", // Foto Sesudah (Kolom I)
+        item.keterangan,
+        ""
+      ]);
+      row.height = 100;
+      row.eachCell((cell) => {
+        cell.alignment = { vertical: 'middle', wrapText: true };
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+      });
+
+      // Insert Images (Indeks kolom mulai dari 0)
+      if (item.fotoTemuan) {
+        try {
+          const base64 = await getBase64FromUrl(formatDriveUrl(item.fotoTemuan));
+          if (base64) {
+            const imgId = workbook.addImage({ base64, extension: 'png' });
+            worksheet.addImage(imgId, {
+              tl: { col: 7, row: row.number - 1 }, // Kolom H (Index 7)
+              ext: { width: 180, height: 130 }
+            });
+          }
+        } catch (e) {}
+      }
+
+      if (item.fotoEksekusi) {
+        try {
+          const base64 = await getBase64FromUrl(formatDriveUrl(item.fotoEksekusi));
+          if (base64) {
+            const imgId = workbook.addImage({ base64, extension: 'png' });
+            worksheet.addImage(imgId, {
+              tl: { col: 8, row: row.number - 1 }, // Kolom I (Index 8)
+              ext: { width: 180, height: 130 }
+            });
+          }
+        } catch (e) {}
+      }
+    }
+
+    // Footer
+    worksheet.addRow([]);
+    worksheet.addRow(['', '', '', '', '', '', '', '', 'DILAKSANAKAN', `: ${filters.bulan || '-'}`]);
+    worksheet.addRow(['', '', '', '', '', '', '', '', 'JAM', ': 07.30 S/D 17.00 WIB']);
+    worksheet.addRow(['', '', '', '', '', '', '', '', 'PETUGAS', `: ${filters.inspektor1 || '-'}`]);
+    worksheet.addRow(['', '', '', '', '', '', '', '', '', `: ${filters.inspektor2 || '-'}`]);
+    worksheet.addRow(['', '', '', '', '', '', '', '', 'ADMINSPEKSI', `: ENDANG WINARNINGSIH`]);
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Laporan_${filters.pekerjaan || 'PLN'}_${filters.bulan || 'Export'}.xlsx`;
+    a.click();
+  },
+
+  async downloadPDF(data: TemuanData[], filters: any) {
+    const doc = new jsPDF('l', 'mm', 'a4');
+    
+    doc.setFontSize(14);
+    doc.text('LAPORAN BULANAN', 148, 15, { align: 'center' });
+    doc.setFontSize(12);
+    doc.text(`FOTO INSPEKSI TEMUAN KELAINAN KONTRUKSI ${filters.pekerjaan || 'SEMUA'}`, 148, 22, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text('TIM DIVISI INSPEKSI PLN ELECTRICITY SERVICES UL BUKITTINGGI', 148, 28, { align: 'center' });
+
+    doc.text(`NAMA FEEDER : ${filters.feeder || 'SEMUA'}`, 15, 38);
+    doc.text(`BULAN       : ${filters.bulan || '-'}`, 15, 43);
+
+    const body = await Promise.all(data.map(async (item, i) => {
+      return [
+        i + 1,
+        item.tanggal.split(',')[0],
+        item.noTiang,
+        item.noWO,
+        item.feeder,
+        item.lokasi || "-", // Isi Alamat dari LOKASI
+        item.geotag || "-",  // Isi Geotag
+        '', // Foto 1
+        '', // Foto 2
+        item.keterangan,
+        ''
+      ];
+    }));
+
+    (doc as any).autoTable({
+      startY: 48,
+      head: [['NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEB', 'FOTO SES', 'KET', 'SARAN']],
+      body: body,
+      theme: 'grid',
+      headStyles: { fillColor: [40, 40, 40], fontSize: 7, halign: 'center' },
+      styles: { fontSize: 6, cellPadding: 1.5, minCellHeight: 25, valign: 'middle' },
+      columnStyles: {
+        5: { cellWidth: 30 }, // Alamat (Lokasi)
+        6: { cellWidth: 25 }, // Geotag
+        7: { cellWidth: 30 }, // Foto 1
+        8: { cellWidth: 30 }, // Foto 2
+      }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY || 150;
+    doc.text(`DILAKSANAKAN : ${filters.bulan || '-'}`, 220, finalY + 10);
+    doc.text(`JAM          : 07.30 S/D 17.00 WIB`, 220, finalY + 15);
+    doc.text(`PETUGAS      : ${filters.inspektor1 || '-'}`, 220, finalY + 20);
+    doc.text(`               ${filters.inspektor2 || '-'}`, 220, finalY + 25);
+    doc.text(`ADMINSPEKSI  : ENDANG WINARNINGSIH`, 220, finalY + 30);
+
+    doc.save(`Laporan_${filters.pekerjaan || 'PLN'}.pdf`);
+  }
+};
