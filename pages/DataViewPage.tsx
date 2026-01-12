@@ -60,47 +60,44 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
       <div className="flex items-center gap-4 mb-8">
         <button onClick={onBack} className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">←</button>
         <div>
-          <h2 className="text-lg font-bold text-slate-900 tracking-tight">Rekapitulasi Data</h2>
+          <h2 className="text-lg font-bold text-slate-900 tracking-tight">Monitoring Data</h2>
           <p className="text-[11px] text-indigo-600 font-bold uppercase tracking-wider">{ulp}</p>
         </div>
       </div>
 
-      {/* 📅 Period Filters */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 mb-6 space-y-3 shadow-sm">
-        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Periode Laporan</p>
-        <div className="grid grid-cols-2 gap-3">
+      <div className="bg-white p-5 rounded-3xl border border-slate-200 mb-6 shadow-sm">
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-3">Filter Periode Temuan</p>
+        <div className="grid grid-cols-2 gap-3 mb-4">
           <select 
             className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none text-slate-700"
-            value={filterMonth}
-            onChange={(e) => setFilterMonth(Number(e.target.value))}
+            value={filterMonth} onChange={(e) => setFilterMonth(Number(e.target.value))}
           >
             {MONTHS.map(m => <option key={m.val} value={m.val}>{m.label}</option>)}
           </select>
           <select 
             className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none text-slate-700"
-            value={filterYear}
-            onChange={(e) => setFilterYear(Number(e.target.value))}
+            value={filterYear} onChange={(e) => setFilterYear(Number(e.target.value))}
           >
             {years.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
-      </div>
-
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
-        {['ALL', 'BELUM EKSEKUSI', 'SUDAH EKSEKUSI', 'BUTUH PADAM'].map((f) => (
-          <button
-            key={f} onClick={() => setFilter(f as any)}
-            className={`whitespace-nowrap px-4 py-2 text-[10px] font-bold rounded-lg border transition-all uppercase tracking-wide ${filter === f ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-400 border-slate-200'}`}
-          >
-            {f === 'ALL' ? 'SEMUA' : f}
-          </button>
-        ))}
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {['ALL', 'BELUM EKSEKUSI', 'SUDAH EKSEKUSI', 'BUTUH PADAM'].map((f) => (
+            <button
+              key={f} onClick={() => setFilter(f as any)}
+              className={`whitespace-nowrap px-4 py-2 text-[10px] font-bold rounded-lg border transition-all uppercase tracking-wide ${filter === f ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-400 border-slate-200'}`}
+            >
+              {f === 'ALL' ? 'SEMUA' : f}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="space-y-4">
         {filteredData.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
-            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Data Tidak Ditemukan</p>
+          <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-slate-200">
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Data Tidak Ditemukan</p>
+            <p className="text-[9px] text-slate-300 font-medium italic">Coba ubah filter bulan atau tahun</p>
           </div>
         ) : (
           filteredData.map((item) => (
@@ -110,20 +107,19 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                   className="relative flex-shrink-0 cursor-zoom-in group"
                   onClick={() => setPreviewImage({ url: formatDriveUrl(item.fotoTemuan), title: `Foto Temuan: ${item.noTiang}` })}
                 >
-                   <div className="w-20 h-20 bg-slate-100 rounded-xl overflow-hidden border border-slate-100">
+                   <div className="w-20 h-20 bg-slate-100 rounded-xl overflow-hidden border border-slate-100 shadow-inner">
                      <img src={formatDriveUrl(item.fotoTemuan)} alt="Temuan" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                    </div>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start mb-0.5">
-                    <p className="text-[9px] font-bold text-slate-400">ID: {item.id.slice(-6).toUpperCase()}</p>
-                    <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold uppercase ${item.status === 'SUDAH EKSEKUSI' ? 'text-emerald-700 bg-emerald-50' : 'text-indigo-700 bg-indigo-50'}`}>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">#{item.id.slice(-5)}</p>
+                    <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${item.status === 'SUDAH EKSEKUSI' ? 'text-emerald-700 bg-emerald-50' : 'text-indigo-700 bg-indigo-50'}`}>
                       {item.status}
                     </span>
                   </div>
-                  <h3 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">{item.noWO || 'NO WO'} / {item.noTiang}</h3>
-                  <p className="text-[10px] text-slate-500 font-medium truncate mb-1">{item.feeder}</p>
-                  <p className="text-[9px] text-slate-400 font-medium italic truncate mb-1">{item.lokasi || "Alamat tidak tersedia"}</p>
+                  <h3 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">{item.noTiang} / {item.feeder}</h3>
+                  <p className="text-[9px] text-slate-400 font-medium truncate mb-1">{item.lokasi || "Alamat tidak tersedia"}</p>
                   <p className="text-xs font-bold text-red-600 line-clamp-1">{item.keterangan}</p>
                   <p className="text-[8px] text-slate-400 mt-1 font-bold">{item.tanggal.split(',')[0]}</p>
                 </div>
