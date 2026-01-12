@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { TemuanData } from '../types';
 
 interface DataViewPageProps {
@@ -10,8 +10,17 @@ interface DataViewPageProps {
   onAddEksekusi?: () => void;
 }
 
+const MONTHS = [
+  { val: 1, label: 'Januari' }, { val: 2, label: 'Februari' }, { val: 3, label: 'Maret' },
+  { val: 4, label: 'April' }, { val: 5, label: 'Mei' }, { val: 6, label: 'Juni' },
+  { val: 7, label: 'Juli' }, { val: 8, label: 'Agustus' }, { val: 9, label: 'September' },
+  { val: 10, label: 'Oktober' }, { val: 11, label: 'November' }, { val: 12, label: 'Desember' }
+];
+
 const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTemuan, onAddEksekusi }) => {
   const [filter, setFilter] = useState<'ALL' | 'BELUM EKSEKUSI' | 'SUDAH EKSEKUSI' | 'BUTUH PADAM'>('ALL');
+  const [filterMonth, setFilterMonth] = useState<number>(new Date().getMonth() + 1);
+  const [filterYear, setFilterYear] = useState<number>(new Date().getFullYear());
   const [previewImage, setPreviewImage] = useState<{url: string, title: string} | null>(null);
   
   const formatDriveUrl = (url?: string) => {
@@ -23,10 +32,28 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
     return url;
   };
 
-  const filteredData = data.filter(item => {
-    if (filter === 'ALL') return true;
-    return item.status === filter;
-  });
+  const parseIndoDate = (dateStr: string) => {
+    try {
+      if (!dateStr) return new Date(0);
+      const datePart = dateStr.split(',')[0].trim();
+      const [day, month, year] = datePart.split('/').map(Number);
+      return new Date(year, month - 1, day);
+    } catch (e) {
+      return new Date(0);
+    }
+  };
+
+  const filteredData = useMemo(() => {
+    return data.filter(item => {
+      const dDate = parseIndoDate(item.tanggal);
+      const matchMonth = dDate.getMonth() + 1 === filterMonth;
+      const matchYear = dDate.getFullYear() === filterYear;
+      const matchStatus = filter === 'ALL' ? true : item.status === filter;
+      return matchMonth && matchYear && matchStatus;
+    });
+  }, [data, filter, filterMonth, filterYear]);
+
+  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
 
   return (
     <div className="pb-10">
@@ -35,6 +62,27 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
         <div>
           <h2 className="text-lg font-bold text-slate-900 tracking-tight">Rekapitulasi Data</h2>
           <p className="text-[11px] text-indigo-600 font-bold uppercase tracking-wider">{ulp}</p>
+        </div>
+      </div>
+
+      {/* 📅 Period Filters */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 mb-6 space-y-3 shadow-sm">
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Periode Laporan</p>
+        <div className="grid grid-cols-2 gap-3">
+          <select 
+            className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none text-slate-700"
+            value={filterMonth}
+            onChange={(e) => setFilterMonth(Number(e.target.value))}
+          >
+            {MONTHS.map(m => <option key={m.val} value={m.val}>{m.label}</option>)}
+          </select>
+          <select 
+            className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none text-slate-700"
+            value={filterYear}
+            onChange={(e) => setFilterYear(Number(e.target.value))}
+          >
+            {years.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
         </div>
       </div>
 
@@ -73,10 +121,11 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                       {item.status}
                     </span>
                   </div>
-                  <h3 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">{item.noWO} / {item.noTiang}</h3>
+                  <h3 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">{item.noWO || 'NO WO'} / {item.noTiang}</h3>
                   <p className="text-[10px] text-slate-500 font-medium truncate mb-1">{item.feeder}</p>
                   <p className="text-[9px] text-slate-400 font-medium italic truncate mb-1">{item.lokasi || "Alamat tidak tersedia"}</p>
                   <p className="text-xs font-bold text-red-600 line-clamp-1">{item.keterangan}</p>
+                  <p className="text-[8px] text-slate-400 mt-1 font-bold">{item.tanggal.split(',')[0]}</p>
                 </div>
               </div>
             </div>
