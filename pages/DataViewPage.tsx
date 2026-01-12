@@ -73,9 +73,9 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                       {item.status}
                     </span>
                   </div>
-                  <h3 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">{item.noTiang}</h3>
+                  <h3 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">{item.noWO} / {item.noTiang}</h3>
                   <p className="text-[10px] text-slate-500 font-medium truncate mb-1">{item.feeder}</p>
-                  <p className="text-[9px] text-slate-400 font-medium italic truncate mb-1">{item.alamat || "Alamat tidak tersedia"}</p>
+                  <p className="text-[9px] text-slate-400 font-medium italic truncate mb-1">{item.lokasi || "Alamat tidak tersedia"}</p>
                   <p className="text-xs font-bold text-red-600 line-clamp-1">{item.keterangan}</p>
                 </div>
               </div>
