@@ -166,7 +166,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{tier.label}</p>
                 <div className="flex items-baseline gap-1">
                   <h4 className="text-2xl font-black text-slate-900">{tier.count}</h4>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase">TITIK</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase">Temuan</span>
                 </div>
                 <div className={`h-1.5 w-full mt-3 rounded-full overflow-hidden bg-slate-100`}>
                   <div className={`h-full ${tier.color}`} style={{ width: '60%' }}></div>
