@@ -137,7 +137,8 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                         {item.status}
                       </span>
                     </div>
-                    <h3 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">{item.noTiang}</h3>
+                    <h3 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">{item.noTiang} / {item.feeder}</h3>
+                    <p className="text-[8px] font-bold text-slate-400 truncate uppercase tracking-tight">{item.lokasi}</p>
                     <p className="text-xs font-bold text-red-600 line-clamp-1">{item.keterangan}</p>
                   </div>
                   
