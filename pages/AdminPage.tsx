@@ -298,8 +298,8 @@ const AdminPage: React.FC<AdminPageProps> = ({
               <table className="min-w-full text-left">
                 <thead>
                   <tr className="bg-slate-50 text-slate-400 text-[9px] uppercase font-black tracking-widest border-b border-slate-100">
-                    <th className="p-4">Jenis</th>
-                    <th className="p-4">Aset</th>
+                    <th className="p-4">Feeder</th>
+                    <th className="p-4">Tiang</th>
                     <th className="p-4">Alamat</th>
                     <th className="p-4">Status</th>
                   </tr>
@@ -307,9 +307,9 @@ const AdminPage: React.FC<AdminPageProps> = ({
                 <tbody className="divide-y divide-slate-50">
                   {filteredData.length > 0 ? filteredData.map((item) => (
                     <tr key={item.id} className="text-[11px] font-bold text-slate-700">
-                      <td className="p-4"><span className="text-indigo-600">{item.pekerjaan}</span></td>
+                      <td className="p-4"><span className="text-indigo-600">{item.feeder}</span></td>
                       <td className="p-4 uppercase">{item.noTiang}</td>
-                      <td className="p-4 truncate max-w-[100px]">{item.alamat || "-"}</td>
+                      <td className="p-4 truncate max-w-[100px]">{item.lokasi || "-"}</td>
                       <td className="p-4">
                         <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>
                           {item.status.split(' ')[0]}
