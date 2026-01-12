@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fix casing to match ReportService.ts and avoid conflict with reportService.ts
+// Fix: Use consistent casing for ReportService import to resolve TS1149 error
 import { ReportService } from '../services/ReportService';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
@@ -21,13 +21,22 @@ interface AdminPageProps {
   onUpdateFeeders: (data: Feeder[]) => void;
 }
 
+const MONTHS = [
+  { val: 1, label: 'Januari' }, { val: 2, label: 'Februari' }, { val: 3, label: 'Maret' },
+  { val: 4, label: 'April' }, { val: 5, label: 'Mei' }, { val: 6, label: 'Juni' },
+  { val: 7, label: 'Juli' }, { val: 8, label: 'Agustus' }, { val: 9, label: 'September' },
+  { val: 10, label: 'Oktober' }, { val: 11, label: 'November' }, { val: 12, label: 'Desember' }
+];
+
 const AdminPage: React.FC<AdminPageProps> = ({ 
   data, ulpList, inspectors, feeders, pekerjaanList, onBack,
 }) => {
   const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD'>('DASHBOARD');
   const [aiInsight, setAiInsight] = useState<string>('Menganalisis performa data...');
   
-  // States for Dashboard Filters
+  // States for Dashboard Global Filters (Month & Year)
+  const [dashFilterMonth, setDashFilterMonth] = useState<number>(new Date().getMonth() + 1);
+  const [dashFilterYear, setDashFilterYear] = useState<number>(new Date().getFullYear());
   const [dashFilterUlp, setDashFilterUlp] = useState<string>('');
   const [dashFilterPekerjaan, setDashFilterPekerjaan] = useState<string>('');
 
@@ -38,17 +47,10 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const [filterEndDate, setFilterEndDate] = useState<string>('');
   const [isExporting, setIsExporting] = useState(false);
   
-  useEffect(() => {
-    if (tab === 'DASHBOARD' && data.length > 0) {
-      getDashboardInsights(data).then(setAiInsight);
-    }
-  }, [tab, data]);
-
   // Helper function to parse Indonesian date string (DD/MM/YYYY) to Date Object
   const parseIndoDate = (dateStr: string) => {
     try {
       if (!dateStr) return new Date(0);
-      // Format usually: "DD/MM/YYYY, HH.mm.ss"
       const datePart = dateStr.split(',')[0].trim();
       const [day, month, year] = datePart.split('/').map(Number);
       return new Date(year, month - 1, day);
@@ -57,34 +59,49 @@ const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
+  // Filtered data specifically for Dashboard Analytics
+  const dashboardData = useMemo(() => {
+    return data.filter(d => {
+      const dDate = parseIndoDate(d.tanggal);
+      const matchMonth = dDate.getMonth() + 1 === dashFilterMonth;
+      const matchYear = dDate.getFullYear() === dashFilterYear;
+      const matchUlp = !dashFilterUlp || d.ulp === dashFilterUlp;
+      const matchPek = !dashFilterPekerjaan || d.pekerjaan === dashFilterPekerjaan;
+      return matchMonth && matchYear && matchUlp && matchPek;
+    });
+  }, [data, dashFilterMonth, dashFilterYear, dashFilterUlp, dashFilterPekerjaan]);
+
+  useEffect(() => {
+    if (tab === 'DASHBOARD' && dashboardData.length > 0) {
+      getDashboardInsights(dashboardData).then(setAiInsight);
+    } else if (tab === 'DASHBOARD' && dashboardData.length === 0) {
+      setAiInsight("Tidak ada data untuk periode terpilih.");
+    }
+  }, [tab, dashboardData]);
+
   // --- Analitik: Total Per Jenis Pekerjaan Utama ---
   const tierStats = useMemo(() => {
-    const findCount = (name: string) => data.filter(d => d.pekerjaan === name).length;
+    const findCount = (name: string) => dashboardData.filter(d => d.pekerjaan === name).length;
     return [
       { label: 'JTM Tier 1', count: findCount('JTM Tier 1'), color: 'bg-indigo-600' },
       { label: 'JTM Tier 1-2', count: findCount('JTM Tier 1 - Tier 2'), color: 'bg-indigo-400' },
       { label: 'GARDU Tier 1', count: findCount('GARDU Tier 1'), color: 'bg-amber-600' },
       { label: 'GARDU Tier 1-2', count: findCount('GARDU Tier 1 - Tier 2'), color: 'bg-amber-400' }
     ];
-  }, [data]);
+  }, [dashboardData]);
 
   // --- Analitik: Filter Statistik Interaktif ---
   const interactiveStats = useMemo(() => {
-    const filtered = data.filter(d => {
-      const matchUlp = !dashFilterUlp || d.ulp === dashFilterUlp;
-      const matchPek = !dashFilterPekerjaan || d.pekerjaan === dashFilterPekerjaan;
-      return matchUlp && matchPek;
-    });
-    const total = filtered.length;
-    const done = filtered.filter(d => d.status === 'SUDAH EKSEKUSI').length;
+    const total = dashboardData.length;
+    const done = dashboardData.filter(d => d.status === 'SUDAH EKSEKUSI').length;
     const progress = total > 0 ? Math.round((done / total) * 100) : 0;
     return { total, done, progress };
-  }, [data, dashFilterUlp, dashFilterPekerjaan]);
+  }, [dashboardData]);
 
   // --- Analitik: Top 10 Feeder ---
   const topTenFeeders = useMemo(() => {
     const counts: Record<string, { total: number, done: number }> = {};
-    data.forEach(d => {
+    dashboardData.forEach(d => {
       if (!d.feeder) return;
       if (!counts[d.feeder]) counts[d.feeder] = { total: 0, done: 0 };
       counts[d.feeder].total++;
@@ -95,7 +112,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
       .map(([name, stat]) => ({ name, ...stat }))
       .sort((a, b) => b.total - a.total)
       .slice(0, 10);
-  }, [data]);
+  }, [dashboardData]);
 
   const workTypes = pekerjaanList.length > 0 ? pekerjaanList.map(p => p.name) : ['JTM Tier 1', 'JTM Tier 1 - Tier 2', 'GARDU Tier 1', 'GARDU Tier 1 - Tier 2'];
   
@@ -103,11 +120,11 @@ const AdminPage: React.FC<AdminPageProps> = ({
     return ulpList.map(u => {
       const result: any = { name: u.name.replace('ULP ', '') };
       workTypes.forEach(w => {
-        result[w] = data.filter(d => d.ulp === u.name && d.pekerjaan === w).length;
+        result[w] = dashboardData.filter(d => d.ulp === u.name && d.pekerjaan === w).length;
       });
       return result;
     });
-  }, [data, ulpList, workTypes]);
+  }, [dashboardData, ulpList, workTypes]);
 
   const filteredData = data.filter(item => {
     const matchFeeder = !filterFeeder || item.feeder === filterFeeder;
@@ -159,6 +176,8 @@ const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
+  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
+
   return (
     <div className="pb-10">
       <div className="flex items-center gap-4 mb-8">
@@ -182,6 +201,27 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
       {tab === 'DASHBOARD' && (
         <div className="space-y-6 animate-fade-in">
+          {/* 📅 Global Dashboard Filter (Bulan & Tahun) */}
+          <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Periode Dashboard</p>
+            <div className="grid grid-cols-2 gap-3">
+              <select 
+                className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none"
+                value={dashFilterMonth}
+                onChange={(e) => setDashFilterMonth(Number(e.target.value))}
+              >
+                {MONTHS.map(m => <option key={m.val} value={m.val}>{m.label}</option>)}
+              </select>
+              <select 
+                className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none"
+                value={dashFilterYear}
+                onChange={(e) => setDashFilterYear(Number(e.target.value))}
+              >
+                {years.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+          </div>
+
           {/* 🤖 AI Intelligence Analysis */}
           <div className="bg-indigo-600 p-6 rounded-[2rem] text-white shadow-2xl relative overflow-hidden">
              <div className="relative z-10">
@@ -204,7 +244,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
                   <span className="text-[9px] font-bold text-slate-400 uppercase">Temuan</span>
                 </div>
                 <div className={`h-1.5 w-full mt-3 rounded-full overflow-hidden bg-slate-100`}>
-                  <div className={`h-full ${tier.color}`} style={{ width: '60%' }}></div>
+                  <div className={`h-full ${tier.color}`} style={{ width: tier.count > 0 ? '60%' : '0%' }}></div>
                 </div>
               </div>
             ))}
@@ -214,8 +254,8 @@ const AdminPage: React.FC<AdminPageProps> = ({
           <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
             <div className="flex items-center justify-between mb-6">
                <div>
-                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Filter Statistik</h3>
-                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Detail Per Unit & Pekerjaan</p>
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Filter Unit & Pekerjaan</h3>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Dashboard Monitoring</p>
                </div>
                <div className="text-right">
                   <span className="text-xs font-black text-indigo-600">{interactiveStats.progress}%</span>
@@ -256,7 +296,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
           <div className="bg-slate-900 p-6 rounded-[2.5rem] text-white shadow-xl">
              <div className="mb-6">
                 <h3 className="text-sm font-black uppercase tracking-tight">🏆 Top 10 Feeder Temuan</h3>
-                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Peringkat Feeder Terpadat</p>
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Bulan {MONTHS.find(m => m.val === dashFilterMonth)?.label} {dashFilterYear}</p>
              </div>
              
              <div className="space-y-3">
@@ -277,7 +317,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
                       </div>
                    </div>
                 )) : (
-                  <p className="text-center py-10 text-slate-500 text-xs font-bold uppercase tracking-widest">Tidak Ada Data Feeder</p>
+                  <p className="text-center py-10 text-slate-500 text-xs font-bold uppercase tracking-widest">Tidak Ada Data</p>
                 )}
              </div>
           </div>
@@ -286,7 +326,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
           <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
              <div className="mb-8">
                 <p className="text-sm font-black text-slate-900 uppercase tracking-tight">Volume Per Unit</p>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Komposisi Pekerjaan Per ULP</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Periode Terpilih</p>
              </div>
              <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
