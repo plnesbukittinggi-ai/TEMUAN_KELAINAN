@@ -2,17 +2,11 @@
 import { GoogleGenAI } from "@google/genai";
 import { TemuanData } from "../types";
 
+// Analisis data menggunakan Gemini API
 export const getDashboardInsights = async (data: TemuanData[]): Promise<string> => {
-  // Cek keberadaan kunci sebelum inisialisasi
-  const apiKey = process.env.API_KEY;
-  
-  if (!apiKey) {
-    console.warn("AI Analysis: API_KEY tidak ditemukan di environment variables.");
-    return "Konfigurasi AI belum lengkap (API_KEY Kosong).";
-  }
-
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    // Initialize Gemini API client as per guidelines using process.env.API_KEY
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     const summary = data.reduce((acc: any, curr) => {
       const key = curr.ulp || 'Tanpa Unit';
@@ -27,14 +21,17 @@ export const getDashboardInsights = async (data: TemuanData[]): Promise<string> 
     Rincian per ULP: ${JSON.stringify(summary)}
     Tentukan unit mana yang kinerjanya paling rendah (temuan belum selesai terbanyak) dan berikan saran singkat.`;
 
+    // Call generateContent directly on ai.models as per guidelines
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
     });
 
+    // Access .text property directly (not a method) as per guidelines
     return response.text || "AI memberikan respons kosong.";
   } catch (error: any) {
     console.error("Gemini Error:", error);
+    // Robust error handling for common API issues
     if (error.message?.includes('403')) return "Error AI: API Key ditolak atau tidak valid.";
     return "Gagal memuat analisis cerdas saat ini.";
   }
