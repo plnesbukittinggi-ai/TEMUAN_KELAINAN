@@ -1,10 +1,13 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fix: Use consistent casing for reportService import to match the file name (reportService.ts)
+// Fix: Use lowercase 'reportService' to match the provided filename and avoid casing errors
 import { ReportService } from '../services/reportService';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
+  ResponsiveContainer, Legend, Cell, PieChart, Pie 
+} from 'recharts';
 
 interface AdminPageProps {
   data: TemuanData[];
@@ -24,6 +27,11 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD'>('DASHBOARD');
   const [aiInsight, setAiInsight] = useState<string>('Menganalisis performa data...');
   
+  // States for Dashboard Filters
+  const [dashFilterUlp, setDashFilterUlp] = useState<string>('');
+  const [dashFilterPekerjaan, setDashFilterPekerjaan] = useState<string>('');
+
+  // States for Data Table Filters
   const [filterFeeder, setFilterFeeder] = useState<string>('');
   const [filterPekerjaan, setFilterPekerjaan] = useState<string>('');
   const [isExporting, setIsExporting] = useState(false);
@@ -34,14 +42,57 @@ const AdminPage: React.FC<AdminPageProps> = ({
     }
   }, [tab, data]);
 
-  const workTypes = pekerjaanList.length > 0 ? pekerjaanList.map(p => p.name) : ['JTM Tier 1', 'JTM Tier 1 - Tier 2', 'GARDU Tier 1', 'GARDU Tier 1 - Tier 2'];
-  const statsWorkByUlp = ulpList.map(u => {
-    const result: any = { name: u.name.replace('ULP ', '') };
-    workTypes.forEach(w => {
-      result[w] = data.filter(d => d.ulp === u.name && d.pekerjaan === w).length;
+  // --- Analitik: Total Per Jenis Pekerjaan Utama ---
+  const tierStats = useMemo(() => {
+    const findCount = (name: string) => data.filter(d => d.pekerjaan === name).length;
+    return [
+      { label: 'JTM Tier 1', count: findCount('JTM Tier 1'), color: 'bg-indigo-600' },
+      { label: 'JTM Tier 1-2', count: findCount('JTM Tier 1 - Tier 2'), color: 'bg-indigo-400' },
+      { label: 'GARDU Tier 1', count: findCount('GARDU Tier 1'), color: 'bg-amber-600' },
+      { label: 'GARDU Tier 1-2', count: findCount('GARDU Tier 1 - Tier 2'), color: 'bg-amber-400' }
+    ];
+  }, [data]);
+
+  // --- Analitik: Filter Statistik Interaktif ---
+  const interactiveStats = useMemo(() => {
+    const filtered = data.filter(d => {
+      const matchUlp = !dashFilterUlp || d.ulp === dashFilterUlp;
+      const matchPek = !dashFilterPekerjaan || d.pekerjaan === dashFilterPekerjaan;
+      return matchUlp && matchPek;
     });
-    return result;
-  });
+    const total = filtered.length;
+    const done = filtered.filter(d => d.status === 'SUDAH EKSEKUSI').length;
+    const progress = total > 0 ? Math.round((done / total) * 100) : 0;
+    return { total, done, progress };
+  }, [data, dashFilterUlp, dashFilterPekerjaan]);
+
+  // --- Analitik: Top 10 Feeder ---
+  const topTenFeeders = useMemo(() => {
+    const counts: Record<string, { total: number, done: number }> = {};
+    data.forEach(d => {
+      if (!d.feeder) return;
+      if (!counts[d.feeder]) counts[d.feeder] = { total: 0, done: 0 };
+      counts[d.feeder].total++;
+      if (d.status === 'SUDAH EKSEKUSI') counts[d.feeder].done++;
+    });
+
+    return Object.entries(counts)
+      .map(([name, stat]) => ({ name, ...stat }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10);
+  }, [data]);
+
+  const workTypes = pekerjaanList.length > 0 ? pekerjaanList.map(p => p.name) : ['JTM Tier 1', 'JTM Tier 1 - Tier 2', 'GARDU Tier 1', 'GARDU Tier 1 - Tier 2'];
+  
+  const statsWorkByUlp = useMemo(() => {
+    return ulpList.map(u => {
+      const result: any = { name: u.name.replace('ULP ', '') };
+      workTypes.forEach(w => {
+        result[w] = data.filter(d => d.ulp === u.name && d.pekerjaan === w).length;
+      });
+      return result;
+    });
+  }, [data, ulpList, workTypes]);
 
   const filteredData = data.filter(item => {
     const matchFeeder = !filterFeeder || item.feeder === filterFeeder;
@@ -79,7 +130,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
         <button onClick={onBack} className="p-3 bg-white border border-slate-200 rounded-2xl shadow-sm">←</button>
         <div>
           <h2 className="text-xl font-black text-slate-900 tracking-tight">Panel Admin</h2>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Kontrol & Rekapitulasi</p>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Kontrol & Rekapitulasi Analitik</p>
         </div>
       </div>
 
@@ -96,6 +147,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
       {tab === 'DASHBOARD' && (
         <div className="space-y-6 animate-fade-in">
+          {/* 🤖 AI Intelligence Analysis */}
           <div className="bg-indigo-600 p-6 rounded-[2rem] text-white shadow-2xl relative overflow-hidden">
              <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-4">
@@ -104,17 +156,113 @@ const AdminPage: React.FC<AdminPageProps> = ({
                 </div>
                 <p className="text-sm font-semibold leading-relaxed italic opacity-90">"{aiInsight}"</p>
              </div>
+             <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
           </div>
 
-          <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-             <p className="text-[10px] text-slate-400 font-black uppercase mb-8 tracking-widest text-center">Volume Pekerjaan Per Unit</p>
+          {/* 📊 Tier Summary Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {tierStats.map((tier, idx) => (
+              <div key={idx} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between">
+                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{tier.label}</p>
+                <div className="flex items-baseline gap-1">
+                  <h4 className="text-2xl font-black text-slate-900">{tier.count}</h4>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase">TITIK</span>
+                </div>
+                <div className={`h-1.5 w-full mt-3 rounded-full overflow-hidden bg-slate-100`}>
+                  <div className={`h-full ${tier.color}`} style={{ width: '60%' }}></div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 🔍 Interactive Filter Summary */}
+          <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+               <div>
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Filter Statistik</h3>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Detail Per Unit & Pekerjaan</p>
+               </div>
+               <div className="text-right">
+                  <span className="text-xs font-black text-indigo-600">{interactiveStats.progress}%</span>
+                  <p className="text-[8px] font-bold text-slate-400 uppercase">Eksekusi</p>
+               </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <select 
+                className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none"
+                value={dashFilterUlp} onChange={(e) => setDashFilterUlp(e.target.value)}
+              >
+                <option value="">-- Semua Unit --</option>
+                {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+              </select>
+              <select 
+                className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none"
+                value={dashFilterPekerjaan} onChange={(e) => setDashFilterPekerjaan(e.target.value)}
+              >
+                <option value="">-- Semua Pekerjaan --</option>
+                {pekerjaanList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+               <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
+                  <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Total Temuan</p>
+                  <p className="text-2xl font-black text-indigo-700">{interactiveStats.total}</p>
+               </div>
+               <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100">
+                  <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-1">Sudah Eksekusi</p>
+                  <p className="text-2xl font-black text-emerald-700">{interactiveStats.done}</p>
+               </div>
+            </div>
+          </div>
+
+          {/* 🏆 Top 10 Feeders */}
+          <div className="bg-slate-900 p-6 rounded-[2.5rem] text-white shadow-xl">
+             <div className="mb-6">
+                <h3 className="text-sm font-black uppercase tracking-tight">🏆 Top 10 Feeder Temuan</h3>
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Peringkat Feeder Terpadat</p>
+             </div>
+             
+             <div className="space-y-3">
+                {topTenFeeders.length > 0 ? topTenFeeders.map((feeder, idx) => (
+                   <div key={idx} className="flex items-center gap-3">
+                      <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-[10px] font-black">{idx + 1}</div>
+                      <div className="flex-1">
+                         <div className="flex justify-between items-center mb-1">
+                            <p className="text-[10px] font-bold uppercase tracking-tight">{feeder.name}</p>
+                            <p className="text-[9px] font-black text-indigo-400">{feeder.done}/{feeder.total}</p>
+                         </div>
+                         <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-indigo-500 rounded-full" 
+                              style={{ width: `${(feeder.done / feeder.total) * 100}%` }}
+                            ></div>
+                         </div>
+                      </div>
+                   </div>
+                )) : (
+                  <p className="text-center py-10 text-slate-500 text-xs font-bold uppercase tracking-widest">Tidak Ada Data Feeder</p>
+                )}
+             </div>
+          </div>
+
+          {/* 📊 Volume Chart Per Unit */}
+          <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+             <div className="mb-8">
+                <p className="text-sm font-black text-slate-900 uppercase tracking-tight">Volume Per Unit</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Komposisi Pekerjaan Per ULP</p>
+             </div>
              <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={statsWorkByUlp} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" fontSize={8} fontWeight="bold" axisLine={false} tickLine={false} />
                     <YAxis fontSize={8} axisLine={false} tickLine={false} />
-                    <Tooltip cursor={{ fill: '#f8fafc' }} />
+                    <Tooltip 
+                      cursor={{ fill: '#f8fafc' }} 
+                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '10px', fontWeight: 'bold' }}
+                    />
                     <Legend iconType="circle" wrapperStyle={{ fontSize: '8px', fontWeight: 'bold', paddingTop: '20px' }} />
                     {workTypes.map((type, idx) => (
                       <Bar key={type} dataKey={type} fill={['#6366F1', '#818CF8', '#F59E0B', '#D97706'][idx % 4]} radius={[4, 4, 0, 0]} />
