@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Import using lowercase filename to match project conventions and prevent casing conflicts
-import { ReportService } from '../services/reportService';
+// Fix casing to match ReportService.ts and avoid conflict with reportService.ts
+import { ReportService } from '../services/ReportService';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
   ResponsiveContainer, Legend, Cell, PieChart, Pie 
@@ -34,6 +34,8 @@ const AdminPage: React.FC<AdminPageProps> = ({
   // States for Data Table Filters
   const [filterFeeder, setFilterFeeder] = useState<string>('');
   const [filterPekerjaan, setFilterPekerjaan] = useState<string>('');
+  const [filterStartDate, setFilterStartDate] = useState<string>('');
+  const [filterEndDate, setFilterEndDate] = useState<string>('');
   const [isExporting, setIsExporting] = useState(false);
   
   useEffect(() => {
@@ -41,6 +43,19 @@ const AdminPage: React.FC<AdminPageProps> = ({
       getDashboardInsights(data).then(setAiInsight);
     }
   }, [tab, data]);
+
+  // Helper function to parse Indonesian date string (DD/MM/YYYY) to Date Object
+  const parseIndoDate = (dateStr: string) => {
+    try {
+      if (!dateStr) return new Date(0);
+      // Format usually: "DD/MM/YYYY, HH.mm.ss"
+      const datePart = dateStr.split(',')[0].trim();
+      const [day, month, year] = datePart.split('/').map(Number);
+      return new Date(year, month - 1, day);
+    } catch (e) {
+      return new Date(0);
+    }
+  };
 
   // --- Analitik: Total Per Jenis Pekerjaan Utama ---
   const tierStats = useMemo(() => {
@@ -97,7 +112,23 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const filteredData = data.filter(item => {
     const matchFeeder = !filterFeeder || item.feeder === filterFeeder;
     const matchPekerjaan = !filterPekerjaan || item.pekerjaan === filterPekerjaan;
-    return matchFeeder && matchPekerjaan;
+    
+    let matchDate = true;
+    const itemDate = parseIndoDate(item.tanggal);
+    
+    if (filterStartDate) {
+      const start = new Date(filterStartDate);
+      start.setHours(0, 0, 0, 0);
+      if (itemDate < start) matchDate = false;
+    }
+    
+    if (filterEndDate) {
+      const end = new Date(filterEndDate);
+      end.setHours(23, 59, 59, 999);
+      if (itemDate > end) matchDate = false;
+    }
+
+    return matchFeeder && matchPekerjaan && matchDate;
   });
 
   const handleDownloadExcel = async () => {
@@ -108,10 +139,14 @@ const AdminPage: React.FC<AdminPageProps> = ({
     
     setIsExporting(true);
     try {
+      const periodeStr = filterStartDate && filterEndDate 
+        ? `${new Date(filterStartDate).toLocaleDateString('id-ID')} s/d ${new Date(filterEndDate).toLocaleDateString('id-ID')}`
+        : new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' });
+
       const filters = {
         feeder: filterFeeder || 'SEMUA FEEDER',
         pekerjaan: filterPekerjaan || 'SEMUA PEKERJAAN',
-        bulan: new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' }),
+        bulan: periodeStr,
         inspektor1: filteredData[0]?.inspektor1 || '-',
         inspektor2: filteredData[0]?.inspektor2 || '-'
       };
@@ -166,7 +201,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{tier.label}</p>
                 <div className="flex items-baseline gap-1">
                   <h4 className="text-2xl font-black text-slate-900">{tier.count}</h4>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase">Temuan</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase">TITIK</span>
                 </div>
                 <div className={`h-1.5 w-full mt-3 rounded-full overflow-hidden bg-slate-100`}>
                   <div className={`h-full ${tier.color}`} style={{ width: '60%' }}></div>
@@ -278,6 +313,8 @@ const AdminPage: React.FC<AdminPageProps> = ({
         <div className="space-y-6 animate-fade-in">
           <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Ekspor Laporan & Filter</p>
+            
+            {/* Row 1: Basic Filters */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <select className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" value={filterFeeder} onChange={(e) => setFilterFeeder(e.target.value)}>
                 <option value="">-- Semua Feeder --</option>
@@ -288,9 +325,43 @@ const AdminPage: React.FC<AdminPageProps> = ({
                 {pekerjaanList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
               </select>
             </div>
+
+            {/* Row 2: Date Filters */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+               <div>
+                  <label className="block text-[8px] font-black text-slate-400 uppercase ml-1 mb-1">Mulai Tanggal</label>
+                  <input 
+                    type="date" 
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none"
+                    value={filterStartDate}
+                    onChange={(e) => setFilterStartDate(e.target.value)}
+                  />
+               </div>
+               <div>
+                  <label className="block text-[8px] font-black text-slate-400 uppercase ml-1 mb-1">Sampai Tanggal</label>
+                  <input 
+                    type="date" 
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none"
+                    value={filterEndDate}
+                    onChange={(e) => setFilterEndDate(e.target.value)}
+                  />
+               </div>
+            </div>
+
             <button onClick={handleDownloadExcel} disabled={isExporting} className="w-full py-4 rounded-xl font-bold text-[10px] uppercase tracking-[0.2em] bg-emerald-600 text-white shadow-lg active:scale-95 transition-all">
               {isExporting ? 'Mengekspor...' : '📥 Download Data (.XLSX)'}
             </button>
+            {(filterStartDate || filterEndDate || filterFeeder || filterPekerjaan) && (
+              <button 
+                onClick={() => {
+                  setFilterStartDate(''); setFilterEndDate('');
+                  setFilterFeeder(''); setFilterPekerjaan('');
+                }}
+                className="w-full py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest"
+              >
+                Bersihkan Filter
+              </button>
+            )}
           </div>
 
           <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
