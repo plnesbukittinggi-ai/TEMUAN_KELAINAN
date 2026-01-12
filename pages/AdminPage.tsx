@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fix: Use consistent casing for ReportService import to match the project structure (ReportService.ts)
-import { ReportService } from '../services/ReportService';
+// Fix: Use consistent casing for reportService import to match the file name (reportService.ts)
+import { ReportService } from '../services/reportService';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 
 interface AdminPageProps {
