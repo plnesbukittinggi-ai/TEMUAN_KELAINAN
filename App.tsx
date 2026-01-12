@@ -144,6 +144,7 @@ const App: React.FC = () => {
             ulpList={ulpList} 
             inspectors={inspectors}
             feeders={feeders}
+            pekerjaanList={pekerjaanList}
             onBack={handleLogout}
             onUpdateInspectors={setInspectors}
             onUpdateUlp={setUlpList}
