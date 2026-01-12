@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
+// Fix: Use lowercase 'reportService' in import to match the file name casing
 import { ReportService } from '../services/reportService';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 
