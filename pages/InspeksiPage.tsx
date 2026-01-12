@@ -15,6 +15,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
+  const [isManualGeotag, setIsManualGeotag] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const filteredKeteranganList = keteranganList.filter(k => 
@@ -40,7 +41,11 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
   });
 
   const fetchLocation = () => {
-    if (!("geolocation" in navigator)) return;
+    if (!("geolocation" in navigator)) {
+      setIsManualGeotag(true);
+      return;
+    }
+    
     setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -50,16 +55,26 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
           geotag: coords
         }));
         setIsLocating(false);
+        setIsManualGeotag(false);
       },
-      () => {
+      (error) => {
         setIsLocating(false);
-        console.warn("Gagal mengambil lokasi otomatis.");
+        console.error("Geolocation error:", error);
+        // Jika gagal otomatis (timeout/denied), beralih ke manual
+        setIsManualGeotag(true);
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { 
+        enableHighAccuracy: true, 
+        timeout: 10000,
+        maximumAge: 0 
+      }
     );
   };
 
-  useEffect(() => { fetchLocation(); }, []);
+  // Trigger auto-locate immediately on mount
+  useEffect(() => { 
+    fetchLocation(); 
+  }, []);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -100,7 +115,6 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
     }
     setIsSubmitting(true);
     
-    // Pastikan 'lokasi' diisi dengan teks alamat deskriptif agar sinkron dengan laporan
     const dataToSave = {
       ...formData,
       lokasi: formData.alamat 
@@ -169,11 +183,39 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
           <div className="pt-2 border-t border-slate-100">
             <div className="flex justify-between items-center mb-2">
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Koordinat Geotag</label>
-              <button type="button" onClick={fetchLocation} disabled={isLocating} className="text-[10px] font-bold text-indigo-600">
-                {isLocating ? 'Mencari...' : '🔄 Refresh GPS'}
-              </button>
+              <div className="flex gap-4">
+                <button 
+                  type="button" 
+                  onClick={() => setIsManualGeotag(!isManualGeotag)} 
+                  className={`text-[9px] font-black uppercase tracking-widest transition-colors ${isManualGeotag ? 'text-indigo-600' : 'text-slate-400'}`}
+                >
+                  {isManualGeotag ? '⌨️ Mode Manual' : '⌨️ Input Manual'}
+                </button>
+                {!isManualGeotag && (
+                  <button type="button" onClick={fetchLocation} disabled={isLocating} className="text-[9px] font-black uppercase tracking-widest text-indigo-600 disabled:opacity-50">
+                    {isLocating ? 'Mencari...' : '🔄 Refresh GPS'}
+                  </button>
+                )}
+              </div>
             </div>
-            <input type="text" className="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs font-mono" value={formData.geotag || ''} readOnly />
+            <div className="relative">
+              <input 
+                type="text" 
+                className={`w-full p-3 rounded-xl text-xs font-mono transition-all border outline-none ${isManualGeotag ? 'bg-white border-indigo-400 focus:ring-2 focus:ring-indigo-100' : 'bg-slate-50 border-slate-200 text-slate-500'}`}
+                value={isLocating ? "📍 Sedang mengambil lokasi..." : (formData.geotag || '')} 
+                readOnly={!isManualGeotag}
+                placeholder={isManualGeotag ? "Ketik Lat, Long (Contoh: -0.123, 100.456)" : "Klik Refresh GPS untuk koordinat"}
+                onChange={e => isManualGeotag && setFormData({ ...formData, geotag: e.target.value })}
+              />
+              {isLocating && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                   <div className="animate-spin h-3 w-3 border-2 border-indigo-600 border-t-transparent rounded-full"></div>
+                </div>
+              )}
+            </div>
+            {isManualGeotag && (
+              <p className="text-[9px] text-indigo-500 font-bold mt-1 ml-1 uppercase tracking-tight italic">* Masukkan koordinat manual jika GPS otomatis tidak akurat</p>
+            )}
           </div>
         </div>
 
