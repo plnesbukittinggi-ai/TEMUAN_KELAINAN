@@ -17,8 +17,6 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
   const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // LOGIKA FILTER: Filter Keterangan berdasarkan idPekerjaan (ID) yang dipilih saat login
-  // k.idPekerjaan di Sheet Keterangan harus sama dengan id di Sheet Pekerjaan
   const filteredKeteranganList = keteranganList.filter(k => 
     String(k.idPekerjaan).trim() === String(session.idPekerjaan).trim()
   );
@@ -33,6 +31,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
     noTiang: '',
     noWO: '',
     feeder: '',
+    alamat: '',
     lokasi: '',
     geotag: '',
     fotoTemuan: '',
@@ -45,7 +44,11 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
     setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setFormData(p => ({ ...p, geotag: `${pos.coords.latitude.toFixed(7)}, ${pos.coords.longitude.toFixed(7)}` }));
+        const coords = `${pos.coords.latitude.toFixed(7)}, ${pos.coords.longitude.toFixed(7)}`;
+        setFormData(p => ({ 
+          ...p, 
+          geotag: coords
+        }));
         setIsLocating(false);
       },
       () => {
@@ -91,12 +94,19 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.noTiang || !formData.feeder || !formData.fotoTemuan || !formData.keterangan || !formData.lokasi) {
+    if (!formData.noTiang || !formData.feeder || !formData.fotoTemuan || !formData.keterangan || !formData.alamat) {
       alert('Mohon lengkapi seluruh field wajib (*)');
       return;
     }
     setIsSubmitting(true);
-    onSave(formData as TemuanData);
+    
+    // Pastikan 'lokasi' diisi dengan teks alamat deskriptif agar sinkron dengan laporan
+    const dataToSave = {
+      ...formData,
+      lokasi: formData.alamat 
+    };
+    
+    onSave(dataToSave as TemuanData);
   };
 
   return (
@@ -110,7 +120,6 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Info Box */}
         <div className="bg-slate-900 rounded-2xl p-5 text-white shadow-lg grid grid-cols-2 gap-y-4">
           <div className="col-span-2 flex justify-between border-b border-slate-800 pb-3 mb-1">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID: {formData.id}</p>
@@ -126,7 +135,6 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
           </div>
         </div>
 
-        {/* Input Aset */}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -154,22 +162,21 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5 ml-1">Lokasi Detail *</label>
-            <textarea rows={2} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 resize-none" placeholder="Patokan lokasi lapangan..." value={formData.lokasi} onChange={e => setFormData({ ...formData, lokasi: e.target.value })} />
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5 ml-1">Alamat / Patokan Detail *</label>
+            <textarea rows={2} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 resize-none" placeholder="Masukkan alamat atau patokan lokasi..." value={formData.alamat} onChange={e => setFormData({ ...formData, alamat: e.target.value })} />
           </div>
 
           <div className="pt-2 border-t border-slate-100">
             <div className="flex justify-between items-center mb-2">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Geotagging</label>
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Koordinat Geotag</label>
               <button type="button" onClick={fetchLocation} disabled={isLocating} className="text-[10px] font-bold text-indigo-600">
-                {isLocating ? 'Mencari...' : '🔄 Update GPS'}
+                {isLocating ? 'Mencari...' : '🔄 Refresh GPS'}
               </button>
             </div>
             <input type="text" className="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs font-mono" value={formData.geotag || ''} readOnly />
           </div>
         </div>
 
-        {/* Foto Box */}
         <div className="bg-white border-2 border-dashed border-slate-200 rounded-3xl p-4 min-h-[200px] flex flex-col items-center justify-center relative overflow-hidden shadow-sm">
           <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFile} />
           {isCompressing ? (
@@ -193,7 +200,6 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
           )}
         </div>
 
-        {/* DROPDOWN KATEGORI KELAINAN */}
         <div className="space-y-2">
           <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1">Kategori Kelainan *</label>
           <select 
@@ -212,10 +218,6 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
               <option value="">Tidak ada kelainan untuk pekerjaan ini</option>
             )}
           </select>
-          
-          <p className="text-[10px] text-slate-400 font-bold italic ml-1">
-            * Menampilkan {filteredKeteranganList.length} kategori yang sesuai.
-          </p>
         </div>
 
         <button 
