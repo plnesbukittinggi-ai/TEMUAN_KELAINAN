@@ -54,8 +54,9 @@ export const ReportService = {
     worksheet.addRow(['BULAN', `: ${filters.bulan || '-'}`]);
     worksheet.addRow([]);
 
+    // Header updated: KET -> STATUS
     const headerRow = worksheet.addRow([
-      'NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEBELUM', 'FOTO SESUDAH', 'KET', 'SARAN'
+      'NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEBELUM', 'FOTO SESUDAH', 'KETERANGAN', 'SARAN'
     ]);
     headerRow.eachCell((cell) => {
       cell.font = { bold: true, color: { argb: 'FFFFFF' } };
@@ -71,13 +72,21 @@ export const ReportService = {
     worksheet.getColumn(5).width = 20;
     worksheet.getColumn(6).width = 35;
     worksheet.getColumn(7).width = 25;
-    worksheet.getColumn(8).width = 25;
-    worksheet.getColumn(9).width = 25;
-    worksheet.getColumn(10).width = 30;
-    worksheet.getColumn(11).width = 25;
+    worksheet.getColumn(8).width = 30;
+    worksheet.getColumn(9).width = 30;
+    worksheet.getColumn(10).width = 25; // Wider for detailed status
+    worksheet.getColumn(11).width = 45;
 
     for (let i = 0; i < data.length; i++) {
       const item = data[i];
+      
+      // Detailed status logic
+      // Fix: Explicitly type displayStatus as string to avoid type mismatch errors when assigning template literals
+      let displayStatus: string = item.status;
+      if (item.status === 'SUDAH EKSEKUSI') {
+        displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${item.tanggalEksekusi || '-'}`;
+      }
+
       const row = worksheet.addRow([
         i + 1,
         item.tanggal.split(',')[0],
@@ -88,8 +97,8 @@ export const ReportService = {
         item.geotag || "-",
         "",
         "",
-        item.keterangan,
-        ""
+        item.keterangan, // Move original kelainan to Saran or keep as additional info
+        displayStatus
       ]);
       row.height = 100;
       row.eachCell((cell) => {
@@ -104,7 +113,7 @@ export const ReportService = {
             const imgId = workbook.addImage({ base64, extension: 'png' });
             worksheet.addImage(imgId, {
               tl: { col: 7, row: row.number - 1 },
-              ext: { width: 180, height: 130 }
+              ext: { width: 220, height: 130 }
             });
           }
         } catch (e) {}
@@ -117,7 +126,7 @@ export const ReportService = {
             const imgId = workbook.addImage({ base64, extension: 'png' });
             worksheet.addImage(imgId, {
               tl: { col: 8, row: row.number - 1 },
-              ext: { width: 180, height: 130 }
+              ext: { width: 220, height: 130 }
             });
           }
         } catch (e) {}
@@ -154,6 +163,11 @@ export const ReportService = {
     doc.text(`BULAN       : ${filters.bulan || '-'}`, 15, 43);
 
     const body = await Promise.all(data.map(async (item, i) => {
+      // Fix: Explicitly type displayStatus as string to avoid type mismatch errors when assigning template literals
+      let displayStatus: string = item.status;
+      if (item.status === 'SUDAH EKSEKUSI') {
+        displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${item.tanggalEksekusi || '-'}`;
+      }
       return [
         i + 1,
         item.tanggal.split(',')[0],
@@ -164,23 +178,24 @@ export const ReportService = {
         item.geotag || "-",
         '',
         '',
-        item.keterangan,
-        ''
+        displayStatus, // Header updated: STATUS
+        item.keterangan
       ];
     }));
 
     (doc as any).autoTable({
       startY: 48,
-      head: [['NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEB', 'FOTO SES', 'KET', 'SARAN']],
+      head: [['NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEB', 'FOTO SES', 'KETERANGAN', 'SARAN']],
       body: body,
       theme: 'grid',
       headStyles: { fillColor: [40, 40, 40], fontSize: 7, halign: 'center' },
       styles: { fontSize: 6, cellPadding: 1.5, minCellHeight: 25, valign: 'middle' },
       columnStyles: {
         5: { cellWidth: 30 },
-        6: { cellWidth: 25 },
-        7: { cellWidth: 30 },
-        8: { cellWidth: 30 },
+        6: { cellWidth: 20 },
+        7: { cellWidth: 25 },
+        8: { cellWidth: 25 },
+        9: { cellWidth: 40 }, // Expanded Status Column
       }
     });
 
@@ -191,6 +206,6 @@ export const ReportService = {
     doc.text(`               ${filters.inspektor2 || '-'}`, 220, finalY + 25);
     doc.text(`ADMINSPEKSI  : ENDANG WINARNINGSIH`, 220, finalY + 30);
 
-    doc.save(`Laporan_${filters.pekerjaan || 'PLN'}.pdf`);
+    doc.save(`Laporan_${filters.pekerjaan || 'PLNES-BKT'}.pdf`);
   }
 };
