@@ -10,17 +10,10 @@ interface DataViewPageProps {
   onAddEksekusi?: () => void;
 }
 
-const MONTHS = [
-  { val: 1, label: 'Januari' }, { val: 2, label: 'Februari' }, { val: 3, label: 'Maret' },
-  { val: 4, label: 'April' }, { val: 5, label: 'Mei' }, { val: 6, label: 'Juni' },
-  { val: 7, label: 'Juli' }, { val: 8, label: 'Agustus' }, { val: 9, label: 'September' },
-  { val: 10, label: 'Oktober' }, { val: 11, label: 'November' }, { val: 12, label: 'Desember' }
-];
-
 const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTemuan, onAddEksekusi }) => {
   const [filter, setFilter] = useState<'ALL' | 'BELUM EKSEKUSI' | 'SUDAH EKSEKUSI' | 'BUTUH PADAM'>('ALL');
-  const [filterMonth, setFilterMonth] = useState<number>(new Date().getMonth() + 1);
-  const [filterYear, setFilterYear] = useState<number>(new Date().getFullYear());
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const [previewImage, setPreviewImage] = useState<{url: string, title: string} | null>(null);
   
   const formatDriveUrl = (url?: string) => {
@@ -46,14 +39,24 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
   const filteredData = useMemo(() => {
     return data.filter(item => {
       const dDate = parseIndoDate(item.tanggal);
-      const matchMonth = dDate.getMonth() + 1 === filterMonth;
-      const matchYear = dDate.getFullYear() === filterYear;
-      const matchStatus = filter === 'ALL' ? true : item.status === filter;
-      return matchMonth && matchYear && matchStatus;
-    });
-  }, [data, filter, filterMonth, filterYear]);
+      dDate.setHours(0, 0, 0, 0);
 
-  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
+      let matchDate = true;
+      if (startDate) {
+        const s = new Date(startDate);
+        s.setHours(0, 0, 0, 0);
+        if (dDate < s) matchDate = false;
+      }
+      if (endDate) {
+        const e = new Date(endDate);
+        e.setHours(0, 0, 0, 0);
+        if (dDate > e) matchDate = false;
+      }
+
+      const matchStatus = filter === 'ALL' ? true : item.status === filter;
+      return matchDate && matchStatus;
+    });
+  }, [data, filter, startDate, endDate]);
 
   return (
     <div className="pb-10">
@@ -64,10 +67,11 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
           <p className="text-[11px] text-indigo-600 font-bold uppercase tracking-wider">{ulp}</p>
         </div>
       </div>
-{/* Akses Cepat Petugas Section */}
+
+      {/* Akses Cepat Petugas Section */}
       {(onAddTemuan || onAddEksekusi) && (
         <div className="mb-8 space-y-3">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1">Akses Cepat Petugas</p>
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1">Pintasan Petugas</p>
           
           {onAddTemuan && (
             <button 
@@ -98,22 +102,42 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
           )}
         </div>
       )}
+
       <div className="bg-white p-5 rounded-3xl border border-slate-200 mb-6 shadow-sm">
-        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-3">Filter Periode Temuan</p>
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <select 
-            className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none text-slate-700"
-            value={filterMonth} onChange={(e) => setFilterMonth(Number(e.target.value))}
-          >
-            {MONTHS.map(m => <option key={m.val} value={m.val}>{m.label}</option>)}
-          </select>
-          <select 
-            className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none text-slate-700"
-            value={filterYear} onChange={(e) => setFilterYear(Number(e.target.value))}
-          >
-            {years.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
+        <div className="flex justify-between items-center mb-3 ml-1">
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Penyaringan Rentang Tanggal</p>
+          {(startDate || endDate) && (
+            <button 
+              onClick={() => { setStartDate(''); setEndDate(''); }}
+              className="text-[8px] font-black text-red-500 uppercase tracking-widest hover:underline"
+            >
+              Reset Tanggal
+            </button>
+          )}
         </div>
+        
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="space-y-1">
+            <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Dari Tanggal</label>
+            <input 
+              type="date" 
+              className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none text-slate-700 focus:border-indigo-500 transition-colors"
+              value={startDate} 
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Sampai Tanggal</label>
+            <input 
+              type="date" 
+              className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none text-slate-700 focus:border-indigo-500 transition-colors"
+              value={endDate} 
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-3">Status Pekerjaan</p>
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {['ALL', 'BELUM EKSEKUSI', 'SUDAH EKSEKUSI', 'BUTUH PADAM'].map((f) => (
             <button
@@ -130,7 +154,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
         {filteredData.length === 0 ? (
           <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-slate-200">
             <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Data Tidak Ditemukan</p>
-            <p className="text-[9px] text-slate-300 font-medium italic">Coba ubah filter bulan atau tahun</p>
+            <p className="text-[9px] text-slate-300 font-medium italic">Coba ubah rentang tanggal filter</p>
           </div>
         ) : (
           filteredData.map((item) => (
