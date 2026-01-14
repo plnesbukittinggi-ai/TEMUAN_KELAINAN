@@ -19,6 +19,9 @@ const App: React.FC = () => {
   const [keteranganList, setKeteranganList] = useState<Keterangan[]>(INITIAL_KETERANGAN);
   const [isLoading, setIsLoading] = useState(true);
   const [connectionError, setConnectionError] = useState<boolean>(false);
+  
+  // State baru untuk menampung data yang sedang diedit
+  const [editingData, setEditingData] = useState<TemuanData | null>(null);
 
   const LOGO_URL = "https://lh3.googleusercontent.com/d/1kpaHfckdo0GhhCXtANR_Q38KWuBc0T9u";
 
@@ -47,14 +50,23 @@ const App: React.FC = () => {
     refreshData();
   }, []);
 
-  const handleLogout = () => setSession(null);
+  const handleLogout = () => {
+    setSession(null);
+    setEditingData(null);
+  };
 
   const handleAddTemuan = async (newTemuan: TemuanData) => {
     setIsLoading(true);
-    const result = await SpreadsheetService.addTemuan(newTemuan);
+    // Jika ada editingData, gunakan update, jika tidak gunakan add
+    const isEdit = !!editingData;
+    const result = isEdit 
+      ? await SpreadsheetService.updateEksekusi(newTemuan) // updateEksekusi bersifat generic di script
+      : await SpreadsheetService.addTemuan(newTemuan);
+
     if (result.success) {
-      alert('BERHASIL: Data temuan telah tersimpan.');
+      alert(`BERHASIL: Data temuan telah ${isEdit ? 'diperbarui' : 'tersimpan'}.`);
       await refreshData();
+      setEditingData(null);
       setSession({ ...session!, role: AppRole.VIEWER, ulp: newTemuan.ulp });
     } else {
       alert('GAGAL: ' + (result.message || 'Terjadi kesalahan sistem.'));
@@ -67,8 +79,9 @@ const App: React.FC = () => {
     try {
       const result = await SpreadsheetService.updateEksekusi(updated);
       if (result.success) {
-        alert('BERHASIL: Status data diperbarui.');
+        alert('BERHASIL: Perubahan data disimpan.');
         await refreshData();
+        setEditingData(null);
         setSession({ ...session!, role: AppRole.VIEWER, ulp: updated.ulp });
       } else {
         alert('GAGAL: ' + (result.message || 'Server bermasalah.'));
@@ -77,6 +90,15 @@ const App: React.FC = () => {
       alert('ERROR: Kesalahan pada sistem.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const startEdit = (data: TemuanData) => {
+    setEditingData(data);
+    if (data.status === 'SUDAH EKSEKUSI') {
+      setSession({ ...session!, role: AppRole.EKSEKUSI });
+    } else {
+      setSession({ ...session!, role: AppRole.INSPEKSI });
     }
   };
 
@@ -122,19 +144,21 @@ const App: React.FC = () => {
         return (
           <InspeksiPage 
             session={session} 
-            onBack={handleLogout} 
+            onBack={() => editingData ? setSession({...session, role: AppRole.VIEWER}) : handleLogout()} 
             onSave={handleAddTemuan}
             feeders={feeders.filter(f => f.ulpId === ulpList.find(u => u.name === session.ulp)?.id)}
             keteranganList={keteranganList}
+            initialData={editingData || undefined}
           />
         );
       case AppRole.EKSEKUSI:
         return (
           <EksekusiPage 
             session={session} 
-            data={allData.filter(d => d.ulp === session.ulp && d.status !== 'SUDAH EKSEKUSI')} 
-            onBack={handleLogout}
+            data={editingData ? [editingData] : allData.filter(d => d.ulp === session.ulp && d.status !== 'SUDAH EKSEKUSI')} 
+            onBack={() => editingData ? setSession({...session, role: AppRole.VIEWER}) : handleLogout()}
             onSave={handleUpdateTemuan}
+            initialData={editingData || undefined}
           />
         );
       case AppRole.ADMIN:
@@ -157,8 +181,9 @@ const App: React.FC = () => {
             ulp={session.ulp || ''} 
             data={allData.filter(d => d.ulp === session.ulp)} 
             onBack={handleLogout}
-            onAddTemuan={session.inspektor1 ? () => setSession({ ...session, role: AppRole.INSPEKSI }) : undefined}
-            onAddEksekusi={session.team ? () => setSession({ ...session, role: AppRole.EKSEKUSI }) : undefined}
+            onAddTemuan={session.inspektor1 ? () => { setEditingData(null); setSession({ ...session, role: AppRole.INSPEKSI }); } : undefined}
+            onAddEksekusi={session.team ? () => { setEditingData(null); setSession({ ...session, role: AppRole.EKSEKUSI }); } : undefined}
+            onEdit={startEdit}
           />
         );
       default:
