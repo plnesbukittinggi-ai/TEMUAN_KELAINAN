@@ -64,7 +64,40 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
           <p className="text-[11px] text-indigo-600 font-bold uppercase tracking-wider">{ulp}</p>
         </div>
       </div>
+{/* Akses Cepat Petugas Section */}
+      {(onAddTemuan || onAddEksekusi) && (
+        <div className="mb-8 space-y-3">
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1">Akses Cepat Petugas</p>
+          
+          {onAddTemuan && (
+            <button 
+              onClick={onAddTemuan}
+              className="w-full flex items-center p-4 bg-indigo-600 text-white rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 active:scale-[0.98] transition-all group"
+            >
+              <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center text-2xl mr-4 group-hover:scale-110 transition-transform">📝</div>
+              <div className="text-left flex-1">
+                <p className="text-xs font-black uppercase tracking-widest">Tambahkan Temuan Baru</p>
+                <p className="text-[9px] font-medium opacity-80 mt-0.5">Kembali ke Formulir Temuan Baru</p>
+              </div>
+              <span className="text-xl font-light opacity-50">→</span>
+            </button>
+          )}
 
+          {onAddEksekusi && (
+            <button 
+              onClick={onAddEksekusi}
+              className="w-full flex items-center p-4 bg-emerald-600 text-white rounded-2xl shadow-xl shadow-emerald-100 hover:bg-emerald-700 active:scale-[0.98] transition-all group"
+            >
+              <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center text-2xl mr-4 group-hover:scale-110 transition-transform">🛠️</div>
+              <div className="text-left flex-1">
+                <p className="text-xs font-black uppercase tracking-widest">Tambahkan Eksekusi Baru</p>
+                <p className="text-[9px] font-medium opacity-80 mt-0.5">Kembali ke Daftar Antrean Eksekusi</p>
+              </div>
+              <span className="text-xl font-light opacity-50">→</span>
+            </button>
+          )}
+        </div>
+      )}
       <div className="bg-white p-5 rounded-3xl border border-slate-200 mb-6 shadow-sm">
         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-3">Filter Periode Temuan</p>
         <div className="grid grid-cols-2 gap-3 mb-4">
