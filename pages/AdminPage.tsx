@@ -2,12 +2,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fix: Use consistent casing for ReportService import to avoid conflict with multiple file versions
+// Fix casing mismatch: using uppercase to match the project's service file naming
 import { ReportService } from '../services/ReportService';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
-  ResponsiveContainer, Legend 
-} from 'recharts';
 
 interface AdminPageProps {
   data: TemuanData[];
@@ -71,6 +67,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
     });
   }, [data, dashFilterMonth, dashFilterYear, dashFilterUlp, dashFilterPekerjaan]);
 
+  // Use Gemini AI for automated performance insights
   useEffect(() => {
     if (tab === 'DASHBOARD' && dashboardData.length > 0) {
       getDashboardInsights(dashboardData).then(setAiInsight);
@@ -118,17 +115,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
       .sort((a, b) => b.total - a.total)
       .slice(0, 10);
   }, [dashboardData]);
-
-  const workTypes = pekerjaanList.map(p => p.name);
-  const statsWorkByUlp = useMemo(() => {
-    return ulpList.map(u => {
-      const result: any = { name: u.name.replace('ULP ', '') };
-      workTypes.forEach(w => {
-        result[w] = dashboardData.filter(d => d.ulp === u.name && d.pekerjaan === w).length;
-      });
-      return result;
-    });
-  }, [dashboardData, ulpList, workTypes]);
 
   // --- Data Table Filters ---
   const filteredData = data.filter(item => {
@@ -355,7 +341,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
                       <td className="p-4 uppercase">{item.noTiang}</td>
                       <td className="p-4 truncate max-w-[80px]">{item.feeder}</td>
                       <td className="p-4 text-center">
-                        <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                        <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-700'}`}>
                           {item.status.split(' ')[0]}
                         </span>
                       </td>
