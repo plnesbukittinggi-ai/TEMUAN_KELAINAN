@@ -13,6 +13,7 @@ interface DataViewPageProps {
 
 const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTemuan, onAddEksekusi, onEdit }) => {
   const [filter, setFilter] = useState<'ALL' | 'BELUM EKSEKUSI' | 'SUDAH EKSEKUSI' | 'BUTUH PADAM'>('ALL');
+  const [selectedFeeder, setSelectedFeeder] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [previewImage, setPreviewImage] = useState<{url: string, title: string} | null>(null);
@@ -38,6 +39,12 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
     }
   };
 
+  // Mendapatkan daftar feeder unik dari data yang tersedia
+  const uniqueFeeders = useMemo(() => {
+    const feeders = data.map(item => item.feeder).filter(Boolean);
+    return Array.from(new Set(feeders)).sort();
+  }, [data]);
+
   const filteredData = useMemo(() => {
     return data.filter(item => {
       const dDate = parseIndoDate(item.tanggal);
@@ -56,9 +63,18 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
       }
 
       const matchStatus = filter === 'ALL' ? true : item.status === filter;
-      return matchDate && matchStatus;
+      const matchFeeder = !selectedFeeder || item.feeder === selectedFeeder;
+      
+      return matchDate && matchStatus && matchFeeder;
     });
-  }, [data, filter, startDate, endDate]);
+  }, [data, filter, selectedFeeder, startDate, endDate]);
+
+  const resetFilters = () => {
+    setStartDate('');
+    setEndDate('');
+    setSelectedFeeder('');
+    setFilter('ALL');
+  };
 
   return (
     <div className="pb-10">
@@ -99,14 +115,27 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
       <div className="bg-white p-5 rounded-3xl border border-slate-200 mb-6 shadow-sm">
         <div className="flex justify-between items-center mb-3 ml-1">
           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Penyaringan Data</p>
-          {(startDate || endDate) && (
-            <button onClick={() => { setStartDate(''); setEndDate(''); }} className="text-[8px] font-black text-red-500 uppercase tracking-widest">Reset</button>
+          {(startDate || endDate || selectedFeeder || filter !== 'ALL') && (
+            <button onClick={resetFilters} className="text-[8px] font-black text-red-500 uppercase tracking-widest">Reset</button>
           )}
         </div>
         
-        <div className="grid grid-cols-2 gap-3 mb-6">
+        <div className="grid grid-cols-2 gap-3 mb-3">
           <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+        </div>
+
+        <div className="mb-4">
+          <select 
+            className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500"
+            value={selectedFeeder}
+            onChange={(e) => setSelectedFeeder(e.target.value)}
+          >
+            <option value="">-- Semua Feeder --</option>
+            {uniqueFeeders.map(f => (
+              <option key={f} value={f}>{f}</option>
+            ))}
+          </select>
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
