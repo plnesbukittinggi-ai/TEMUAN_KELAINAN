@@ -1,9 +1,12 @@
 
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { TemuanData } from '../types';
 
+/**
+ * Utility to format Google Drive URLs for direct image access.
+ */
 const formatDriveUrl = (url?: string) => {
   if (!url) return '';
   if (url.indexOf('data:image') === 0) return url;
@@ -14,6 +17,9 @@ const formatDriveUrl = (url?: string) => {
   return url;
 };
 
+/**
+ * Utility to convert image URL or base64 to base64 for PDF/Excel inclusion.
+ */
 const getBase64FromUrl = async (url: string): Promise<string> => {
   if (url.indexOf('data:image') === 0) return url;
   try {
@@ -30,6 +36,9 @@ const getBase64FromUrl = async (url: string): Promise<string> => {
 };
 
 export const ReportService = {
+  /**
+   * Generates and downloads an Excel report containing inspection details and photos.
+   */
   async downloadExcel(data: TemuanData[], filters: any) {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Laporan');
@@ -56,7 +65,7 @@ export const ReportService = {
 
     // Header updated: KET -> STATUS
     const headerRow = worksheet.addRow([
-      'NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEBELUM', 'FOTO SESUDAH', 'KETERANGAN', 'SARAN'
+      'NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEBELUM', 'FOTO SESUDAH', 'STATUS', 'SARAN'
     ]);
     headerRow.eachCell((cell) => {
       cell.font = { bold: true, color: { argb: 'FFFFFF' } };
@@ -74,17 +83,16 @@ export const ReportService = {
     worksheet.getColumn(7).width = 25;
     worksheet.getColumn(8).width = 30;
     worksheet.getColumn(9).width = 30;
-    worksheet.getColumn(10).width = 25; // Wider for detailed status
-    worksheet.getColumn(11).width = 45;
+    worksheet.getColumn(10).width = 45; // Wider for detailed status
+    worksheet.getColumn(11).width = 25;
 
     for (let i = 0; i < data.length; i++) {
       const item = data[i];
       
-      // Detailed status logic
-      // Fix: Explicitly type displayStatus as string to avoid type mismatch errors when assigning template literals
+      // Detailed status logic formatting
       let displayStatus: string = item.status;
       if (item.status === 'SUDAH EKSEKUSI') {
-        displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${item.tanggalEksekusi || '-'}`;
+        displayStatus = `"Sudah Eksekusi" oleh ${item.timEksekusi || '-'} pada ${item.tanggalEksekusi || '-'}`;
       }
 
       const row = worksheet.addRow([
@@ -97,8 +105,8 @@ export const ReportService = {
         item.geotag || "-",
         "",
         "",
-        item.keterangan, // Original kelainan info
-        displayStatus
+        displayStatus,
+        item.keterangan 
       ]);
       row.height = 100;
       row.eachCell((cell) => {
@@ -149,6 +157,9 @@ export const ReportService = {
     a.click();
   },
 
+  /**
+   * Generates and downloads a PDF report.
+   */
   async downloadPDF(data: TemuanData[], filters: any) {
     const doc = new jsPDF('l', 'mm', 'a4');
     
@@ -162,11 +173,10 @@ export const ReportService = {
     doc.text(`NAMA FEEDER : ${filters.feeder || 'SEMUA'}`, 15, 38);
     doc.text(`BULAN       : ${filters.bulan || '-'}`, 15, 43);
 
-    const body = await Promise.all(data.map(async (item, i) => {
-      // Fix: Explicitly type displayStatus as string to avoid type mismatch errors when assigning template literals
+    const body = data.map((item, i) => {
       let displayStatus: string = item.status;
       if (item.status === 'SUDAH EKSEKUSI') {
-        displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${item.tanggalEksekusi || '-'}`;
+        displayStatus = `"Sudah Eksekusi" oleh ${item.timEksekusi || '-'} pada ${item.tanggalEksekusi || '-'}`;
       }
       return [
         i + 1,
@@ -178,12 +188,12 @@ export const ReportService = {
         item.geotag || "-",
         '',
         '',
+        displayStatus,
         item.keterangan
-        displayStatus, // Header updated: STATUS
-        ];
-    }));
+      ];
+    });
 
-    (doc as any).autoTable({
+    autoTable(doc, {
       startY: 48,
       head: [['NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEB', 'FOTO SES', 'STATUS', 'SARAN']],
       body: body,
@@ -195,11 +205,11 @@ export const ReportService = {
         6: { cellWidth: 20 },
         7: { cellWidth: 25 },
         8: { cellWidth: 25 },
-        9: { cellWidth: 40 }, // Expanded Status Column
+        9: { cellWidth: 40 }, 
       }
     });
 
-    const finalY = (doc as any).lastAutoTable.finalY || 150;
+    const finalY = (doc as any).lastAutoTable?.finalY || 150;
     doc.text(`DILAKSANAKAN : ${filters.bulan || '-'}`, 220, finalY + 10);
     doc.text(`JAM          : 07.30 S/D 17.00 WIB`, 220, finalY + 15);
     doc.text(`PETUGAS      : ${filters.inspektor1 || '-'}`, 220, finalY + 20);
