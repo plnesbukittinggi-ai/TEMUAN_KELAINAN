@@ -20,7 +20,6 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [connectionError, setConnectionError] = useState<boolean>(false);
   
-  // State baru untuk menampung data yang sedang diedit
   const [editingData, setEditingData] = useState<TemuanData | null>(null);
 
   const LOGO_URL = "https://lh3.googleusercontent.com/d/1kpaHfckdo0GhhCXtANR_Q38KWuBc0T9u";
@@ -57,10 +56,9 @@ const App: React.FC = () => {
 
   const handleAddTemuan = async (newTemuan: TemuanData) => {
     setIsLoading(true);
-    // Jika ada editingData, gunakan update, jika tidak gunakan add
     const isEdit = !!editingData;
     const result = isEdit 
-      ? await SpreadsheetService.updateEksekusi(newTemuan) // updateEksekusi bersifat generic di script
+      ? await SpreadsheetService.updateEksekusi(newTemuan)
       : await SpreadsheetService.addTemuan(newTemuan);
 
     if (result.success) {
@@ -192,7 +190,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen max-w-lg mx-auto bg-slate-50 shadow-2xl relative pb-40 overflow-x-hidden">
+    <div className="min-h-screen max-w-lg mx-auto bg-slate-50 shadow-2xl relative pb-20 overflow-x-hidden">
       <header className="bg-slate-900 text-white p-5 sticky top-0 z-50 flex items-center justify-between border-b border-slate-800">
         <div className="flex items-center gap-3">
            <div className="w-10 h-10 bg-white rounded-lg p-1.5 flex items-center justify-center shadow-inner">
@@ -215,15 +213,22 @@ const App: React.FC = () => {
       
       <main className="p-5 animate-fade-in">{renderContent()}</main>
 
-      <footer className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white/95 backdrop-blur-sm border-t border-slate-200 p-6 flex flex-col items-center justify-center z-10">
-        <div className="flex items-center gap-2 mb-2">
-          <div className={`w-2 h-2 rounded-full ${connectionError ? 'bg-red-500' : 'bg-emerald-500'}`}></div>
-          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-            Sistem Terkoneksi
+      {/* Footer Minimalis Baru */}
+      <footer className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white/90 backdrop-blur-md border-t border-slate-200 py-2 px-4 flex items-center justify-between z-50 h-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <div className="flex items-center gap-1.5">
+          <div className={`w-1.5 h-1.5 rounded-full ${connectionError ? 'bg-red-500' : 'bg-emerald-500'} animate-pulse`}></div>
+          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+            {connectionError ? 'Offline' : 'Online'}
           </p>
         </div>
-        <p className="text-[11px] font-bold text-slate-900 uppercase">VERSI {APP_VERSION}</p>
-        <p className="text-[9px] text-slate-400 mt-0.5">©Jan 2026, IT PLN ES Bukittinggi</p>
+        
+        <p className="text-[9px] font-black text-slate-800 uppercase tracking-widest">
+          V.{APP_VERSION}
+        </p>
+
+        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter hidden sm:block">
+          © IT PLN ES BKT
+        </p>
       </footer>
     </div>
   );
