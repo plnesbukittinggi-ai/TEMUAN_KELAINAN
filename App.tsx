@@ -227,7 +227,7 @@ const App: React.FC = () => {
         </p>
 
         <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter hidden sm:block">
-          © IT PLN ES BKT
+          © Jan 2026 - IT PLN ES BKT
         </p>
       </footer>
     </div>
