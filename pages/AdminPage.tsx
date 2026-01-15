@@ -413,7 +413,8 @@ const AdminPage: React.FC<AdminPageProps> = ({
               <table className="min-w-full text-left">
                 <thead className="bg-white border-b border-slate-100">
                   <tr className="text-slate-400 text-[9px] uppercase font-black tracking-widest">
-                    <th className="p-4">Tanggal</th>
+                    <th className="p-4">ULP</th>
+                    <th className="p-4">Feeder</th>
                     <th className="p-4">Pekerjaan</th>
                     <th className="p-4">Tiang</th>
                     <th className="p-4">Status</th>
@@ -422,9 +423,10 @@ const AdminPage: React.FC<AdminPageProps> = ({
                 <tbody className="divide-y divide-slate-50">
                   {filteredData.length > 0 ? filteredData.slice(0, 50).map((item) => (
                     <tr key={item.id} className="text-[10px] font-bold text-slate-700 hover:bg-slate-50/50 transition-colors">
-                      <td className="p-4 whitespace-nowrap text-slate-400">{item.tanggal.split(',')[0]}</td>
+                      <td className="p-4 whitespace-nowrap text-slate-900 font-black">{item.ulp}</td>
+                      <td className="p-4 truncate max-w-[100px]">{item.feeder}</td>
                       <td className="p-4">{item.pekerjaan}</td>
-                      <td className="p-4 uppercase font-black">{item.noTiang}</td>
+                      <td className="p-4 uppercase font-black text-indigo-600">{item.noTiang}</td>
                       <td className="p-4">
                         <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-700'}`}>
                           {item.status.split(' ')[0]}
@@ -433,7 +435,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
                     </tr>
                   )) : (
                     <tr>
-                      <td colSpan={4} className="p-16 text-center text-slate-400 uppercase text-[9px] font-bold tracking-widest">
+                      <td colSpan={5} className="p-16 text-center text-slate-400 uppercase text-[9px] font-bold tracking-widest">
                         Data Tidak Ditemukan
                       </td>
                     </tr>
