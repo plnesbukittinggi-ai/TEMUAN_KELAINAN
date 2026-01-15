@@ -190,7 +190,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen max-w-lg mx-auto bg-slate-50 shadow-2xl relative pb-20 overflow-x-hidden">
+    <div className="min-h-screen max-w-lg mx-auto bg-slate-50 shadow-2xl relative pb-12 overflow-x-hidden">
       <header className="bg-slate-900 text-white p-5 sticky top-0 z-50 flex items-center justify-between border-b border-slate-800">
         <div className="flex items-center gap-3">
            <div className="w-10 h-10 bg-white rounded-lg p-1.5 flex items-center justify-center shadow-inner">
@@ -213,21 +213,21 @@ const App: React.FC = () => {
       
       <main className="p-5 animate-fade-in">{renderContent()}</main>
 
-      {/* Footer Minimalis Baru */}
-      <footer className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white/90 backdrop-blur-md border-t border-slate-200 py-2 px-4 flex items-center justify-between z-50 h-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-        <div className="flex items-center gap-1.5">
-          <div className={`w-1.5 h-1.5 rounded-full ${connectionError ? 'bg-red-500' : 'bg-emerald-500'} animate-pulse`}></div>
-          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+      {/* Footer Super Minimalis (Status Bar Style) */}
+      <footer className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white/80 backdrop-blur-sm border-t border-slate-100 py-1 px-4 flex items-center justify-between z-[60] h-7 shadow-[0_-2px_4px_rgba(0,0,0,0.02)]">
+        <div className="flex items-center gap-1">
+          <div className={`w-1 h-1 rounded-full ${connectionError ? 'bg-red-500' : 'bg-emerald-500'} animate-pulse`}></div>
+          <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">
             {connectionError ? 'Offline' : 'Online'}
           </p>
         </div>
         
-        <p className="text-[9px] font-black text-slate-800 uppercase tracking-widest">
-          V.{APP_VERSION}
+        <p className="text-[7px] font-bold text-slate-300 uppercase tracking-widest">
+          v{APP_VERSION}
         </p>
 
-        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter hidden sm:block">
-          © IT PLN ES BKT
+        <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">
+          © JAN 2026 - IT PLN ES BKT
         </p>
       </footer>
     </div>
