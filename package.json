@@ -15,7 +15,7 @@
     "react-dom": "^19.2.3",
     "recharts": "^3.6.0",
     "exceljs": "^4.4.0",
-    "jspdf": "^4.0.0",
+    "jspdf": "^2.5.1",
     "jspdf-autotable": "^5.0.7"
   },
   "devDependencies": {
