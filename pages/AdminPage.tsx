@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fix: Use lowercase 'reportService' to match project naming convention and resolve casing conflict
-import { ReportService } from '../services/reportService';
+// Fix: Use PascalCase 'ReportService' to match the file included as a root file and resolve casing conflict
+import { ReportService } from '../services/ReportService';
 
 interface AdminPageProps {
   data: TemuanData[];
@@ -181,7 +181,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
       const filters = {
         feeder: filterFeeder || 'SEMUA FEEDER',
         pekerjaan: filterPekerjaan || 'SEMUA PEKERJAAN',
-        bulan: 'Rekap Data',
+        bulan: filterStartDate && filterEndDate ? `${filterStartDate} s/d ${filterEndDate}` : 'Rekap Data',
         inspektor1: filteredData[0]?.inspektor1 || '-',
         inspektor2: filteredData[0]?.inspektor2 || '-'
       };
@@ -359,33 +359,85 @@ const AdminPage: React.FC<AdminPageProps> = ({
                 {pekerjaanList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
               </select>
             </div>
-            <button onClick={handleDownloadExcel} disabled={isExporting} className="w-full py-4 rounded-xl font-bold text-[10px] uppercase tracking-[0.2em] bg-emerald-600 text-white shadow-lg active:scale-95 transition-all">
-              {isExporting ? 'Mengekspor...' : '📥 Download Excel'}
-            </button>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Dari Tanggal</label>
+                <input 
+                  type="date" 
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" 
+                  value={filterStartDate} 
+                  onChange={(e) => setFilterStartDate(e.target.value)} 
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Sampai Tanggal</label>
+                <input 
+                  type="date" 
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" 
+                  value={filterEndDate} 
+                  onChange={(e) => setFilterEndDate(e.target.value)} 
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button 
+                onClick={handleDownloadExcel} 
+                disabled={isExporting} 
+                className="flex-1 py-4 rounded-xl font-bold text-[10px] uppercase tracking-[0.2em] bg-emerald-600 text-white shadow-lg active:scale-95 transition-all disabled:opacity-50"
+              >
+                {isExporting ? 'Mengekspor...' : '📥 Download Excel'}
+              </button>
+              {(filterFeeder || filterPekerjaan || filterStartDate || filterEndDate) && (
+                <button 
+                  onClick={() => {
+                    setFilterFeeder('');
+                    setFilterPekerjaan('');
+                    setFilterStartDate('');
+                    setFilterEndDate('');
+                  }} 
+                  className="px-6 py-4 rounded-xl font-bold text-[10px] uppercase tracking-[0.1em] bg-slate-100 text-slate-500 hover:bg-slate-200 transition-all"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+            <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Menampilkan {filteredData.length} Baris Teratas</p>
+            </div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-left">
-                <thead className="bg-slate-50 border-b border-slate-100">
+                <thead className="bg-white border-b border-slate-100">
                   <tr className="text-slate-400 text-[9px] uppercase font-black tracking-widest">
+                    <th className="p-4">Tanggal</th>
                     <th className="p-4">Pekerjaan</th>
                     <th className="p-4">Tiang</th>
                     <th className="p-4">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {filteredData.slice(0, 50).map((item) => (
-                    <tr key={item.id} className="text-[10px] font-bold text-slate-700">
+                  {filteredData.length > 0 ? filteredData.slice(0, 50).map((item) => (
+                    <tr key={item.id} className="text-[10px] font-bold text-slate-700 hover:bg-slate-50/50 transition-colors">
+                      <td className="p-4 whitespace-nowrap text-slate-400">{item.tanggal.split(',')[0]}</td>
                       <td className="p-4">{item.pekerjaan}</td>
-                      <td className="p-4 uppercase">{item.noTiang}</td>
+                      <td className="p-4 uppercase font-black">{item.noTiang}</td>
                       <td className="p-4">
                         <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-700'}`}>
                           {item.status.split(' ')[0]}
                         </span>
                       </td>
                     </tr>
-                  ))}
+                  )) : (
+                    <tr>
+                      <td colSpan={4} className="p-16 text-center text-slate-400 uppercase text-[9px] font-bold tracking-widest">
+                        Data Tidak Ditemukan
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
