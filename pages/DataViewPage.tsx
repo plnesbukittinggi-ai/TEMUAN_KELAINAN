@@ -19,6 +19,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
   
   const formatDriveUrl = (url?: string) => {
     if (!url) return '';
+    if (url.indexOf('data:image') === 0) return url;
     if (url.includes('drive.google.com/file/d/')) {
       const id = url.split('/d/')[1]?.split('/')[0];
       if (id) return `https://lh3.googleusercontent.com/d/${id}`;
@@ -157,7 +158,8 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                   </div>
                   <h3 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">{item.noTiang} / {item.feeder}</h3>
                   <p className="text-xs font-bold text-red-600 line-clamp-1">{item.keterangan}</p>
-                  <p className="text-[8px] text-slate-400 mt-1 font-bold">{item.tanggal.split(',')[0]}</p>
+                  <p className="text-[10px] text-slate-500 font-medium line-clamp-1 mt-0.5 italic">{item.alamat || item.lokasi || 'Alamat tidak tersedia'}</p>
+                  <p className="text-[8px] text-slate-400 mt-1.5 font-bold uppercase tracking-widest">{item.tanggal.split(',')[0]}</p>
                   
                   {item.status === 'SUDAH EKSEKUSI' && (
                     <div className="mt-2 pt-2 border-t border-slate-50 flex items-center gap-2">
