@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fix casing mismatch: using uppercase to match the project's service file naming
-import { ReportService } from '../services/ReportService';
+// Fix casing mismatch: using lowercase 'reportService' to match the naming convention for service files in this project.
+import { ReportService } from '../services/reportService';
 
 interface AdminPageProps {
   data: TemuanData[];
@@ -328,8 +328,8 @@ const AdminPage: React.FC<AdminPageProps> = ({
               <table className="min-w-full text-left">
                 <thead className="bg-slate-50 border-b border-slate-100">
                   <tr className="text-slate-400 text-[9px] uppercase font-black tracking-widest">
-                    <th className="p-4">Jenis</th>
-                    <th className="p-4">Aset</th>
+                    <th className="p-4">Pekerjaan</th>
+                    <th className="p-4">Tiang</th>
                     <th className="p-4">Feeder</th>
                     <th className="p-4">Status</th>
                   </tr>
