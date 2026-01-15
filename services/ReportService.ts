@@ -64,7 +64,7 @@ export const ReportService = {
     worksheet.addRow([]);
 
     const headerRow = worksheet.addRow([
-      'NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEBELUM', 'FOTO SESUDAH', 'STATUS', 'SARAN'
+      'NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEBELUM', 'FOTO SESUDAH', 'KETERANGAN', 'SARAN'
     ]);
     headerRow.eachCell((cell) => {
       cell.font = { bold: true, color: { argb: 'FFFFFF' } };
@@ -82,8 +82,8 @@ export const ReportService = {
     worksheet.getColumn(7).width = 25;
     worksheet.getColumn(8).width = 30;
     worksheet.getColumn(9).width = 30;
-    worksheet.getColumn(10).width = 45;
-    worksheet.getColumn(11).width = 25;
+    worksheet.getColumn(10).width = 25;
+    worksheet.getColumn(11).width = 45;
 
     for (let i = 0; i < data.length; i++) {
       const item = data[i];
@@ -102,9 +102,9 @@ export const ReportService = {
         item.geotag || "-",
         "",
         "",
+        item.keterangan,
         displayStatus,
-        item.keterangan 
-      ]);
+        ]);
       row.height = 100;
       row.eachCell((cell) => {
         cell.alignment = { vertical: 'middle', wrapText: true };
@@ -185,14 +185,14 @@ export const ReportService = {
         item.geotag || "-",
         '',
         '',
+        item.keterangan,
         displayStatus,
-        item.keterangan
       ];
     });
 
     autoTable(doc, {
       startY: 48,
-      head: [['NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEB', 'FOTO SES', 'STATUS', 'SARAN']],
+      head: [['NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEB', 'FOTO SES', 'KETERANGAN', 'SARAN']],
       body: body,
       theme: 'grid',
       headStyles: { fillColor: [40, 40, 40], fontSize: 7, halign: 'center' },
