@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fix: Use lowercase 'reportService' to match file name convention
+// Fix: Use lowercase 'reportService' in the import path to match the actual filename and prevent TypeScript casing errors.
 import { ReportService } from '../services/reportService';
 
 interface AdminPageProps {
@@ -89,7 +89,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
       }
 
       // Normalize Inspector Pair: [Insp1, Insp2] sorted alphabetically
-      // This handles the user request "Gabungkan jika Inspektor1+Inspektor2 sama dengan Inspektor2+Inspektor1"
       const inspectorArray = [item.inspektor1, item.inspektor2].filter(Boolean).sort();
       const combinedInspectors = inspectorArray.join(' & ');
       
@@ -107,7 +106,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
       counts[key].total++;
     });
 
-    // Convert to array and sort by Inspector name as requested
     return Object.values(counts).sort((a, b) => a.inspektor.localeCompare(b.inspektor));
   }, [data, rekapStartDate, rekapEndDate]);
 
