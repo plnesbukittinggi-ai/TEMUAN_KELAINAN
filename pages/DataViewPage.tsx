@@ -31,41 +31,58 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
   const parseIndoDate = (dateStr: string) => {
     try {
       if (!dateStr) return new Date(0);
-      const datePart = dateStr.split(',')[0].trim();
-      const [day, month, year] = datePart.split('/').map(Number);
+      // Support formats: "DD/MM/YYYY" or "DD/MM/YYYY, HH:mm:ss"
+      const cleanStr = dateStr.replace('pukul ', '').replace('.', ':');
+      const parts = cleanStr.split(',');
+      const dPart = parts[0].trim();
+      const tPart = parts[1] ? parts[1].trim() : null;
+      
+      const [day, month, year] = dPart.split('/').map(Number);
+      
+      if (tPart) {
+        const [h, m, s] = tPart.split(':').map(val => Number(val.trim()));
+        return new Date(year, month - 1, day, h || 0, m || 0, s || 0);
+      }
       return new Date(year, month - 1, day);
     } catch (e) {
       return new Date(0);
     }
   };
 
-  // Mendapatkan daftar feeder unik dari data yang tersedia
   const uniqueFeeders = useMemo(() => {
     const feeders = data.map(item => item.feeder).filter(Boolean);
     return Array.from(new Set(feeders)).sort();
   }, [data]);
 
-  const filteredData = useMemo(() => {
-    return data.filter(item => {
+  const sortedAndFilteredData = useMemo(() => {
+    // First, filter the data
+    const filtered = data.filter(item => {
       const dDate = parseIndoDate(item.tanggal);
-      dDate.setHours(0, 0, 0, 0);
+      const dDateNoTime = new Date(dDate.getFullYear(), dDate.getMonth(), dDate.getDate());
 
       let matchDate = true;
       if (startDate) {
         const s = new Date(startDate);
         s.setHours(0, 0, 0, 0);
-        if (dDate < s) matchDate = false;
+        if (dDateNoTime < s) matchDate = false;
       }
       if (endDate) {
         const e = new Date(endDate);
         e.setHours(0, 0, 0, 0);
-        if (dDate > e) matchDate = false;
+        if (dDateNoTime > e) matchDate = false;
       }
 
       const matchStatus = filter === 'ALL' ? true : item.status === filter;
       const matchFeeder = !selectedFeeder || item.feeder === selectedFeeder;
       
       return matchDate && matchStatus && matchFeeder;
+    });
+
+    // Then, sort by newest date (descending)
+    return filtered.sort((a, b) => {
+      const timeA = parseIndoDate(a.tanggal).getTime();
+      const timeB = parseIndoDate(b.tanggal).getTime();
+      return timeB - timeA;
     });
   }, [data, filter, selectedFeeder, startDate, endDate]);
 
@@ -151,12 +168,12 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
       </div>
 
       <div className="space-y-4">
-        {filteredData.length === 0 ? (
+        {sortedAndFilteredData.length === 0 ? (
           <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-slate-200">
             <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Data Tidak Ditemukan</p>
           </div>
         ) : (
-          filteredData.map((item) => (
+          sortedAndFilteredData.map((item) => (
             <div key={item.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden hover:border-indigo-200 transition-all group">
               <div className="flex p-4 gap-4">
                 <div 
