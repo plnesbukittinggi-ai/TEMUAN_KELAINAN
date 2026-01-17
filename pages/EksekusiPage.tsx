@@ -22,10 +22,8 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const [previewImage, setPreviewImage] = useState<{url: string, title: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Set initial execution date for editing if available
   useEffect(() => {
     if (initialData?.tanggalEksekusi) {
-        // Parse date from id-ID string back to YYYY-MM-DD for input date
         try {
             const dateStr = initialData.tanggalEksekusi.split(',')[0].trim();
             const parts = dateStr.split('/');
@@ -83,14 +81,17 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
     
     setIsSaving(true);
     
-    const finalDate = executionDate 
-      ? new Date(executionDate).toLocaleDateString('id-ID')
-      : new Date().toLocaleString('id-ID');
+    // Pastikan format tanggal murni DD/MM/YYYY tanpa waktu
+    let finalDateString = new Date().toLocaleDateString('id-ID');
+    if (executionDate) {
+      const [year, month, day] = executionDate.split('-').map(Number);
+      finalDateString = new Date(year, month - 1, day).toLocaleDateString('id-ID');
+    }
 
     const updated: TemuanData = {
       ...selectedTemuan,
       status: newStatus, 
-      tanggalEksekusi: finalDate,
+      tanggalEksekusi: finalDateString,
       fotoEksekusi: executionPhoto,
       timEksekusi: initialData?.timEksekusi || session.team || 'Team Lapangan'
     };
