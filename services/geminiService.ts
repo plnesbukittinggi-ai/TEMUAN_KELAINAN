@@ -1,11 +1,16 @@
 
+// Fixed: Using the latest Gemini SDK and following guidelines for text tasks.
 import { GoogleGenAI } from "@google/genai";
 import { TemuanData } from "../types";
 
-// Analisis data menggunakan Gemini API
+/**
+ * Analisis data menggunakan Gemini API untuk memberikan insight dashboard.
+ * Menggunakan gemini-3-flash-preview karena tugas utama adalah perangkuman (summarization)
+ * dan analisis data sederhana, yang merupakan kategori Basic Text Task.
+ */
 export const getDashboardInsights = async (data: TemuanData[]): Promise<string> => {
   try {
-    // Initialize Gemini API client as per guidelines using process.env.API_KEY
+    // CRITICAL: Initialization with named parameter and process.env.API_KEY
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     const summary = data.reduce((acc: any, curr) => {
@@ -21,14 +26,14 @@ export const getDashboardInsights = async (data: TemuanData[]): Promise<string> 
     Rincian per ULP: ${JSON.stringify(summary)}
     Tentukan unit mana yang kinerjanya paling rendah (temuan belum selesai terbanyak) dan berikan saran singkat.`;
 
-    // Use gemini-3-pro-preview for complex reasoning and analysis tasks as per guidelines
-    // Call generateContent directly on ai.models
+    // CRITICAL: Calling generateContent directly on ai.models with the model name and prompt.
+    // Using gemini-3-flash-preview as recommended for Basic Text Tasks like summarization.
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
     });
 
-    // Access .text property directly (it is a getter, not a method) as per guidelines
+    // CRITICAL: Accessing .text property directly (not a method call text()) as per guidelines.
     return response.text || "AI memberikan respons kosong.";
   } catch (error: any) {
     console.error("Gemini Error:", error);
