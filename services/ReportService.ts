@@ -89,7 +89,7 @@ export const ReportService = {
       const item = data[i];
       let displayStatus: string = item.status;
       if (item.status === 'SUDAH EKSEKUSI') {
-        displayStatus = `"Sudah Eksekusi" oleh ${item.timEksekusi || '-'} pada ${item.tanggalEksekusi || '-'}`;
+        displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${item.tanggalEksekusi || '-'}`;
       }
 
       const row = worksheet.addRow([
@@ -173,7 +173,7 @@ export const ReportService = {
     const body = data.map((item, i) => {
       let displayStatus: string = item.status;
       if (item.status === 'SUDAH EKSEKUSI') {
-        displayStatus = `"Sudah Eksekusi" oleh ${item.timEksekusi || '-'} pada ${item.tanggalEksekusi || '-'}`;
+        displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${item.tanggalEksekusi || '-'}`;
       }
       return [
         i + 1,
