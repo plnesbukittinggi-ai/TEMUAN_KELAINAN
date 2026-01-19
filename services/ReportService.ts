@@ -1,3 +1,4 @@
+
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -17,29 +18,32 @@ const formatDriveUrl = (url?: string) => {
 };
 
 /**
- * Utilitas untuk mengonversi URL gambar menjadi base64 agar bisa dimasukkan ke Excel/PDF.
+ * Utilitas untuk mengonversi URL gambar menjadi base64.
  */
 const getBase64FromUrl = async (url: string): Promise<string> => {
   if (!url) return "";
-  if (url.indexOf('data:image') === 0) return url;
+  const finalUrl = formatDriveUrl(url);
+  if (finalUrl.indexOf('data:image') === 0) return finalUrl;
+
   try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Gagal fetch gambar");
+    const res = await fetch(finalUrl, { cache: 'no-cache' });
+    if (!res.ok) return "";
     const blob = await res.blob();
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve("");
       reader.readAsDataURL(blob);
     });
   } catch (e) {
-    console.error("Gagal memproses gambar untuk laporan:", e);
+    console.warn("Gagal mengambil gambar:", finalUrl, e);
     return "";
   }
 };
 
 export const ReportService = {
   /**
-   * Logika Pembuatan Sheet 1: Laporan Detail (Foto Inspeksi)
+   * Sheet 1: Laporan Detail dengan Foto
    */
   async addDetailSheet(workbook: ExcelJS.Workbook, data: TemuanData[], filters: any) {
     const worksheet = workbook.addWorksheet('Laporan Detail');
@@ -114,32 +118,32 @@ export const ReportService = {
         cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
       });
 
-      // Insert Foto Temuan
+      // Foto Temuan
       if (item.fotoTemuan) {
-        try {
-          const base64 = await getBase64FromUrl(formatDriveUrl(item.fotoTemuan));
-          if (base64) {
+        const base64 = await getBase64FromUrl(item.fotoTemuan);
+        if (base64) {
+          try {
             const imgId = workbook.addImage({ base64, extension: 'jpeg' });
             worksheet.addImage(imgId, {
               tl: { col: 7, row: row.number - 1 },
               ext: { width: 220, height: 130 }
             });
-          }
-        } catch (e) {}
+          } catch (e) {}
+        }
       }
 
-      // Insert Foto Eksekusi
+      // Foto Eksekusi
       if (item.fotoEksekusi) {
-        try {
-          const base64 = await getBase64FromUrl(formatDriveUrl(item.fotoEksekusi));
-          if (base64) {
+        const base64 = await getBase64FromUrl(item.fotoEksekusi);
+        if (base64) {
+          try {
             const imgId = workbook.addImage({ base64, extension: 'jpeg' });
             worksheet.addImage(imgId, {
               tl: { col: 8, row: row.number - 1 },
               ext: { width: 220, height: 130 }
             });
-          }
-        } catch (e) {}
+          } catch (e) {}
+        }
       }
     }
 
@@ -152,7 +156,7 @@ export const ReportService = {
   },
 
   /**
-   * Logika Pembuatan Sheet 2: Rekap Matrix (Matriks Kelainan)
+   * Sheet 2: Rekap Matrix Temuan
    */
   async addMatrixSheet(workbook: ExcelJS.Workbook, data: TemuanData[], findings: Keterangan[], filters: any) {
     const worksheet = workbook.addWorksheet('Rekap Matrix');
@@ -164,7 +168,7 @@ export const ReportService = {
       filters.bulan.toUpperCase()
     ];
 
-    const totalCols = 3 + findings.length;
+    const totalCols = 3 + (findings.length || 1);
     const lastColLetter = worksheet.getColumn(totalCols).letter;
 
     titleRows.forEach((text, i) => {
@@ -255,7 +259,7 @@ export const ReportService = {
       currentRowNum++;
     });
 
-    const footerRowNum = currentRowNum;
+    const footerRowNum = Math.max(8, currentRowNum);
     const footerRow = worksheet.getRow(footerRowNum);
     worksheet.mergeCells(`A${footerRowNum}:C${footerRowNum}`);
     footerRow.getCell(1).value = 'Jumlah';
@@ -266,7 +270,11 @@ export const ReportService = {
       const colIndex = 4 + fIdx;
       const colLetter = worksheet.getColumn(colIndex).letter;
       const cell = footerRow.getCell(colIndex);
-      cell.value = { formula: `SUM(${colLetter}8:${colLetter}${footerRowNum - 1})` };
+      if (footerRowNum > 8) {
+        cell.value = { formula: `SUM(${colLetter}8:${colLetter}${footerRowNum - 1})` };
+      } else {
+        cell.value = 0;
+      }
       cell.font = { bold: true };
       cell.alignment = { horizontal: 'center' };
     });
@@ -281,16 +289,12 @@ export const ReportService = {
   },
 
   /**
-   * Fungsi UTAMA: Download Excel Gabungan (2 Sheet)
+   * Utama: Download Excel Gabungan
    */
   async downloadCombinedExcel(data: TemuanData[], findings: Keterangan[], filters: any) {
     try {
       const workbook = new ExcelJS.Workbook();
-      
-      // Tambahkan Sheet 1
       await this.addDetailSheet(workbook, data, filters);
-      
-      // Tambahkan Sheet 2
       await this.addMatrixSheet(workbook, data, findings, filters);
 
       const buffer = await workbook.xlsx.writeBuffer();
@@ -304,7 +308,7 @@ export const ReportService = {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.error("Excel Generation Error:", err);
+      console.error("Kesalahan pembuatan Excel:", err);
       throw err;
     }
   },
