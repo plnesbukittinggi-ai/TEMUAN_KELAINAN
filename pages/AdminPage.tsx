@@ -1,7 +1,7 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { TemuanData, ULP, Inspector, Feeder, Pekerjaan } from '../types';
+import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fixed casing for import to match reportService.ts to resolve compilation error
 import { ReportService } from '../services/reportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
@@ -11,6 +11,7 @@ interface AdminPageProps {
   inspectors: Inspector[];
   feeders: Feeder[];
   pekerjaanList: Pekerjaan[];
+  keteranganList: Keterangan[];
   onBack: () => void;
   onUpdateInspectors: (data: Inspector[]) => void;
   onUpdateUlp: (data: ULP[]) => void;
@@ -25,7 +26,7 @@ const MONTHS = [
 ];
 
 const AdminPage: React.FC<AdminPageProps> = ({ 
-  data, ulpList, inspectors, feeders, pekerjaanList, onBack,
+  data, ulpList, inspectors, feeders, pekerjaanList, keteranganList, onBack,
   onUpdateInspectors, onUpdateUlp, onUpdateFeeders
 }) => {
   const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP'>('DASHBOARD');
@@ -178,20 +179,26 @@ const AdminPage: React.FC<AdminPageProps> = ({
     return filtered.sort((a, b) => parseIndoDate(b.tanggal).getTime() - parseIndoDate(a.tanggal).getTime());
   }, [data, filterFeeder, filterPekerjaan, filterStartDate, filterEndDate]);
 
-  const handleDownloadExcel = async () => {
+  /**
+   * Combined handler for both Detail and Matrix reports
+   */
+  const handleDownloadCombined = async () => {
     if (filteredAndSortedData.length === 0) {
       alert("Tidak ada data untuk diunduh sesuai filter terpilih.");
+      return;
+    }
+
+    if (!filterPekerjaan) {
+      alert("Mohon pilih Pekerjaan terlebih dahulu untuk menghasilkan Rekap Matrix.");
       return;
     }
     
     setIsExporting(true);
     try {
-      // Sorting Ascending khusus untuk Excel (Tanggal Terkecil ke Terbesar)
       const sortedForExport = [...filteredAndSortedData].sort((a, b) => 
         parseIndoDate(a.tanggal).getTime() - parseIndoDate(b.tanggal).getTime()
       );
 
-      // Mendapatkan label bulan dari filter Dashboard
       const selectedMonthLabel = MONTHS.find(m => m.val === dashFilterMonth)?.label || '';
       const displayMonth = filterStartDate && filterEndDate 
         ? `${filterStartDate} s/d ${filterEndDate}` 
@@ -204,9 +211,18 @@ const AdminPage: React.FC<AdminPageProps> = ({
         inspektor1: sortedForExport[0]?.inspektor1 || '-',
         inspektor2: sortedForExport[0]?.inspektor2 || '-'
       };
+
+      // Findings logic for Matrix Sheet
+      const normalizedTargetPek = filterPekerjaan.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const jobFindings = keteranganList.filter(k => {
+        const currentPekId = String(k.idPekerjaan || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const jobMatch = pekerjaanList.find(p => p.name === filterPekerjaan);
+        return currentPekId === normalizedTargetPek || (jobMatch && currentPekId === jobMatch.id.toLowerCase());
+      });
       
-      await ReportService.downloadExcel(sortedForExport, filters);
+      await ReportService.downloadCombinedExcel(sortedForExport, jobFindings, filters);
     } catch (error) {
+      console.error(error);
       alert("Gagal mengunduh file Excel.");
     } finally {
       setIsExporting(false);
@@ -234,26 +250,14 @@ const AdminPage: React.FC<AdminPageProps> = ({
     if (!window.confirm(`Yakin ingin menghapus "${item.name}"?`)) return;
 
     let updatedList: any[] = [];
-    let action = '';
-    
-    if (subTab === 'INSPEKTOR') {
-      updatedList = inspectors.filter(i => i.id !== item.id);
-      action = 'updateInspectors';
-    } else if (subTab === 'ULP') {
-      updatedList = ulpList.filter(u => u.id !== item.id);
-      action = 'updateULP';
-    } else {
-      updatedList = feeders.filter(f => f.id !== item.id);
-      action = 'updateFeeders';
-    }
+    if (subTab === 'INSPEKTOR') updatedList = inspectors.filter(i => i.id !== item.id);
+    else if (subTab === 'ULP') updatedList = ulpList.filter(u => u.id !== item.id);
+    else updatedList = feeders.filter(f => f.id !== item.id);
 
     try {
-      // In real scenario, we'd call SpreadsheetService.updateMasterData(action, updatedList)
-      // For now, we update parent state
       if (subTab === 'INSPEKTOR') onUpdateInspectors(updatedList);
       else if (subTab === 'ULP') onUpdateUlp(updatedList);
       else onUpdateFeeders(updatedList);
-      
       alert('Data berhasil dihapus.');
     } catch (e) {
       alert('Gagal menghapus data.');
@@ -268,28 +272,18 @@ const AdminPage: React.FC<AdminPageProps> = ({
     try {
       let updatedList: any[] = [];
       if (subTab === 'INSPEKTOR') {
-        if (modalMode === 'ADD') {
-          updatedList = [...inspectors, { id: `INS-${Date.now()}`, name: formData.name }];
-        } else {
-          updatedList = inspectors.map(i => i.id === editingItem.id ? { ...i, name: formData.name } : i);
-        }
+        if (modalMode === 'ADD') updatedList = [...inspectors, { id: `INS-${Date.now()}`, name: formData.name }];
+        else updatedList = inspectors.map(i => i.id === editingItem.id ? { ...i, name: formData.name } : i);
         onUpdateInspectors(updatedList);
       } else if (subTab === 'ULP') {
-        if (modalMode === 'ADD') {
-          updatedList = [...ulpList, { id: `ULP-${Date.now()}`, name: formData.name }];
-        } else {
-          updatedList = ulpList.map(u => u.id === editingItem.id ? { ...u, name: formData.name } : u);
-        }
+        if (modalMode === 'ADD') updatedList = [...ulpList, { id: `ULP-${Date.now()}`, name: formData.name }];
+        else updatedList = ulpList.map(u => u.id === editingItem.id ? { ...u, name: formData.name } : u);
         onUpdateUlp(updatedList);
       } else if (subTab === 'FEEDER') {
-        if (modalMode === 'ADD') {
-          updatedList = [...feeders, { id: `F-${Date.now()}`, name: formData.name, ulpId: formData.ulpId }];
-        } else {
-          updatedList = feeders.map(f => f.id === editingItem.id ? { ...f, name: formData.name, ulpId: formData.ulpId } : f);
-        }
+        if (modalMode === 'ADD') updatedList = [...feeders, { id: `F-${Date.now()}`, name: formData.name, ulpId: formData.ulpId }];
+        else updatedList = feeders.map(f => f.id === editingItem.id ? { ...f, name: formData.name, ulpId: formData.ulpId } : f);
         onUpdateFeeders(updatedList);
       }
-
       setIsModalOpen(false);
       alert(`Berhasil ${modalMode === 'ADD' ? 'menambah' : 'mengubah'} data.`);
     } catch (e) {
@@ -322,7 +316,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
       {tab === 'DASHBOARD' && (
         <div className="space-y-6 animate-fade-in">
-          {/* Dashboard contents... */}
           <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Periode Analitik</p>
             <div className="grid grid-cols-2 gap-3 mb-4">
@@ -394,7 +387,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
       {tab === 'REKAP' && (
         <div className="space-y-6 animate-fade-in">
-          {/* Recap contents... */}
           <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Saring Tanggal Rekap</p>
             <div className="grid grid-cols-2 gap-3">
@@ -451,7 +443,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
       {tab === 'DATA' && (
         <div className="space-y-6 animate-fade-in">
-          {/* Data contents... */}
           <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <select className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" value={filterFeeder} onChange={(e) => setFilterFeeder(e.target.value)}>
@@ -485,14 +476,17 @@ const AdminPage: React.FC<AdminPageProps> = ({
               </div>
             </div>
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-col gap-2 pt-2">
               <button 
-                onClick={handleDownloadExcel} 
+                onClick={handleDownloadCombined} 
                 disabled={isExporting} 
-                className="flex-1 py-4 rounded-xl font-bold text-[10px] uppercase tracking-[0.2em] bg-emerald-600 text-white shadow-lg active:scale-95 transition-all disabled:opacity-50"
+                className="w-full py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.25em] bg-slate-900 text-white shadow-2xl shadow-slate-200 active:scale-95 transition-all disabled:opacity-50"
               >
-                {isExporting ? 'Mengekspor...' : '📥 Download Excel'}
+                {isExporting ? '⏳ Mengekspor Laporan...' : '📥 Download Laporan (2 Sheet)'}
               </button>
+              <p className="text-[9px] text-slate-400 text-center font-bold uppercase tracking-wider italic">
+                * Menghasilkan File Excel berisi Sheet Detail dan Sheet Rekap Matrix
+              </p>
             </div>
           </div>
 
