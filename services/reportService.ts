@@ -63,7 +63,6 @@ export const ReportService = {
     worksheet.addRow(['BULAN', `: ${filters.bulan || '-'}`]);
     worksheet.addRow([]);
 
-    // Header updated: KET -> STATUS
     const headerRow = worksheet.addRow([
       'NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEBELUM', 'FOTO SESUDAH', 'KETERANGAN', 'SARAN'
     ]);
@@ -89,10 +88,12 @@ export const ReportService = {
     for (let i = 0; i < data.length; i++) {
       const item = data[i];
       
-      // Detailed status logic formatting
+      // Bersihkan tanggal eksekusi dari komponen waktu (Time)
+      const cleanEksekusiDate = item.tanggalEksekusi ? item.tanggalEksekusi.split(',')[0] : '-';
+      
       let displayStatus: string = item.status;
       if (item.status === 'SUDAH EKSEKUSI') {
-        displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${item.tanggalEksekusi || '-'}`;
+        displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${cleanEksekusiDate}`;
       }
 
       const row = worksheet.addRow([
@@ -106,7 +107,7 @@ export const ReportService = {
         "",
         "",
         item.keterangan,
-        displayStatus
+        displayStatus 
       ]);
       row.height = 100;
       row.eachCell((cell) => {
@@ -176,7 +177,7 @@ export const ReportService = {
     const body = data.map((item, i) => {
       let displayStatus: string = item.status;
       if (item.status === 'SUDAH EKSEKUSI') {
-        displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${item.tanggalEksekusi || '-'}`;
+        displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${item.tanggalEksekusi ? item.tanggalEksekusi.split(',')[0] : '-'}`;
       }
       return [
         i + 1,
@@ -195,7 +196,7 @@ export const ReportService = {
 
     autoTable(doc, {
       startY: 48,
-      head: [['NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEB', 'FOTO SES', 'KETERANGAN', 'SARAN']],
+      head: [['NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEB', 'FOTO SES', 'STATUS', 'SARAN']],
       body: body,
       theme: 'grid',
       headStyles: { fillColor: [40, 40, 40], fontSize: 7, halign: 'center' },
