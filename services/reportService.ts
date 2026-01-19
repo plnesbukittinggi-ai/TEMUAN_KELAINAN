@@ -1,3 +1,4 @@
+
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -269,7 +270,6 @@ export const ReportService = {
     }
 
     // --- TANDA TANGAN (SIGNATURE BLOCK) ---
-    // Start at column I (9) and J (10)
     const startSignRow = worksheet.lastRow.number + 2;
     const signData = [
       ['DILAKSANAKAN', filters.bulan || '-'],
@@ -284,10 +284,9 @@ export const ReportService = {
       row.getCell(9).value = rowData[0];
       row.getCell(10).value = rowData[1];
       
-      // Styling
       [9, 10].forEach(colIdx => {
         const cell = row.getCell(colIdx);
-        cell.font = { size: 9, bold: idx !== 3 && colIdx === 9 }; // Bold headers except the empty row for Inspector 2
+        cell.font = { size: 9, bold: idx !== 3 && colIdx === 9 };
         cell.alignment = { horizontal: 'left', vertical: 'middle' };
         cell.border = {
           top: { style: 'thin' },
@@ -298,17 +297,24 @@ export const ReportService = {
       });
     });
 
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const safeFeeder = sanitizeFilename(filters.feeder || 'All');
-    const safePek = sanitizeFilename(filters.pekerjaan || 'PLN');
-    const safeBulan = sanitizeFilename(filters.bulan || 'Export');
-    a.download = `Laporan_${safeFeeder}_${safePek}_${safeBulan}.xlsx`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+    try {
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeFeeder = sanitizeFilename(filters.feeder || 'All');
+      const safePek = sanitizeFilename(filters.pekerjaan || 'PLN');
+      const safeBulan = sanitizeFilename(filters.bulan || 'Export');
+      a.download = `Laporan_${safeFeeder}_${safePek}_${safeBulan}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Excel generation error:", err);
+      throw err;
+    }
   },
 
   async downloadPDF(data: TemuanData[], filters: any) {
