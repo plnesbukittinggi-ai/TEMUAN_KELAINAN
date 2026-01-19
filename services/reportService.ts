@@ -1,12 +1,11 @@
 
-// Fixed: Consolidated ReportService to handle all export types and resolved naming casing conflict.
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { TemuanData, Keterangan } from '../types';
 
 /**
- * Utility to format Google Drive URLs for direct image access.
+ * Utilitas untuk memformat URL Google Drive agar bisa diakses langsung sebagai gambar.
  */
 const formatDriveUrl = (url?: string) => {
   if (!url) return '';
@@ -19,20 +18,26 @@ const formatDriveUrl = (url?: string) => {
 };
 
 /**
- * Utility to convert image URL or base64 to base64 for PDF/Excel inclusion.
+ * Utilitas untuk mengonversi URL gambar menjadi base64.
+ * Menggunakan try-catch internal agar kegagalan satu gambar tidak merusak seluruh laporan.
  */
 const getBase64FromUrl = async (url: string): Promise<string> => {
-  if (url.indexOf('data:image') === 0) return url;
+  if (!url) return "";
+  const finalUrl = formatDriveUrl(url);
+  if (finalUrl.indexOf('data:image') === 0) return finalUrl;
+
   try {
-    const res = await fetch(url);
+    const res = await fetch(finalUrl, { cache: 'no-cache' });
     if (!res.ok) return "";
     const blob = await res.blob();
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve("");
       reader.readAsDataURL(blob);
     });
   } catch (e) {
+    console.warn("Gagal mengambil gambar:", finalUrl, e);
     return "";
   }
 };
@@ -90,7 +95,6 @@ export const ReportService = {
     for (let i = 0; i < data.length; i++) {
       const item = data[i];
       const cleanEksekusiDate = item.tanggalEksekusi ? item.tanggalEksekusi.split(',')[0] : '-';
-      // Fixed: Explicitly type displayStatus as string to allow custom messages without union type conflicts.
       let displayStatus: string = item.status;
       if (item.status === 'SUDAH EKSEKUSI') {
         displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${cleanEksekusiDate}`;
@@ -117,30 +121,30 @@ export const ReportService = {
 
       // Foto Temuan
       if (item.fotoTemuan) {
-        try {
-          const base64 = await getBase64FromUrl(formatDriveUrl(item.fotoTemuan));
-          if (base64) {
+        const base64 = await getBase64FromUrl(item.fotoTemuan);
+        if (base64) {
+          try {
             const imgId = workbook.addImage({ base64, extension: 'jpeg' });
             worksheet.addImage(imgId, {
               tl: { col: 7, row: row.number - 1 },
               ext: { width: 220, height: 130 }
             });
-          }
-        } catch (e) { console.warn("Gagal render foto temuan", e); }
+          } catch (e) {}
+        }
       }
 
       // Foto Eksekusi
       if (item.fotoEksekusi) {
-        try {
-          const base64 = await getBase64FromUrl(formatDriveUrl(item.fotoEksekusi));
-          if (base64) {
+        const base64 = await getBase64FromUrl(item.fotoEksekusi);
+        if (base64) {
+          try {
             const imgId = workbook.addImage({ base64, extension: 'jpeg' });
             worksheet.addImage(imgId, {
               tl: { col: 8, row: row.number - 1 },
               ext: { width: 220, height: 130 }
             });
-          }
-        } catch (e) { console.warn("Gagal render foto eksekusi", e); }
+          } catch (e) {}
+        }
       }
     }
 
@@ -165,7 +169,7 @@ export const ReportService = {
       filters.bulan.toUpperCase()
     ];
 
-    const totalCols = 3 + findings.length;
+    const totalCols = 3 + (findings.length || 1);
     const lastColLetter = worksheet.getColumn(totalCols).letter;
 
     titleRows.forEach((text, i) => {
@@ -177,9 +181,8 @@ export const ReportService = {
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
     });
 
-    worksheet.addRow([]); // Row 5 Spacer
+    worksheet.addRow([]);
 
-    // Header Tabel (Row 6)
     const row6 = worksheet.getRow(6);
     row6.getCell(1).value = 'NO';
     row6.getCell(2).value = 'NAMA PENYULANG';
@@ -196,7 +199,6 @@ export const ReportService = {
       jtCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F2F2' } };
     }
 
-    // Row 7: Vertical Finding Text
     const row7 = worksheet.getRow(7);
     row7.height = 180;
     
@@ -218,7 +220,6 @@ export const ReportService = {
       worksheet.getColumn(colIndex).width = 4.5;
     });
 
-    // Grouping Data per Penyulang & Regu
     const groupedRows: Record<string, { feeder: string, regu: string, counts: Record<string, number> }> = {};
 
     data.forEach(item => {
@@ -259,8 +260,7 @@ export const ReportService = {
       currentRowNum++;
     });
 
-    // Row Jumlah (Footer)
-    const footerRowNum = currentRowNum;
+    const footerRowNum = Math.max(8, currentRowNum);
     const footerRow = worksheet.getRow(footerRowNum);
     worksheet.mergeCells(`A${footerRowNum}:C${footerRowNum}`);
     footerRow.getCell(1).value = 'Jumlah';
@@ -271,7 +271,11 @@ export const ReportService = {
       const colIndex = 4 + fIdx;
       const colLetter = worksheet.getColumn(colIndex).letter;
       const cell = footerRow.getCell(colIndex);
-      cell.value = { formula: `SUM(${colLetter}8:${colLetter}${footerRowNum - 1})` };
+      if (footerRowNum > 8) {
+        cell.value = { formula: `SUM(${colLetter}8:${colLetter}${footerRowNum - 1})` };
+      } else {
+        cell.value = 0;
+      }
       cell.font = { bold: true };
       cell.alignment = { horizontal: 'center' };
     });
@@ -286,23 +290,28 @@ export const ReportService = {
   },
 
   /**
-   * Utama: Download Excel dengan 2 Sheet
+   * Utama: Download Excel Gabungan
    */
   async downloadCombinedExcel(data: TemuanData[], findings: Keterangan[], filters: any) {
-    const workbook = new ExcelJS.Workbook();
-    await this.addDetailSheet(workbook, data, filters);
-    await this.addMatrixSheet(workbook, data, findings, filters);
+    try {
+      const workbook = new ExcelJS.Workbook();
+      await this.addDetailSheet(workbook, data, filters);
+      await this.addMatrixSheet(workbook, data, findings, filters);
 
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Laporan_Temuan_PLN_${filters.pekerjaan}_${filters.bulan}.xlsx`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Laporan_Gabungan_${filters.pekerjaan}_${new Date().getTime()}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Kesalahan pembuatan Excel:", err);
+      throw err;
+    }
   },
 
   /**
@@ -320,7 +329,6 @@ export const ReportService = {
     doc.text(`BULAN       : ${filters.bulan}`, 15, 43);
 
     const body = data.map((item, i) => {
-      // Fixed: Explicitly type displayStatus as string to resolve union type assignment errors.
       let displayStatus: string = item.status;
       if (item.status === 'SUDAH EKSEKUSI') {
         displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${item.tanggalEksekusi ? item.tanggalEksekusi.split(',')[0] : '-'}`;
