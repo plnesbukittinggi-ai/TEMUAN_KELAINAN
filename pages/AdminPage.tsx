@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fix: Use correct casing for import to match ReportService.ts
-import { ReportService } from '../services/ReportService';
+// Fixed casing for import to match reportService.ts to resolve compilation error
+import { ReportService } from '../services/reportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
 interface AdminPageProps {
@@ -187,14 +187,26 @@ const AdminPage: React.FC<AdminPageProps> = ({
     
     setIsExporting(true);
     try {
+      // Sorting Ascending khusus untuk Excel (Tanggal Terkecil ke Terbesar)
+      const sortedForExport = [...filteredAndSortedData].sort((a, b) => 
+        parseIndoDate(a.tanggal).getTime() - parseIndoDate(b.tanggal).getTime()
+      );
+
+      // Mendapatkan label bulan dari filter Dashboard
+      const selectedMonthLabel = MONTHS.find(m => m.val === dashFilterMonth)?.label || '';
+      const displayMonth = filterStartDate && filterEndDate 
+        ? `${filterStartDate} s/d ${filterEndDate}` 
+        : `${selectedMonthLabel} ${dashFilterYear}`.toUpperCase();
+
       const filters = {
         feeder: filterFeeder || 'SEMUA FEEDER',
         pekerjaan: filterPekerjaan || 'SEMUA PEKERJAAN',
-        bulan: filterStartDate && filterEndDate ? `${filterStartDate} s/d ${filterEndDate}` : 'Rekap Data',
-        inspektor1: filteredAndSortedData[0]?.inspektor1 || '-',
-        inspektor2: filteredAndSortedData[0]?.inspektor2 || '-'
+        bulan: displayMonth,
+        inspektor1: sortedForExport[0]?.inspektor1 || '-',
+        inspektor2: sortedForExport[0]?.inspektor2 || '-'
       };
-      await ReportService.downloadExcel(filteredAndSortedData, filters);
+      
+      await ReportService.downloadExcel(sortedForExport, filters);
     } catch (error) {
       alert("Gagal mengunduh file Excel.");
     } finally {
@@ -606,7 +618,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
       {/* Management Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
-           <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up">
+           <div className="bg-white w-full max-sm rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up">
               <div className="p-8">
                  <div className="flex justify-between items-center mb-6">
                     <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
