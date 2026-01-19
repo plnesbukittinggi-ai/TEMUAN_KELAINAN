@@ -1,7 +1,9 @@
+
+// Fixed: Consolidated ReportService to handle all export types and resolved naming casing conflict.
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { TemuanData } from '../types';
+import { TemuanData, Keterangan } from '../types';
 
 /**
  * Utility to format Google Drive URLs for direct image access.
@@ -36,11 +38,10 @@ const getBase64FromUrl = async (url: string): Promise<string> => {
 
 export const ReportService = {
   /**
-   * Generates and downloads an Excel report containing inspection details and photos.
+   * Helper to add the Detail Sheet to a workbook
    */
-  async downloadExcel(data: TemuanData[], filters: any) {
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Laporan');
+  async addDetailSheet(workbook: ExcelJS.Workbook, data: TemuanData[], filters: any) {
+    const worksheet = workbook.addWorksheet('Laporan Detail');
 
     worksheet.mergeCells('A1:K1');
     worksheet.getCell('A1').value = 'LAPORAN BULANAN';
@@ -81,15 +82,12 @@ export const ReportService = {
     worksheet.getColumn(7).width = 25;
     worksheet.getColumn(8).width = 30;
     worksheet.getColumn(9).width = 30;
-    worksheet.getColumn(10).width = 25; // Wider for detailed status
+    worksheet.getColumn(10).width = 25;
     worksheet.getColumn(11).width = 45;
 
     for (let i = 0; i < data.length; i++) {
       const item = data[i];
-      
-      // Bersihkan tanggal eksekusi dari komponen waktu (Time)
       const cleanEksekusiDate = item.tanggalEksekusi ? item.tanggalEksekusi.split(',')[0] : '-';
-      
       let displayStatus: string = item.status;
       if (item.status === 'SUDAH EKSEKUSI') {
         displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${cleanEksekusiDate}`;
@@ -106,7 +104,7 @@ export const ReportService = {
         "",
         "",
         item.keterangan,
-        displayStatus
+        displayStatus 
       ]);
       row.height = 100;
       row.eachCell((cell) => {
@@ -147,7 +145,175 @@ export const ReportService = {
     worksheet.addRow(['', '', '', '', '', '', '', '', 'PETUGAS', `: ${filters.inspektor1 || '-'}`]);
     worksheet.addRow(['', '', '', '', '', '', '', '', '', `: ${filters.inspektor2 || '-'}`]);
     worksheet.addRow(['', '', '', '', '', '', '', '', 'ADMINSPEKSI', `: ENDANG WINARNINGSIH`]);
+  },
 
+  /**
+   * Helper to add the Matrix Sheet to a workbook
+   */
+  async addMatrixSheet(workbook: ExcelJS.Workbook, data: TemuanData[], findings: Keterangan[], filters: any) {
+    const worksheet = workbook.addWorksheet('Rekap Matrix');
+
+    const titleRows = [
+      `LAPORAN INSPEKSI BULANAN KELAINAN PADA ${filters.pekerjaan.toUpperCase()}`,
+      'PLN ELECTRICITY SERVICES UNIT LAYANAN BUKITTINGGI',
+      `REKAP LAPORAN ${filters.feeder.toUpperCase()}`,
+      filters.bulan.toUpperCase()
+    ];
+
+    const totalCols = 3 + findings.length;
+    const lastColLetter = worksheet.getColumn(totalCols).letter;
+
+    titleRows.forEach((text, i) => {
+      const rowNum = i + 1;
+      worksheet.mergeCells(`A${rowNum}:${lastColLetter}${rowNum}`);
+      const cell = worksheet.getCell(`A${rowNum}`);
+      cell.value = text;
+      cell.font = { bold: true, size: 11, name: 'Times New Roman' };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+
+    worksheet.addRow([]);
+
+    const row6 = worksheet.getRow(6);
+    row6.getCell(1).value = 'NO';
+    row6.getCell(2).value = 'NAMA PENYULANG';
+    row6.getCell(3).value = 'NAMA REGU';
+    
+    if (findings.length > 0) {
+      const startFindingCol = 4;
+      const endFindingCol = totalCols;
+      worksheet.mergeCells(6, startFindingCol, 6, endFindingCol);
+      const jenisTemuanCell = row6.getCell(startFindingCol);
+      jenisTemuanCell.value = 'JENIS TEMUAN';
+      jenisTemuanCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      jenisTemuanCell.font = { bold: true };
+      jenisTemuanCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F2F2' } };
+    }
+
+    const row7 = worksheet.getRow(7);
+    row7.height = 180;
+    
+    ['A', 'B', 'C'].forEach((col) => {
+      worksheet.mergeCells(`${col}6:${col}7`);
+      const cell = worksheet.getCell(`${col}6`);
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.font = { bold: true };
+      cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+    });
+
+    findings.forEach((finding, i) => {
+      const colIndex = 4 + i;
+      const cell = row7.getCell(colIndex);
+      cell.value = finding.text.toUpperCase();
+      cell.alignment = { textRotation: 90, vertical: 'middle', horizontal: 'center', wrapText: true };
+      cell.font = { bold: true, size: 8 };
+      cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+      worksheet.getColumn(colIndex).width = 4.5;
+    });
+
+    const groupedRows: Record<string, { feeder: string, regu: string, counts: Record<string, number> }> = {};
+
+    data.forEach(item => {
+      const reguName = [item.inspektor1, item.inspektor2].filter(Boolean).join(' & ');
+      const key = `${item.feeder}|${reguName}`;
+      if (!groupedRows[key]) {
+        groupedRows[key] = {
+          feeder: item.feeder,
+          regu: reguName,
+          counts: {}
+        };
+        findings.forEach(f => groupedRows[key].counts[f.text] = 0);
+      }
+      if (groupedRows[key].counts[item.keterangan] !== undefined) {
+        groupedRows[key].counts[item.keterangan]++;
+      }
+    });
+
+    let currentRowNum = 8;
+    Object.values(groupedRows).forEach((rowObj, idx) => {
+      const row = worksheet.getRow(currentRowNum);
+      row.getCell(1).value = idx + 1;
+      row.getCell(2).value = rowObj.feeder;
+      row.getCell(3).value = rowObj.regu;
+      
+      findings.forEach((f, fIdx) => {
+        const val = rowObj.counts[f.text];
+        const cell = row.getCell(4 + fIdx);
+        cell.value = val > 0 ? val : 0;
+        cell.alignment = { horizontal: 'center' };
+      });
+
+      for (let c = 1; c <= totalCols; c++) {
+        const cell = row.getCell(c);
+        cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+        cell.font = { size: 9 };
+      }
+      currentRowNum++;
+    });
+
+    const footerRowNum = currentRowNum;
+    const footerRow = worksheet.getRow(footerRowNum);
+    worksheet.mergeCells(`A${footerRowNum}:C${footerRowNum}`);
+    footerRow.getCell(1).value = 'Jumlah';
+    footerRow.getCell(1).font = { bold: true, italic: true };
+    footerRow.getCell(1).alignment = { horizontal: 'center' };
+
+    findings.forEach((f, fIdx) => {
+      const colIndex = 4 + fIdx;
+      const colLetter = worksheet.getColumn(colIndex).letter;
+      const cell = footerRow.getCell(colIndex);
+      cell.value = { formula: `SUM(${colLetter}8:${colLetter}${footerRowNum - 1})` };
+      cell.font = { bold: true };
+      cell.alignment = { horizontal: 'center' };
+    });
+
+    for (let c = 1; c <= totalCols; c++) {
+      footerRow.getCell(c).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+    }
+
+    worksheet.getColumn(1).width = 4;
+    worksheet.getColumn(2).width = 25;
+    worksheet.getColumn(3).width = 25;
+  },
+
+  /**
+   * Main method to download combined report (Detail + Matrix)
+   */
+  async downloadCombinedExcel(data: TemuanData[], findings: Keterangan[], filters: any) {
+    const workbook = new ExcelJS.Workbook();
+    await this.addDetailSheet(workbook, data, filters);
+    await this.addMatrixSheet(workbook, data, findings, filters);
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Laporan_Temuan_${filters.pekerjaan}_${filters.bulan}.xlsx`;
+    a.click();
+  },
+
+  /**
+   * Generates and downloads a specialized matrix-style Excel report.
+   */
+  async downloadRekapExcel(data: TemuanData[], findings: Keterangan[], filters: any) {
+    const workbook = new ExcelJS.Workbook();
+    await this.addMatrixSheet(workbook, data, findings, filters);
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Rekap_Matrix_${filters.pekerjaan}_${filters.bulan}.xlsx`;
+    a.click();
+  },
+
+  /**
+   * Generates and downloads an Excel report containing inspection details.
+   */
+  async downloadExcel(data: TemuanData[], filters: any) {
+    const workbook = new ExcelJS.Workbook();
+    await this.addDetailSheet(workbook, data, filters);
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = window.URL.createObjectURL(blob);
@@ -162,14 +328,12 @@ export const ReportService = {
    */
   async downloadPDF(data: TemuanData[], filters: any) {
     const doc = new jsPDF('l', 'mm', 'a4');
-    
     doc.setFontSize(14);
     doc.text('LAPORAN BULANAN', 148, 15, { align: 'center' });
     doc.setFontSize(12);
     doc.text(`FOTO INSPEKSI TEMUAN KELAINAN KONTRUKSI ${filters.pekerjaan || 'SEMUA'}`, 148, 22, { align: 'center' });
     doc.setFontSize(10);
     doc.text('TIM DIVISI INSPEKSI PLN ELECTRICITY SERVICES UL BUKITTINGGI', 148, 28, { align: 'center' });
-
     doc.text(`NAMA FEEDER : ${filters.feeder || 'SEMUA'}`, 15, 38);
     doc.text(`BULAN       : ${filters.bulan || '-'}`, 15, 43);
 
@@ -215,7 +379,6 @@ export const ReportService = {
     doc.text(`PETUGAS      : ${filters.inspektor1 || '-'}`, 220, finalY + 20);
     doc.text(`               ${filters.inspektor2 || '-'}`, 220, finalY + 25);
     doc.text(`ADMINSPEKSI  : ENDANG WINARNINGSIH`, 220, finalY + 30);
-
     doc.save(`Laporan_${filters.pekerjaan || 'PLN'}.pdf`);
   }
 };
