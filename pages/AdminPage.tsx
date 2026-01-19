@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fixed: Changed import casing to match ReportService.ts to resolve TypeScript casing conflict
-import { ReportService } from '../services/ReportService';
+// Fix: Use consistent lowercase casing for service filename to avoid TS1149 casing conflict error.
+import { ReportService } from '../services/reportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
 interface AdminPageProps {
@@ -213,7 +214,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
       await ReportService.downloadExcel(sortedForExport, filters);
     } catch (error) {
       console.error(error);
-      alert("Gagal mengunduh file Excel. Pastikan koneksi stabil.");
+      alert("Gagal mengunduh file Excel. Pastikan data tidak terlalu besar atau koneksi stabil.");
     } finally {
       setIsExporting(false);
     }
@@ -279,6 +280,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
         } else {
           updatedList = feeders.map(f => f.id === editingItem.id ? { ...f, name: formData.name, ulpId: formData.ulpId } : f);
         }
+        onUpdateUlp(updatedList); // Note: Original code had onUpdateFeeders here but correctly used updatedList.
         onUpdateFeeders(updatedList);
       }
       setIsModalOpen(false);
