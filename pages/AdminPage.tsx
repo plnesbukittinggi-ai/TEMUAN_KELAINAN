@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { TemuanData, ULP, Inspector, Feeder, Pekerjaan } from '../types';
+import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fixed casing for import to match reportService.ts to resolve compilation error
-import { ReportService } from '../services/reportService';
+// Fixed casing: Using 'ReportService' instead of 'reportService' to match file name and avoid casing conflict errors.
+import { ReportService } from '../services/ReportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
 interface AdminPageProps {
@@ -11,6 +12,7 @@ interface AdminPageProps {
   inspectors: Inspector[];
   feeders: Feeder[];
   pekerjaanList: Pekerjaan[];
+  keteranganList: Keterangan[];
   onBack: () => void;
   onUpdateInspectors: (data: Inspector[]) => void;
   onUpdateUlp: (data: ULP[]) => void;
@@ -25,7 +27,7 @@ const MONTHS = [
 ];
 
 const AdminPage: React.FC<AdminPageProps> = ({ 
-  data, ulpList, inspectors, feeders, pekerjaanList, onBack,
+  data, ulpList, inspectors, feeders, pekerjaanList, keteranganList, onBack,
   onUpdateInspectors, onUpdateUlp, onUpdateFeeders
 }) => {
   const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP'>('DASHBOARD');
@@ -186,12 +188,10 @@ const AdminPage: React.FC<AdminPageProps> = ({
     
     setIsExporting(true);
     try {
-      // Sorting Ascending khusus untuk Excel (Tanggal Terkecil ke Terbesar)
       const sortedForExport = [...filteredAndSortedData].sort((a, b) => 
         parseIndoDate(a.tanggal).getTime() - parseIndoDate(b.tanggal).getTime()
       );
 
-      // Mendapatkan label bulan dari filter Dashboard
       const selectedMonthLabel = MONTHS.find(m => m.val === dashFilterMonth)?.label || '';
       const displayMonth = filterStartDate && filterEndDate 
         ? `${filterStartDate} s/d ${filterEndDate}` 
@@ -208,6 +208,47 @@ const AdminPage: React.FC<AdminPageProps> = ({
       await ReportService.downloadExcel(sortedForExport, filters);
     } catch (error) {
       alert("Gagal mengunduh file Excel.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDownloadRekapMatrix = async () => {
+    if (filteredAndSortedData.length === 0) {
+      alert("Tidak ada data untuk diunduh. Saring data terlebih dahulu.");
+      return;
+    }
+    if (!filterPekerjaan) {
+      alert("Mohon pilih Pekerjaan terlebih dahulu untuk menghasilkan Rekap Matrix.");
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      // Filter the findings list based on the selected job
+      const normalizedTargetPek = filterPekerjaan.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const jobFindings = keteranganList.filter(k => {
+        const currentPekId = String(k.idPekerjaan || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        // Search by ID (constants) or by Name matching
+        const jobMatch = pekerjaanList.find(p => p.name === filterPekerjaan);
+        return currentPekId === normalizedTargetPek || (jobMatch && currentPekId === jobMatch.id.toLowerCase());
+      });
+
+      const selectedMonthLabel = MONTHS.find(m => m.val === dashFilterMonth)?.label || '';
+      const displayMonth = filterStartDate && filterEndDate 
+        ? `${filterStartDate} s/d ${filterEndDate}` 
+        : `${selectedMonthLabel} ${dashFilterYear}`.toUpperCase();
+
+      const filters = {
+        feeder: filterFeeder || 'SEMUA FEEDER',
+        pekerjaan: filterPekerjaan,
+        bulan: displayMonth
+      };
+
+      await ReportService.downloadRekapExcel(filteredAndSortedData, jobFindings, filters);
+    } catch (error) {
+      console.error(error);
+      alert("Gagal mengunduh Rekap Matrix.");
     } finally {
       setIsExporting(false);
     }
@@ -248,8 +289,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
     }
 
     try {
-      // In real scenario, we'd call SpreadsheetService.updateMasterData(action, updatedList)
-      // For now, we update parent state
       if (subTab === 'INSPEKTOR') onUpdateInspectors(updatedList);
       else if (subTab === 'ULP') onUpdateUlp(updatedList);
       else onUpdateFeeders(updatedList);
@@ -322,7 +361,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
       {tab === 'DASHBOARD' && (
         <div className="space-y-6 animate-fade-in">
-          {/* Dashboard contents... */}
           <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Periode Analitik</p>
             <div className="grid grid-cols-2 gap-3 mb-4">
@@ -394,7 +432,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
       {tab === 'REKAP' && (
         <div className="space-y-6 animate-fade-in">
-          {/* Recap contents... */}
           <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Saring Tanggal Rekap</p>
             <div className="grid grid-cols-2 gap-3">
@@ -451,7 +488,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
       {tab === 'DATA' && (
         <div className="space-y-6 animate-fade-in">
-          {/* Data contents... */}
           <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <select className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" value={filterFeeder} onChange={(e) => setFilterFeeder(e.target.value)}>
@@ -485,13 +521,20 @@ const AdminPage: React.FC<AdminPageProps> = ({
               </div>
             </div>
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-col gap-2 pt-2">
               <button 
                 onClick={handleDownloadExcel} 
                 disabled={isExporting} 
-                className="flex-1 py-4 rounded-xl font-bold text-[10px] uppercase tracking-[0.2em] bg-emerald-600 text-white shadow-lg active:scale-95 transition-all disabled:opacity-50"
+                className="w-full py-4 rounded-xl font-bold text-[10px] uppercase tracking-[0.2em] bg-indigo-600 text-white shadow-lg active:scale-95 transition-all disabled:opacity-50"
               >
-                {isExporting ? 'Mengekspor...' : '📥 Download Excel'}
+                {isExporting ? 'Mengekspor...' : '📥 Download Report (Detail)'}
+              </button>
+              <button 
+                onClick={handleDownloadRekapMatrix} 
+                disabled={isExporting} 
+                className="w-full py-4 rounded-xl font-bold text-[10px] uppercase tracking-[0.2em] bg-emerald-600 text-white shadow-lg active:scale-95 transition-all disabled:opacity-50"
+              >
+                {isExporting ? 'Mengekspor Rekap...' : '📥 Download Rekap (Matrix)'}
               </button>
             </div>
           </div>
