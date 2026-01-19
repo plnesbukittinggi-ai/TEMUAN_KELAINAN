@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fixed: Changed import casing to match 'ReportService.ts' and resolve compiler naming conflict error.
-import { ReportService } from '../services/ReportService';
+// Fixed: Changed import casing to match 'reportService.ts' and resolve compiler naming conflict error.
+import { ReportService } from '../services/reportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
 interface AdminPageProps {
@@ -13,7 +13,7 @@ interface AdminPageProps {
   feeders: Feeder[];
   pekerjaanList: Pekerjaan[];
   keteranganList?: Keterangan[];
-  onBack: () => void;
+  onBack: void;
   onUpdateInspectors: (data: Inspector[]) => void;
   onUpdateUlp: (data: ULP[]) => void;
   onUpdateFeeders: (data: Feeder[]) => void;
