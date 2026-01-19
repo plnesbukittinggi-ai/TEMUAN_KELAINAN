@@ -19,6 +19,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const [isCompressing, setIsCompressing] = useState(false);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>(''); // State baru untuk pencarian
   const [previewImage, setPreviewImage] = useState<{url: string, title: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -112,6 +113,14 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
 
   const filteredQueue = useMemo(() => {
     return data.filter(item => {
+      // Filter Pencarian No. Tiang (Dipastikan dikonversi ke String untuk menghindari error jika input adalah number)
+      const noTiangStr = String(item.noTiang || '');
+      const matchesSearch = !searchQuery || 
+        noTiangStr.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      if (!matchesSearch) return false;
+
+      // Filter Tanggal
       if (!startDate && !endDate) return true;
       try {
         const datePart = item.tanggal.split(',')[0].trim();
@@ -132,7 +141,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
         return true;
       } catch (e) { return true; }
     });
-  }, [data, startDate, endDate]);
+  }, [data, startDate, endDate, searchQuery]);
 
   return (
     <div className="pb-10">
@@ -145,11 +154,27 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       </div>
 
       {!initialData && (
-          <div className="bg-white p-5 rounded-3xl border border-slate-200 mb-6 shadow-sm">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Saring Tanggal Temuan</p>
-            <div className="grid grid-cols-2 gap-3">
-              <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-              <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          <div className="bg-white p-5 rounded-3xl border border-slate-200 mb-6 shadow-sm space-y-4">
+            <div>
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Cari No. Tiang</p>
+              <div className="relative">
+                <input 
+                  type="text" 
+                  className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:border-indigo-500 transition-all uppercase"
+                  placeholder="Ketik No. Tiang..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none">🔍</span>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-50">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Saring Tanggal Temuan</p>
+              <div className="grid grid-cols-2 gap-3">
+                <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              </div>
             </div>
           </div>
       )}
@@ -157,6 +182,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       {filteredQueue.length === 0 && !initialData ? (
         <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-slate-200">
           <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Tidak ada antrean</p>
+          {searchQuery && <p className="text-[10px] text-slate-400 mt-2">No. Tiang "{searchQuery}" tidak ditemukan</p>}
         </div>
       ) : (
         <div className="space-y-4">
