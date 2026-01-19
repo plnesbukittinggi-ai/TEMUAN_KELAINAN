@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-import { ReportService } from '../services/reportService';
+// Fixed: Changed import casing to match ReportService.ts to resolve TypeScript casing conflict
+import { ReportService } from '../services/ReportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
 interface AdminPageProps {
