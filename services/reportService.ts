@@ -35,7 +35,6 @@ const getBase64FromUrl = async (url: string): Promise<string> => {
   }
 };
 
-export const ReportService = {
  async downloadRekapExcel(
   data: TemuanData[],
   findings: Keterangan[],
