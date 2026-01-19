@@ -1,4 +1,3 @@
-
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -19,7 +18,7 @@ const formatDriveUrl = (url?: string) => {
 
 /**
  * Utility to convert image URL or base64 to base64 for PDF/Excel inclusion.
- * Added error handling to prevent the whole export from failing if one image fails.
+ * Robust handling to prevent the whole export from failing if one image fails.
  */
 const getBase64FromUrl = async (url: string): Promise<string> => {
   if (!url) return "";
@@ -80,9 +79,8 @@ export const ReportService = {
     titleRow4.getCell(1).font = { bold: true, size: 11 };
     titleRow4.getCell(1).alignment = { horizontal: 'center' };
 
-    rekapSheet.addRow([]); // Baris kosong
+    rekapSheet.addRow([]);
 
-    // Header Tabel Rekap
     const headerRow1 = rekapSheet.addRow(['NO', 'NAMA PENYULANG', 'NAMA REGU']);
     rekapSheet.mergeCells(6, 4, 6, totalCols);
     rekapSheet.getCell(6, 4).value = 'JENIS TEMUAN';
@@ -98,12 +96,10 @@ export const ReportService = {
     });
     const headerRow3 = rekapSheet.addRow(['', '', 'SATUAN', ...satuanMapping]);
 
-    // Merge vertikal untuk NO, NAMA PENYULANG, NAMA REGU
     [1, 2, 3].forEach(col => {
       rekapSheet.mergeCells(6, col, 8, col);
     });
 
-    // Styling Header Rekap
     [6, 7, 8].forEach(rowNum => {
       const row = rekapSheet.getRow(rowNum);
       row.eachCell(cell => {
@@ -121,7 +117,6 @@ export const ReportService = {
       rekapSheet.getColumn(4 + idx).width = 12;
     });
 
-    // Data Rekap per Feeder & Regu
     const feederReguGroups: Record<string, any> = {};
     data.forEach(item => {
       const key = `${item.feeder}|${item.inspektor1}|${item.inspektor2}`;
@@ -144,16 +139,10 @@ export const ReportService = {
         group.ins1,
         ...findingTypes.map((k: any) => group.counts[k.text] || 0)
       ]);
-      const r2 = rekapSheet.addRow([
-        '',
-        '',
-        group.ins2,
-        ...Array(findingTypes.length).fill('') 
-      ]);
+      const r2 = rekapSheet.addRow(['', '', group.ins2, ...Array(findingTypes.length).fill('')]);
 
       rekapSheet.mergeCells(r1.number, 1, r2.number, 1);
       rekapSheet.mergeCells(r1.number, 2, r2.number, 2);
-      
       findingTypes.forEach((_: any, fIdx: number) => {
         rekapSheet.mergeCells(r1.number, 4 + fIdx, r2.number, 4 + fIdx);
       });
@@ -168,7 +157,6 @@ export const ReportService = {
       rowCounter++;
     });
 
-    // Baris Jumlah (Grand Total)
     const grandTotals = findingTypes.map((k: any) => {
       return data.filter(d => d.keterangan === k.text).length;
     });
@@ -280,9 +268,9 @@ export const ReportService = {
       }
     }
 
-    // --- TANDA TANGAN (SIGNATURE BLOCK) PADA LAPORAN DETAIL ---
+    // --- TANDA TANGAN (SIGNATURE BLOCK) ---
     const startSignRow = worksheet.lastRow.number + 2;
-    const signTable = [
+    const signData = [
       ['DILAKSANAKAN', filters.bulan || '-'],
       ['JAM', ': 07.30 S/D 16.30 WIB'],
       ['PETUGAS', filters.inspektor1 || '-'],
@@ -290,18 +278,21 @@ export const ReportService = {
       ['ADM INSPEKSI', 'ENDANG WINARNINGSIH']
     ];
 
-    signTable.forEach((row, idx) => {
-      const r = worksheet.getRow(startSignRow + idx);
-      // Kolom I (9) dan J (10)
-      r.getCell(9).value = row[0];
-      r.getCell(10).value = row[1];
+    signData.forEach((rowData, idx) => {
+      const row = worksheet.getRow(startSignRow + idx);
+      row.getCell(9).value = rowData[0];
+      row.getCell(10).value = rowData[1];
       
-      // Styling Tanda Tangan
       [9, 10].forEach(colIdx => {
-        const cell = r.getCell(colIdx);
-        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-        cell.font = { size: 9, bold: colIdx === 9 };
+        const cell = row.getCell(colIdx);
+        cell.font = { size: 9, bold: idx !== 3 && colIdx === 9 };
         cell.alignment = { horizontal: 'left', vertical: 'middle' };
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
       });
     });
 
@@ -318,12 +309,8 @@ export const ReportService = {
     window.URL.revokeObjectURL(url);
   },
 
-  /**
-   * Generates and downloads a PDF report.
-   */
   async downloadPDF(data: TemuanData[], filters: any) {
     const doc = new jsPDF('l', 'mm', 'a4');
-    
     doc.setFontSize(14);
     doc.text('LAPORAN BULANAN', 148, 15, { align: 'center' });
     doc.setFontSize(12);
@@ -339,19 +326,7 @@ export const ReportService = {
       if (item.status === 'SUDAH EKSEKUSI') {
         displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${item.tanggalEksekusi ? item.tanggalEksekusi.split(',')[0] : '-'}`;
       }
-      return [
-        i + 1,
-        item.tanggal.split(',')[0],
-        item.noTiang,
-        item.noWO,
-        item.feeder,
-        item.lokasi || "-",
-        item.geotag || "-",
-        '',
-        '',
-        item.keterangan,
-        displayStatus
-      ];
+      return [i + 1, item.tanggal.split(',')[0], item.noTiang, item.noWO, item.feeder, item.lokasi || "-", item.geotag || "-", '', '', item.keterangan, displayStatus];
     });
 
     autoTable(doc, {
@@ -361,13 +336,7 @@ export const ReportService = {
       theme: 'grid',
       headStyles: { fillColor: [40, 40, 40], fontSize: 7, halign: 'center' },
       styles: { fontSize: 6, cellPadding: 1.5, minCellHeight: 25, valign: 'middle' },
-      columnStyles: {
-        5: { cellWidth: 30 },
-        6: { cellWidth: 20 },
-        7: { cellWidth: 25 },
-        8: { cellWidth: 25 },
-        9: { cellWidth: 40 }, 
-      }
+      columnStyles: { 5: { cellWidth: 30 }, 6: { cellWidth: 20 }, 7: { cellWidth: 25 }, 8: { cellWidth: 25 }, 9: { cellWidth: 40 } }
     });
 
     const finalY = (doc as any).lastAutoTable?.finalY || 150;
@@ -376,7 +345,6 @@ export const ReportService = {
     doc.text(`PETUGAS      : ${filters.inspektor1 || '-'}`, 220, finalY + 20);
     doc.text(`               ${filters.inspektor2 || '-'}`, 220, finalY + 25);
     doc.text(`ADMIN INSPEKSI : ENDANG WINARNINGSIH`, 220, finalY + 30);
-
     doc.save(`Laporan_${sanitizeFilename(filters.pekerjaan || 'PLN')}.pdf`);
   }
 };
