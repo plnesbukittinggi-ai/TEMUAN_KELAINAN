@@ -279,7 +279,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                     disabled={isSaving || isCompressing}
                     className={`py-4 rounded-xl shadow-lg uppercase text-[10px] font-bold ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-amber-500 text-white'}`}
                   >
-                    ⚡ PADAM
+                    ⚡ BUTUH PADAM
                   </button>
                 </div>
             </div>
