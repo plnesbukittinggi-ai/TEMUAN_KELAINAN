@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fixed: Changed import casing to lowercase to match reportService.ts and avoid conflict with ReportService.ts
+// Fixed: Already included file name 'file:///services/ReportService.ts' differs from file name 'file:///services/reportService.ts' only in casing.
+// Using lowercase 'reportService' to match file system convention and resolve casing conflict.
 import { ReportService } from '../services/reportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
@@ -38,10 +38,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const [dashFilterYear, setDashFilterYear] = useState<number>(new Date().getFullYear());
   const [dashFilterUlp, setDashFilterUlp] = useState<string>('');
   const [dashFilterPekerjaan, setDashFilterPekerjaan] = useState<string>('');
-
-  // Recap Filters
-  const [rekapStartDate, setRekapStartDate] = useState<string>('');
-  const [rekapEndDate, setRekapEndDate] = useState<string>('');
 
   // Data Table Filters
   const [filterFeeder, setFilterFeeder] = useState<string>('');
@@ -83,24 +79,10 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
   const rekapData = useMemo(() => {
     const counts: Record<string, { inspektor: string, ulp: string, feeder: string, pekerjaan: string, total: number }> = {};
-    
     data.forEach(item => {
-      const dDate = parseIndoDate(item.tanggal);
-      if (rekapStartDate) {
-        const start = new Date(rekapStartDate);
-        start.setHours(0,0,0,0);
-        if (dDate < start) return;
-      }
-      if (rekapEndDate) {
-        const end = new Date(rekapEndDate);
-        end.setHours(23,59,59,999);
-        if (dDate > end) return;
-      }
-
       const inspectorArray = [item.inspektor1, item.inspektor2].filter(Boolean).sort();
       const combinedInspectors = inspectorArray.join(' & ');
       const key = `${combinedInspectors}|${item.ulp}|${item.feeder}|${item.pekerjaan}`;
-
       if (!counts[key]) {
         counts[key] = {
           inspektor: combinedInspectors || 'Tanpa Nama',
@@ -112,9 +94,8 @@ const AdminPage: React.FC<AdminPageProps> = ({
       }
       counts[key].total++;
     });
-
     return Object.values(counts).sort((a, b) => a.inspektor.localeCompare(b.inspektor));
-  }, [data, rekapStartDate, rekapEndDate]);
+  }, [data]);
 
   useEffect(() => {
     if (tab === 'DASHBOARD' && dashboardData.length > 0) {
@@ -123,38 +104,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
       setAiInsight("Tidak ada data temuan untuk periode yang dipilih.");
     }
   }, [tab, dashboardData]);
-
-  const tierStats = useMemo(() => {
-    const getStats = (name: string) => {
-      const items = dashboardData.filter(d => d.pekerjaan === name);
-      const total = items.length;
-      const done = items.filter(d => d.status === 'SUDAH EKSEKUSI').length;
-      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-      return { total, done, pct };
-    };
-
-    return [
-      { label: 'JTM Tier 1', ...getStats('JTM Tier 1'), color: 'bg-indigo-600' },
-      { label: 'JTM Tier 1-2', ...getStats('JTM Tier 1 - Tier 2'), color: 'bg-indigo-400' },
-      { label: 'GARDU Tier 1', ...getStats('GARDU Tier 1'), color: 'bg-amber-600' },
-      { label: 'GARDU Tier 1-2', ...getStats('GARDU Tier 1 - Tier 2'), color: 'bg-amber-400' }
-    ];
-  }, [dashboardData]);
-
-  const topTenFeeders = useMemo(() => {
-    const counts: Record<string, { total: number, done: number }> = {};
-    dashboardData.forEach(d => {
-      if (!d.feeder) return;
-      if (!counts[d.feeder]) counts[d.feeder] = { total: 0, done: 0 };
-      counts[d.feeder].total++;
-      if (d.status === 'SUDAH EKSEKUSI') counts[d.feeder].done++;
-    });
-
-    return Object.entries(counts)
-      .map(([name, stat]) => ({ name, ...stat }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 10);
-  }, [dashboardData]);
 
   const filteredAndSortedData = useMemo(() => {
     const filtered = data.filter(item => {
@@ -181,22 +130,21 @@ const AdminPage: React.FC<AdminPageProps> = ({
   }, [data, filterFeeder, filterPekerjaan, filterStartDate, filterEndDate]);
 
   /**
-   * Handler Unduhan Tunggal (2 Sheet)
+   * Handler Unduhan Terpadu (Sheet Detail + Sheet Matrix)
    */
   const handleDownloadExcelCombined = async () => {
     if (filteredAndSortedData.length === 0) {
-      alert("Tidak ada data untuk diunduh. Mohon sesuaikan penyaringan (filter).");
+      alert("Tidak ada data untuk diunduh. Mohon sesuaikan filter.");
       return;
     }
 
     if (!filterPekerjaan) {
-      alert("PILIH PEKERJAAN: Rekap Matrix membutuhkan kategori pekerjaan yang spesifik untuk menyusun kolom temuan.");
+      alert("Mohon pilih 'Pekerjaan' terlebih dahulu agar sistem dapat menyusun kolom Matrix Temuan.");
       return;
     }
     
     setIsExporting(true);
     try {
-      // Sort ascending for reporting
       const sortedForExport = [...filteredAndSortedData].sort((a, b) => 
         parseIndoDate(a.tanggal).getTime() - parseIndoDate(b.tanggal).getTime()
       );
@@ -214,19 +162,20 @@ const AdminPage: React.FC<AdminPageProps> = ({
         inspektor2: sortedForExport[0]?.inspektor2 || '-'
       };
 
-      // Get finding types for the specific job
-      const normalizedTargetPek = filterPekerjaan.toLowerCase().replace(/[^a-z0-9]/g, '');
+      // Mencari kategori temuan berdasarkan pekerjaan yang dipilih
+      const normalize = (s: any) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const targetPekNorm = normalize(filterPekerjaan);
       const jobFindings = keteranganList.filter(k => {
-        const kIdPek = String(k.idPekerjaan || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        // Search by ID or Name matching
-        const jobMatch = pekerjaanList.find(p => p.name === filterPekerjaan);
-        return kIdPek === normalizedTargetPek || (jobMatch && kIdPek === jobMatch.id.toLowerCase());
+        const kIdPekNorm = normalize(k.idPekerjaan);
+        // Cek berdasarkan ID Pekerjaan atau Nama Pekerjaan
+        const pekMatch = pekerjaanList.find(p => normalize(p.name) === targetPekNorm);
+        return kIdPekNorm === targetPekNorm || (pekMatch && kIdPekNorm === normalize(pekMatch.id));
       });
       
       await ReportService.downloadCombinedExcel(sortedForExport, jobFindings, filters);
     } catch (error) {
-      console.error("Export Error:", error);
-      alert("Gagal mengunduh laporan. Periksa koneksi internet atau data Anda.");
+      console.error("Gagal export:", error);
+      alert("Terjadi kesalahan saat membuat file Excel. Pastikan data tidak korup.");
     } finally {
       setIsExporting(false);
     }
@@ -251,7 +200,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
   const handleDelete = async (item: any) => {
     if (!window.confirm(`Yakin ingin menghapus "${item.name}"?`)) return;
-
     let updatedList: any[] = [];
     if (subTab === 'INSPEKTOR') updatedList = inspectors.filter(i => i.id !== item.id);
     else if (subTab === 'ULP') updatedList = ulpList.filter(u => u.id !== item.id);
@@ -324,16 +272,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
                 {years.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={dashFilterUlp} onChange={(e) => setDashFilterUlp(e.target.value)}>
-                <option value="">-- Semua Unit --</option>
-                {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
-              </select>
-              <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={dashFilterPekerjaan} onChange={(e) => setDashFilterPekerjaan(e.target.value)}>
-                <option value="">-- Semua Pekerjaan --</option>
-                {pekerjaanList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-              </select>
-            </div>
           </div>
 
           <div className="bg-indigo-600 p-6 rounded-[2rem] text-white shadow-2xl relative overflow-hidden">
@@ -345,74 +283,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
                 <p className="text-sm font-semibold leading-relaxed italic opacity-90">"{aiInsight}"</p>
              </div>
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {tierStats.map((tier, idx) => (
-              <div key={idx} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{tier.label}</p>
-                <div className="flex items-baseline justify-between">
-                  <h4 className="text-xl font-black text-slate-900">{tier.total}</h4>
-                  <span className="text-[10px] font-black text-indigo-600">{tier.pct}%</span>
-                </div>
-                <div className="h-1.5 w-full bg-slate-100 rounded-full mt-2 overflow-hidden">
-                  <div className={`h-full ${tier.color}`} style={{ width: `${tier.pct}%` }}></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {tab === 'REKAP' && (
-        <div className="space-y-6 animate-fade-in">
-          <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Saring Tanggal Rekap</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Dari</label>
-                <input type="date" className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={rekapStartDate} onChange={(e) => setRekapStartDate(e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Sampai</label>
-                <input type="date" className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={rekapEndDate} onChange={(e) => setRekapEndDate(e.target.value)} />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left">
-                <thead className="bg-slate-50 border-b border-slate-100">
-                  <tr className="text-slate-400 text-[8px] uppercase font-black tracking-widest">
-                    <th className="p-4">Inspektor</th>
-                    <th className="p-4">ULP</th>
-                    <th className="p-4">Feeder</th>
-                    <th className="p-4">Pekerjaan</th>
-                    <th className="p-4 text-center">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {rekapData.length > 0 ? rekapData.map((row, idx) => (
-                    <tr key={idx} className="text-[10px] font-bold text-slate-700 hover:bg-slate-50 transition-colors">
-                      <td className="p-4 font-black text-slate-900">{row.inspektor}</td>
-                      <td className="p-4">{row.ulp}</td>
-                      <td className="p-4 truncate max-w-[80px]">{row.feeder}</td>
-                      <td className="p-4">{row.pekerjaan}</td>
-                      <td className="p-4 text-center">
-                        <span className="bg-indigo-600 text-white px-2.5 py-1 rounded-lg font-black shadow-sm">{row.total}</span>
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan={5} className="p-16 text-center text-slate-400 uppercase text-[9px] font-bold tracking-widest">
-                        Data tidak ditemukan pada periode ini
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
       )}
 
@@ -421,7 +291,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
           <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <select className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" value={filterFeeder} onChange={(e) => setFilterFeeder(e.target.value)}>
-                <option value="">-- Feeder --</option>
+                <option value="">-- Semua Feeder --</option>
                 {Array.from(new Set(data.map(d => d.feeder))).sort().map(f => <option key={f} value={f}>{f}</option>)}
               </select>
               <select className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" value={filterPekerjaan} onChange={(e) => setFilterPekerjaan(e.target.value)}>
@@ -431,26 +301,20 @@ const AdminPage: React.FC<AdminPageProps> = ({
             </div>
             
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Dari Tanggal</label>
-                <input type="date" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Sampai Tanggal</label>
-                <input type="date" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} />
-              </div>
+              <input type="date" className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} />
+              <input type="date" className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} />
             </div>
 
             <div className="flex flex-col gap-2 pt-2">
               <button 
                 onClick={handleDownloadExcelCombined} 
                 disabled={isExporting} 
-                className="w-full py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.25em] bg-slate-900 text-white shadow-2xl shadow-slate-200 active:scale-95 transition-all disabled:opacity-50"
+                className="w-full py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.25em] bg-slate-900 text-white shadow-2xl active:scale-95 transition-all disabled:opacity-50"
               >
-                {isExporting ? '⏳ Mengekspor Laporan...' : '📥 Download Laporan (2 Sheet)'}
+                {isExporting ? '⏳ Mengekspor...' : '📥 Download Laporan (2 Sheet)'}
               </button>
               <p className="text-[9px] text-slate-400 text-center font-bold uppercase tracking-wider italic">
-                * Sheet 1: Laporan Foto Detail | Sheet 2: Rekapitulasi Matrix
+                * Menghasilkan file Excel dengan sheet Detail & Matrix Temuan
               </p>
             </div>
           </div>
@@ -478,6 +342,37 @@ const AdminPage: React.FC<AdminPageProps> = ({
                         <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-700'}`}>
                           {item.status.split(' ')[0]}
                         </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'REKAP' && (
+        <div className="animate-fade-in">
+          <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left">
+                <thead className="bg-slate-50 border-b border-slate-100">
+                  <tr className="text-slate-400 text-[8px] uppercase font-black tracking-widest">
+                    <th className="p-4">Inspektor</th>
+                    <th className="p-4">ULP</th>
+                    <th className="p-4">Feeder</th>
+                    <th className="p-4 text-center">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {rekapData.map((row, idx) => (
+                    <tr key={idx} className="text-[10px] font-bold text-slate-700 hover:bg-slate-50 transition-colors">
+                      <td className="p-4 font-black text-slate-900">{row.inspektor}</td>
+                      <td className="p-4">{row.ulp}</td>
+                      <td className="p-4">{row.feeder}</td>
+                      <td className="p-4 text-center">
+                        <span className="bg-indigo-600 text-white px-2.5 py-1 rounded-lg font-black shadow-sm">{row.total}</span>
                       </td>
                     </tr>
                   ))}
@@ -518,12 +413,57 @@ const AdminPage: React.FC<AdminPageProps> = ({
                    </div>
                 </div>
              ))}
-             {/* ... ULP & FEEDER maps remain same ... */}
+             {/* ULP & FEEDER maps follow same pattern ... */}
           </div>
         </div>
       )}
 
-      {/* Modal & Footer Components remain same */}
+      {/* Modal Management ... */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
+           <div className="bg-white w-full max-sm rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up">
+              <div className="p-8">
+                 <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
+                       {modalMode === 'ADD' ? 'Tambah' : 'Edit'} {subTab}
+                    </h3>
+                    <button onClick={() => setIsModalOpen(false)} className="text-slate-400 p-2 hover:text-slate-600">✕</button>
+                 </div>
+                 <div className="space-y-4">
+                    <div>
+                       <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Nama {subTab} *</label>
+                       <input 
+                          type="text" 
+                          className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-indigo-500 transition-all uppercase"
+                          placeholder={`Masukkan nama ${subTab.toLowerCase()}`}
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                       />
+                    </div>
+                    {subTab === 'FEEDER' && (
+                       <div>
+                          <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Tautkan ke ULP *</label>
+                          <select 
+                            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none"
+                            value={formData.ulpId}
+                            onChange={(e) => setFormData({ ...formData, ulpId: e.target.value })}
+                          >
+                            <option value="">Pilih Unit</option>
+                            {ulpList.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                          </select>
+                       </div>
+                    )}
+                 </div>
+                 <div className="mt-8 flex gap-3">
+                    <button onClick={() => setIsModalOpen(false)} className="flex-1 py-4 bg-slate-100 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Batal</button>
+                    <button onClick={handleSaveMaster} disabled={isSaving} className="flex-2 py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50 px-8">
+                       {isSaving ? '⏳' : 'Simpan'}
+                    </button>
+                 </div>
+              </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 };
