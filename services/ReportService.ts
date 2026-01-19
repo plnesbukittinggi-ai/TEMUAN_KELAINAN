@@ -37,11 +37,141 @@ const getBase64FromUrl = async (url: string): Promise<string> => {
 
 export const ReportService = {
   /**
-   * Generates and downloads an Excel report containing inspection details and photos.
+   * Generates and downloads an Excel report containing inspection details and a summary sheet.
    */
   async downloadExcel(data: TemuanData[], filters: any) {
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Laporan');
+    
+    // --- SHEET 1: REKAP LAPORAN (Sesuai Gambar Permintaan) ---
+    const rekapSheet = workbook.addWorksheet('Rekap Laporan');
+    const findingTypes = filters.relevantKeterangan || []; 
+    const totalCols = 3 + findingTypes.length;
+
+    // Judul Rekap
+    const titleRow1 = rekapSheet.addRow([`LAPORAN INSPEKSI BULANAN KELAINAN PADA ${filters.pekerjaan.toUpperCase()}`]);
+    rekapSheet.mergeCells(1, 1, 1, totalCols);
+    titleRow1.getCell(1).font = { bold: true, size: 12 };
+    titleRow1.getCell(1).alignment = { horizontal: 'center' };
+
+    const titleRow2 = rekapSheet.addRow(['PT. HALEYORA POWER UNIT LAYANAN BUKITTINGGI']);
+    rekapSheet.mergeCells(2, 1, 2, totalCols);
+    titleRow2.getCell(1).font = { bold: true, size: 11 };
+    titleRow2.getCell(1).alignment = { horizontal: 'center' };
+
+    const titleRow3 = rekapSheet.addRow([`REKAP LAPORAN ${filters.feeder.toUpperCase()}`]);
+    rekapSheet.mergeCells(3, 1, 3, totalCols);
+    titleRow3.getCell(1).font = { bold: true, size: 11 };
+    titleRow3.getCell(1).alignment = { horizontal: 'center' };
+
+    const titleRow4 = rekapSheet.addRow([filters.bulan.toUpperCase()]);
+    rekapSheet.mergeCells(4, 1, 4, totalCols);
+    titleRow4.getCell(1).font = { bold: true, size: 11 };
+    titleRow4.getCell(1).alignment = { horizontal: 'center' };
+
+    rekapSheet.addRow([]); // Baris kosong
+
+    // Header Tabel Rekap (Multi-row header)
+    const headerRow1 = rekapSheet.addRow(['NO', 'NAMA PENYULANG', 'NAMA REGU']);
+    rekapSheet.mergeCells(6, 4, 6, totalCols);
+    rekapSheet.getCell(6, 4).value = 'JENIS TEMUAN';
+    
+    const findingNames = findingTypes.map((k: any) => k.text);
+    const headerRow2 = rekapSheet.addRow(['', '', '', ...findingNames]);
+
+    const satuanMapping = findingTypes.map((k: any) => {
+      const text = k.text.toLowerCase();
+      if (text.includes('pohon')) return '(BTG)';
+      if (text.includes('layangan') || text.includes('kawat')) return '(T)';
+      return '(BH)';
+    });
+    const headerRow3 = rekapSheet.addRow(['', '', 'SATUAN', ...satuanMapping]);
+
+    // Merge vertikal untuk NO, NAMA PENYULANG, NAMA REGU
+    [1, 2, 3].forEach(col => {
+      rekapSheet.mergeCells(6, col, 8, col);
+    });
+
+    // Styling Header
+    [6, 7, 8].forEach(rowNum => {
+      const row = rekapSheet.getRow(rowNum);
+      row.eachCell(cell => {
+        cell.font = { bold: true, size: 9 };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E0E0E0' } };
+      });
+    });
+
+    rekapSheet.getColumn(1).width = 5;
+    rekapSheet.getColumn(2).width = 25;
+    rekapSheet.getColumn(3).width = 25;
+    findingTypes.forEach((_: any, idx: number) => {
+      rekapSheet.getColumn(4 + idx).width = 12;
+    });
+
+    // Data Rekap per Feeder & Regu
+    const feederReguGroups: Record<string, any> = {};
+    data.forEach(item => {
+      const key = `${item.feeder}|${item.inspektor1}|${item.inspektor2}`;
+      if (!feederReguGroups[key]) {
+        feederReguGroups[key] = {
+          feeder: item.feeder,
+          ins1: item.inspektor1,
+          ins2: item.inspektor2,
+          counts: {}
+        };
+      }
+      feederReguGroups[key].counts[item.keterangan] = (feederReguGroups[key].counts[item.keterangan] || 0) + 1;
+    });
+
+    let rowCounter = 1;
+    Object.values(feederReguGroups).forEach((group: any) => {
+      const r1 = rekapSheet.addRow([
+        rowCounter,
+        group.feeder,
+        group.ins1,
+        ...findingTypes.map((k: any) => group.counts[k.text] || 0)
+      ]);
+      const r2 = rekapSheet.addRow([
+        '',
+        '',
+        group.ins2,
+        ...Array(findingTypes.length).fill('') 
+      ]);
+
+      rekapSheet.mergeCells(r1.number, 1, r2.number, 1); // No
+      rekapSheet.mergeCells(r1.number, 2, r2.number, 2); // Penyulang
+      
+      // Merge counts agar ditengah-tengah antara 2 baris inspektor
+      findingTypes.forEach((_: any, fIdx: number) => {
+        rekapSheet.mergeCells(r1.number, 4 + fIdx, r2.number, 4 + fIdx);
+      });
+
+      [r1, r2].forEach(row => {
+        row.eachCell(cell => {
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+          cell.font = { size: 9 };
+        });
+      });
+      rowCounter++;
+    });
+
+    // Baris Jumlah (Grand Total)
+    const grandTotals = findingTypes.map((k: any) => {
+      return data.filter(d => d.keterangan === k.text).length;
+    });
+    const totalRow = rekapSheet.addRow(['Jumlah', '', '', ...grandTotals]);
+    rekapSheet.mergeCells(totalRow.number, 1, totalRow.number, 3);
+    totalRow.eachCell(cell => {
+      cell.font = { bold: true, italic: true };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF99' } };
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    });
+
+    // --- SHEET 2: LAPORAN DETAIL (Existing) ---
+    const worksheet = workbook.addWorksheet('Laporan Detail');
 
     worksheet.mergeCells('A1:K1');
     worksheet.getCell('A1').value = 'LAPORAN BULANAN';
@@ -82,15 +212,12 @@ export const ReportService = {
     worksheet.getColumn(7).width = 25;
     worksheet.getColumn(8).width = 30;
     worksheet.getColumn(9).width = 30;
-    worksheet.getColumn(10).width = 25; // Wider for detailed status
+    worksheet.getColumn(10).width = 25; 
     worksheet.getColumn(11).width = 45;
 
     for (let i = 0; i < data.length; i++) {
       const item = data[i];
-      
-      // Bersihkan tanggal eksekusi dari komponen waktu (Time)
       const cleanEksekusiDate = item.tanggalEksekusi ? item.tanggalEksekusi.split(',')[0] : '-';
-      
       let displayStatus: string = item.status;
       if (item.status === 'SUDAH EKSEKUSI') {
         displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${cleanEksekusiDate}`;
@@ -107,7 +234,7 @@ export const ReportService = {
         "",
         "",
         item.keterangan,
-        displayStatus
+        displayStatus 
       ]);
       row.height = 100;
       row.eachCell((cell) => {
@@ -141,20 +268,19 @@ export const ReportService = {
         } catch (e) {}
       }
     }
-
     worksheet.addRow([]);
     worksheet.addRow(['', '', '', '', '', '', '', '', 'DILAKSANAKAN', `: ${filters.bulan || '-'}`]);
     worksheet.addRow(['', '', '', '', '', '', '', '', 'JAM', ': 07.30 S/D 17.00 WIB']);
     worksheet.addRow(['', '', '', '', '', '', '', '', 'PETUGAS', `: ${filters.inspektor1 || '-'}`]);
     worksheet.addRow(['', '', '', '', '', '', '', '', '', `: ${filters.inspektor2 || '-'}`]);
-    worksheet.addRow(['', '', '', '', '', '', '', '', 'ADMINSPEKSI', `: ENDANG WINARNINGSIH`]);
+    worksheet.addRow(['', '', '', '', '', '', '', '', 'ADMIN INSPEKSI', `: ENDANG WINARNINGSIH`]);
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Laporan_${filters.pekerjaan || 'PLN'}_${filters.bulan || 'Export'}.xlsx`;
+    a.download = `Laporan_${filters.feeder}_${filters.pekerjaan || 'PLN'}_${filters.bulan || 'Export'}.xlsx`;
     a.click();
   },
 
@@ -215,7 +341,7 @@ export const ReportService = {
     doc.text(`JAM          : 07.30 S/D 17.00 WIB`, 220, finalY + 15);
     doc.text(`PETUGAS      : ${filters.inspektor1 || '-'}`, 220, finalY + 20);
     doc.text(`               ${filters.inspektor2 || '-'}`, 220, finalY + 25);
-    doc.text(`ADMINSPEKSI  : ENDANG WINARNINGSIH`, 220, finalY + 30);
+    doc.text(`ADMIN INSPEKSI  : ENDANG WINARNINGSIH`, 220, finalY + 30);
 
     doc.save(`Laporan_${filters.pekerjaan || 'PLN'}.pdf`);
   }
