@@ -1,7 +1,8 @@
+
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { TemuanData } from '../types';
+import { TemuanData, Keterangan } from '../types';
 
 /**
  * Utility to format Google Drive URLs for direct image access.
@@ -35,6 +36,160 @@ const getBase64FromUrl = async (url: string): Promise<string> => {
 };
 
 export const ReportService = {
+  /**
+   * Generates and downloads the specialized matrix-style Excel report requested by the user.
+   */
+  async downloadRekapExcel(data: TemuanData[], findings: Keterangan[], filters: any) {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Rekap Temuan');
+
+    // 1. HEADER TITLES (Rows 1-4)
+    const titleRows = [
+      `LAPORAN INSPEKSI BULANAN KELAINAN PADA ${filters.pekerjaan.toUpperCase()}`,
+      'PLN ELECTRICITY SERVICES UNIT LAYANAN BUKITTINGGI',
+      `REKAP LAPORAN ${filters.feeder.toUpperCase()}`,
+      filters.bulan.toUpperCase()
+    ];
+
+    const totalCols = 3 + findings.length;
+    const lastColLetter = worksheet.getColumn(totalCols).letter;
+
+    titleRows.forEach((text, i) => {
+      const rowNum = i + 1;
+      worksheet.mergeCells(`A${rowNum}:${lastColLetter}${rowNum}`);
+      const cell = worksheet.getCell(`A${rowNum}`);
+      cell.value = text;
+      cell.font = { bold: true, size: 11, name: 'Times New Roman' };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+
+    worksheet.addRow([]); // Spacer row 5
+
+    // 2. TABLE HEADERS (Starting from Row 6)
+    // Row 6: Main Category Header
+    const row6 = worksheet.getRow(6);
+    row6.getCell(1).value = 'NO';
+    row6.getCell(2).value = 'NAMA PENYULANG';
+    row6.getCell(3).value = 'NAMA REGU';
+    
+    // Merge "JENIS TEMUAN" across all finding columns
+    if (findings.length > 0) {
+      const startFindingCol = 4;
+      const endFindingCol = totalCols;
+      worksheet.mergeCells(6, startFindingCol, 6, endFindingCol);
+      const jenisTemuanCell = row6.getCell(startFindingCol);
+      jenisTemuanCell.value = 'JENIS TEMUAN';
+      jenisTemuanCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      jenisTemuanCell.font = { bold: true };
+      jenisTemuanCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E0E0E0' } };
+    }
+
+    // Row 7: The actual finding names (Vertical Text)
+    const row7 = worksheet.getRow(7);
+    row7.height = 180; // Large height for vertical text
+    
+    // Merge fixed headers vertically across row 6 and 7
+    ['A', 'B', 'C'].forEach(col => {
+      worksheet.mergeCells(`${col}6:${col}7`);
+      const cell = worksheet.getCell(`${col}6`);
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.font = { bold: true };
+      cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+    });
+
+    // Fill vertical findings
+    findings.forEach((finding, i) => {
+      const colIndex = 4 + i;
+      const cell = row7.getCell(colIndex);
+      cell.value = finding.text.toUpperCase();
+      cell.alignment = { textRotation: 90, vertical: 'middle', horizontal: 'center', wrapText: true };
+      cell.font = { bold: true, size: 8 };
+      cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+      worksheet.getColumn(colIndex).width = 4; // Slim columns for matrix
+    });
+
+    // 3. DATA ROWS
+    // Grouping logic: We need to show data by Feeder and Inspector Teams
+    const groupedRows: Record<string, { feeder: string, regu: string, counts: Record<string, number> }> = {};
+
+    data.forEach(item => {
+      const reguName = [item.inspektor1, item.inspektor2].filter(Boolean).join(' & ');
+      const key = `${item.feeder}|${reguName}`;
+      if (!groupedRows[key]) {
+        groupedRows[key] = {
+          feeder: item.feeder,
+          regu: reguName,
+          counts: {}
+        };
+        findings.forEach(f => groupedRows[key].counts[f.text] = 0);
+      }
+      if (groupedRows[key].counts[item.keterangan] !== undefined) {
+        groupedRows[key].counts[item.keterangan]++;
+      }
+    });
+
+    let currentRowNum = 8;
+    Object.values(groupedRows).forEach((rowObj, idx) => {
+      const row = worksheet.getRow(currentRowNum);
+      row.getCell(1).value = idx + 1;
+      row.getCell(2).value = rowObj.feeder;
+      row.getCell(3).value = rowObj.regu;
+      
+      findings.forEach((f, fIdx) => {
+        const val = rowObj.counts[f.text];
+        const cell = row.getCell(4 + fIdx);
+        cell.value = val > 0 ? val : 0;
+        cell.alignment = { horizontal: 'center' };
+      });
+
+      // Style data row
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        if (colNumber <= totalCols) {
+           cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+           cell.font = { size: 9 };
+        }
+      });
+      currentRowNum++;
+    });
+
+    // 4. TOTAL ROW
+    const footerRowNum = currentRowNum;
+    const footerRow = worksheet.getRow(footerRowNum);
+    worksheet.mergeCells(`A${footerRowNum}:C${footerRowNum}`);
+    footerRow.getCell(1).value = 'Jumlah';
+    footerRow.getCell(1).font = { bold: true, italic: true };
+    footerRow.getCell(1).alignment = { horizontal: 'center' };
+
+    findings.forEach((f, fIdx) => {
+      const colIndex = 4 + fIdx;
+      const colLetter = worksheet.getColumn(colIndex).letter;
+      const cell = footerRow.getCell(colIndex);
+      cell.value = { formula: `SUM(${colLetter}8:${colLetter}${footerRowNum - 1})` };
+      cell.font = { bold: true };
+      cell.alignment = { horizontal: 'center' };
+    });
+
+    footerRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      if (colNumber <= totalCols) {
+        cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'}};
+      }
+    });
+
+    // Column Width Adjustments
+    worksheet.getColumn(1).width = 4;
+    worksheet.getColumn(2).width = 25;
+    worksheet.getColumn(3).width = 25;
+
+    // Export
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Rekap_Temuan_${filters.pekerjaan}_${filters.feeder}_${filters.bulan}.xlsx`;
+    a.click();
+  },
+
   /**
    * Generates and downloads an Excel report containing inspection details and photos.
    */
