@@ -1,9 +1,9 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fixed: Already included file name 'file:///services/ReportService.ts' differs from file name 'file:///services/reportService.ts' only in casing.
-// Using lowercase 'reportService' to match file system convention and resolve casing conflict.
-import { ReportService } from '../services/reportService';
+// Fix: Use PascalCase to match the filename and resolve casing ambiguity errors
+import { ReportService } from '../services/ReportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
 interface AdminPageProps {
@@ -413,12 +413,10 @@ const AdminPage: React.FC<AdminPageProps> = ({
                    </div>
                 </div>
              ))}
-             {/* ULP & FEEDER maps follow same pattern ... */}
           </div>
         </div>
       )}
 
-      {/* Modal Management ... */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
            <div className="bg-white w-full max-sm rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up">
