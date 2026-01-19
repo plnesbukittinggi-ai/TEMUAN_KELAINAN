@@ -25,6 +25,7 @@ const getBase64FromUrl = async (url: string): Promise<string> => {
   if (url.indexOf('data:image') === 0) return url;
   try {
     const res = await fetch(url);
+    if (!res.ok) return "";
     const blob = await res.blob();
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -38,7 +39,7 @@ const getBase64FromUrl = async (url: string): Promise<string> => {
 
 export const ReportService = {
   /**
-   * Helper to add the Detail Sheet to a workbook
+   * Sheet 1: Laporan Detail dengan Foto
    */
   async addDetailSheet(workbook: ExcelJS.Workbook, data: TemuanData[], filters: any) {
     const worksheet = workbook.addWorksheet('Laporan Detail');
@@ -49,7 +50,7 @@ export const ReportService = {
     worksheet.getCell('A1').alignment = { horizontal: 'center' };
 
     worksheet.mergeCells('A2:K2');
-    worksheet.getCell('A2').value = `FOTO INSPEKSI TEMUAN KELAINAN KONTRUKSI ${filters.pekerjaan || 'SEMUA'}`;
+    worksheet.getCell('A2').value = `FOTO INSPEKSI TEMUAN KELAINAN KONTRUKSI ${filters.pekerjaan.toUpperCase()}`;
     worksheet.getCell('A2').font = { bold: true, size: 12 };
     worksheet.getCell('A2').alignment = { horizontal: 'center' };
 
@@ -59,13 +60,14 @@ export const ReportService = {
     worksheet.getCell('A3').alignment = { horizontal: 'center' };
 
     worksheet.addRow([]);
-    worksheet.addRow(['NAMA FEEDER', `: ${filters.feeder || 'SEMUA'}`]);
-    worksheet.addRow(['BULAN', `: ${filters.bulan || '-'}`]);
+    worksheet.addRow(['NAMA FEEDER', `: ${filters.feeder}`]);
+    worksheet.addRow(['BULAN', `: ${filters.bulan}`]);
     worksheet.addRow([]);
 
     const headerRow = worksheet.addRow([
       'NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEBELUM', 'FOTO SESUDAH', 'KETERANGAN', 'SARAN'
     ]);
+
     headerRow.eachCell((cell) => {
       cell.font = { bold: true, color: { argb: 'FFFFFF' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '333333' } };
@@ -88,6 +90,7 @@ export const ReportService = {
     for (let i = 0; i < data.length; i++) {
       const item = data[i];
       const cleanEksekusiDate = item.tanggalEksekusi ? item.tanggalEksekusi.split(',')[0] : '-';
+      // Fixed: Explicitly type displayStatus as string to resolve union type assignment errors.
       let displayStatus: string = item.status;
       if (item.status === 'SUDAH EKSEKUSI') {
         displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${cleanEksekusiDate}`;
@@ -112,43 +115,45 @@ export const ReportService = {
         cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
       });
 
+      // Foto Temuan
       if (item.fotoTemuan) {
         try {
           const base64 = await getBase64FromUrl(formatDriveUrl(item.fotoTemuan));
           if (base64) {
-            const imgId = workbook.addImage({ base64, extension: 'png' });
+            const imgId = workbook.addImage({ base64, extension: 'jpeg' });
             worksheet.addImage(imgId, {
               tl: { col: 7, row: row.number - 1 },
               ext: { width: 220, height: 130 }
             });
           }
-        } catch (e) {}
+        } catch (e) { console.warn("Gagal render foto temuan", e); }
       }
 
+      // Foto Eksekusi
       if (item.fotoEksekusi) {
         try {
           const base64 = await getBase64FromUrl(formatDriveUrl(item.fotoEksekusi));
           if (base64) {
-            const imgId = workbook.addImage({ base64, extension: 'png' });
+            const imgId = workbook.addImage({ base64, extension: 'jpeg' });
             worksheet.addImage(imgId, {
               tl: { col: 8, row: row.number - 1 },
               ext: { width: 220, height: 130 }
             });
           }
-        } catch (e) {}
+        } catch (e) { console.warn("Gagal render foto eksekusi", e); }
       }
     }
 
     worksheet.addRow([]);
-    worksheet.addRow(['', '', '', '', '', '', '', '', 'DILAKSANAKAN', `: ${filters.bulan || '-'}`]);
+    worksheet.addRow(['', '', '', '', '', '', '', '', 'DILAKSANAKAN', `: ${filters.bulan}`]);
     worksheet.addRow(['', '', '', '', '', '', '', '', 'JAM', ': 07.30 S/D 17.00 WIB']);
-    worksheet.addRow(['', '', '', '', '', '', '', '', 'PETUGAS', `: ${filters.inspektor1 || '-'}`]);
-    worksheet.addRow(['', '', '', '', '', '', '', '', '', `: ${filters.inspektor2 || '-'}`]);
+    worksheet.addRow(['', '', '', '', '', '', '', '', 'PETUGAS', `: ${filters.inspektor1}`]);
+    worksheet.addRow(['', '', '', '', '', '', '', '', '', `: ${filters.inspektor2}`]);
     worksheet.addRow(['', '', '', '', '', '', '', '', 'ADMINSPEKSI', `: ENDANG WINARNINGSIH`]);
   },
 
   /**
-   * Helper to add the Matrix Sheet to a workbook
+   * Sheet 2: Rekap Matrix Temuan
    */
   async addMatrixSheet(workbook: ExcelJS.Workbook, data: TemuanData[], findings: Keterangan[], filters: any) {
     const worksheet = workbook.addWorksheet('Rekap Matrix');
@@ -172,8 +177,9 @@ export const ReportService = {
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
     });
 
-    worksheet.addRow([]);
+    worksheet.addRow([]); // Row 5 Spacer
 
+    // Header Tabel (Row 6)
     const row6 = worksheet.getRow(6);
     row6.getCell(1).value = 'NO';
     row6.getCell(2).value = 'NAMA PENYULANG';
@@ -183,17 +189,18 @@ export const ReportService = {
       const startFindingCol = 4;
       const endFindingCol = totalCols;
       worksheet.mergeCells(6, startFindingCol, 6, endFindingCol);
-      const jenisTemuanCell = row6.getCell(startFindingCol);
-      jenisTemuanCell.value = 'JENIS TEMUAN';
-      jenisTemuanCell.alignment = { horizontal: 'center', vertical: 'middle' };
-      jenisTemuanCell.font = { bold: true };
-      jenisTemuanCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F2F2' } };
+      const jtCell = row6.getCell(startFindingCol);
+      jtCell.value = 'JENIS TEMUAN';
+      jtCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      jtCell.font = { bold: true };
+      jtCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F2F2' } };
     }
 
+    // Row 7: Vertical Finding Text
     const row7 = worksheet.getRow(7);
     row7.height = 180;
     
-    ['A', 'B', 'C'].forEach((col) => {
+    ['A', 'B', 'C'].forEach(col => {
       worksheet.mergeCells(`${col}6:${col}7`);
       const cell = worksheet.getCell(`${col}6`);
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -211,6 +218,7 @@ export const ReportService = {
       worksheet.getColumn(colIndex).width = 4.5;
     });
 
+    // Grouping Data per Penyulang & Regu
     const groupedRows: Record<string, { feeder: string, regu: string, counts: Record<string, number> }> = {};
 
     data.forEach(item => {
@@ -237,9 +245,9 @@ export const ReportService = {
       row.getCell(3).value = rowObj.regu;
       
       findings.forEach((f, fIdx) => {
-        const val = rowObj.counts[f.text];
+        const count = rowObj.counts[f.text];
         const cell = row.getCell(4 + fIdx);
-        cell.value = val > 0 ? val : 0;
+        cell.value = count > 0 ? count : 0;
         cell.alignment = { horizontal: 'center' };
       });
 
@@ -251,6 +259,7 @@ export const ReportService = {
       currentRowNum++;
     });
 
+    // Row Jumlah (Footer)
     const footerRowNum = currentRowNum;
     const footerRow = worksheet.getRow(footerRowNum);
     worksheet.mergeCells(`A${footerRowNum}:C${footerRowNum}`);
@@ -277,7 +286,7 @@ export const ReportService = {
   },
 
   /**
-   * Main method to download combined report (Detail + Matrix)
+   * Utama: Download Excel dengan 2 Sheet
    */
   async downloadCombinedExcel(data: TemuanData[], findings: Keterangan[], filters: any) {
     const workbook = new ExcelJS.Workbook();
@@ -289,71 +298,35 @@ export const ReportService = {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Laporan_Temuan_${filters.pekerjaan}_${filters.bulan}.xlsx`;
+    a.download = `Laporan_Temuan_PLN_${filters.pekerjaan}_${filters.bulan}.xlsx`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   },
 
   /**
-   * Generates and downloads a specialized matrix-style Excel report.
-   */
-  async downloadRekapExcel(data: TemuanData[], findings: Keterangan[], filters: any) {
-    const workbook = new ExcelJS.Workbook();
-    await this.addMatrixSheet(workbook, data, findings, filters);
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Rekap_Matrix_${filters.pekerjaan}_${filters.bulan}.xlsx`;
-    a.click();
-  },
-
-  /**
-   * Generates and downloads an Excel report containing inspection details.
-   */
-  async downloadExcel(data: TemuanData[], filters: any) {
-    const workbook = new ExcelJS.Workbook();
-    await this.addDetailSheet(workbook, data, filters);
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Laporan_${filters.pekerjaan || 'PLN'}_${filters.bulan || 'Export'}.xlsx`;
-    a.click();
-  },
-
-  /**
-   * Generates and downloads a PDF report.
+   * PDF Export
    */
   async downloadPDF(data: TemuanData[], filters: any) {
     const doc = new jsPDF('l', 'mm', 'a4');
     doc.setFontSize(14);
     doc.text('LAPORAN BULANAN', 148, 15, { align: 'center' });
     doc.setFontSize(12);
-    doc.text(`FOTO INSPEKSI TEMUAN KELAINAN KONTRUKSI ${filters.pekerjaan || 'SEMUA'}`, 148, 22, { align: 'center' });
+    doc.text(`FOTO INSPEKSI TEMUAN KELAINAN KONTRUKSI ${filters.pekerjaan.toUpperCase()}`, 148, 22, { align: 'center' });
     doc.setFontSize(10);
     doc.text('TIM DIVISI INSPEKSI PLN ELECTRICITY SERVICES UL BUKITTINGGI', 148, 28, { align: 'center' });
-    doc.text(`NAMA FEEDER : ${filters.feeder || 'SEMUA'}`, 15, 38);
-    doc.text(`BULAN       : ${filters.bulan || '-'}`, 15, 43);
+    doc.text(`NAMA FEEDER : ${filters.feeder}`, 15, 38);
+    doc.text(`BULAN       : ${filters.bulan}`, 15, 43);
 
     const body = data.map((item, i) => {
+      // Fixed: Explicitly type displayStatus as string to resolve union type assignment errors.
       let displayStatus: string = item.status;
       if (item.status === 'SUDAH EKSEKUSI') {
         displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${item.tanggalEksekusi ? item.tanggalEksekusi.split(',')[0] : '-'}`;
       }
       return [
-        i + 1,
-        item.tanggal.split(',')[0],
-        item.noTiang,
-        item.noWO,
-        item.feeder,
-        item.lokasi || "-",
-        item.geotag || "-",
-        '',
-        '',
-        item.keterangan,
-        displayStatus
+        i + 1, item.tanggal.split(',')[0], item.noTiang, item.noWO, item.feeder, item.lokasi || "-", item.geotag || "-", '', '', item.keterangan, displayStatus
       ];
     });
 
@@ -364,21 +337,15 @@ export const ReportService = {
       theme: 'grid',
       headStyles: { fillColor: [40, 40, 40], fontSize: 7, halign: 'center' },
       styles: { fontSize: 6, cellPadding: 1.5, minCellHeight: 25, valign: 'middle' },
-      columnStyles: {
-        5: { cellWidth: 30 },
-        6: { cellWidth: 20 },
-        7: { cellWidth: 25 },
-        8: { cellWidth: 25 },
-        9: { cellWidth: 40 }, 
-      }
+      columnStyles: { 5: { cellWidth: 30 }, 6: { cellWidth: 20 }, 7: { cellWidth: 25 }, 8: { cellWidth: 25 }, 9: { cellWidth: 40 } }
     });
 
     const finalY = (doc as any).lastAutoTable?.finalY || 150;
-    doc.text(`DILAKSANAKAN : ${filters.bulan || '-'}`, 220, finalY + 10);
+    doc.text(`DILAKSANAKAN : ${filters.bulan}`, 220, finalY + 10);
     doc.text(`JAM          : 07.30 S/D 17.00 WIB`, 220, finalY + 15);
-    doc.text(`PETUGAS      : ${filters.inspektor1 || '-'}`, 220, finalY + 20);
-    doc.text(`               ${filters.inspektor2 || '-'}`, 220, finalY + 25);
+    doc.text(`PETUGAS      : ${filters.inspektor1}`, 220, finalY + 20);
+    doc.text(`               ${filters.inspektor2}`, 220, finalY + 25);
     doc.text(`ADMINSPEKSI  : ENDANG WINARNINGSIH`, 220, finalY + 30);
-    doc.save(`Laporan_${filters.pekerjaan || 'PLN'}.pdf`);
+    doc.save(`Laporan_${filters.pekerjaan}.pdf`);
   }
 };
