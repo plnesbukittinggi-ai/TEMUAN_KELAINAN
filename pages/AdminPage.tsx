@@ -1,8 +1,6 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fixed: Changed import casing to match 'reportService.ts' and resolve compiler naming conflict error.
 import { ReportService } from '../services/reportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
@@ -13,7 +11,7 @@ interface AdminPageProps {
   feeders: Feeder[];
   pekerjaanList: Pekerjaan[];
   keteranganList?: Keterangan[];
-  onBack: void;
+  onBack: () => void;
   onUpdateInspectors: (data: Inspector[]) => void;
   onUpdateUlp: (data: ULP[]) => void;
   onUpdateFeeders: (data: Feeder[]) => void;
@@ -200,7 +198,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
       const currentPekerjaanName = filterPekerjaan || sortedForExport[0]?.pekerjaan;
       const pekObj = pekerjaanList.find(p => p.name === currentPekerjaanName);
       
-      const relevantKeterangan = keteranganList.filter(k => k.idPekerjaan === pekObj?.id || k.idPekerjaan === currentPekerjaanName);
+      const relevantKeterangan = (keteranganList || []).filter(k => k.idPekerjaan === pekObj?.id || k.idPekerjaan === currentPekerjaanName);
 
       const filters = {
         feeder: filterFeeder || 'SEMUA FEEDER',
@@ -214,7 +212,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
       await ReportService.downloadExcel(sortedForExport, filters);
     } catch (error) {
       console.error(error);
-      alert("Gagal mengunduh file Excel.");
+      alert("Gagal mengunduh file Excel. Pastikan koneksi stabil.");
     } finally {
       setIsExporting(false);
     }
