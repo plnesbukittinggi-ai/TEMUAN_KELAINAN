@@ -280,7 +280,7 @@ export const ReportService = {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Laporan_${filters.feeder}_${filters.pekerjaan || 'PLN'}_${filters.bulan || 'Export'}.xlsx`;
+    a.download = Laporan_${filters.pekerjaan || 'PLN'}_${filters.bulan || 'Export'}.xlsx;
     a.click();
   },
 
