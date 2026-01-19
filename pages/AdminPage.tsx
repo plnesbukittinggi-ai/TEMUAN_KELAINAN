@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
+import { TemuanData, ULP, Inspector, Feeder, Pekerjaan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fixed: Using the correct PascalCase filename to match the root file specified in the program and avoid casing conflicts.
-import { ReportService } from '../services/ReportService';
+// Fixed casing for import to match reportService.ts to resolve compilation error
+import { ReportService } from '../services/reportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
 interface AdminPageProps {
@@ -11,7 +12,6 @@ interface AdminPageProps {
   inspectors: Inspector[];
   feeders: Feeder[];
   pekerjaanList: Pekerjaan[];
-  keteranganList?: Keterangan[];
   onBack: () => void;
   onUpdateInspectors: (data: Inspector[]) => void;
   onUpdateUlp: (data: ULP[]) => void;
@@ -26,7 +26,7 @@ const MONTHS = [
 ];
 
 const AdminPage: React.FC<AdminPageProps> = ({ 
-  data, ulpList, inspectors, feeders, pekerjaanList, keteranganList = [], onBack,
+  data, ulpList, inspectors, feeders, pekerjaanList, onBack,
   onUpdateInspectors, onUpdateUlp, onUpdateFeeders
 }) => {
   const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP'>('DASHBOARD');
@@ -187,33 +187,28 @@ const AdminPage: React.FC<AdminPageProps> = ({
     
     setIsExporting(true);
     try {
+      // Sorting Ascending khusus untuk Excel (Tanggal Terkecil ke Terbesar)
       const sortedForExport = [...filteredAndSortedData].sort((a, b) => 
         parseIndoDate(a.tanggal).getTime() - parseIndoDate(b.tanggal).getTime()
       );
 
+      // Mendapatkan label bulan dari filter Dashboard
       const selectedMonthLabel = MONTHS.find(m => m.val === dashFilterMonth)?.label || '';
       const displayMonth = filterStartDate && filterEndDate 
         ? `${filterStartDate} s/d ${filterEndDate}` 
         : `${selectedMonthLabel} ${dashFilterYear}`.toUpperCase();
 
-      const currentPekerjaanName = filterPekerjaan || sortedForExport[0]?.pekerjaan;
-      const pekObj = pekerjaanList.find(p => p.name === currentPekerjaanName);
-      
-      const relevantKeterangan = (keteranganList || []).filter(k => k.idPekerjaan === pekObj?.id || k.idPekerjaan === currentPekerjaanName);
-
       const filters = {
         feeder: filterFeeder || 'SEMUA FEEDER',
-        pekerjaan: currentPekerjaanName || 'SEMUA PEKERJAAN',
+        pekerjaan: filterPekerjaan || 'SEMUA PEKERJAAN',
         bulan: displayMonth,
         inspektor1: sortedForExport[0]?.inspektor1 || '-',
-        inspektor2: sortedForExport[0]?.inspektor2 || '-',
-        relevantKeterangan: relevantKeterangan
+        inspektor2: sortedForExport[0]?.inspektor2 || '-'
       };
       
       await ReportService.downloadExcel(sortedForExport, filters);
     } catch (error) {
-      console.error(error);
-      alert("Gagal mengunduh file Excel. Pastikan data tidak terlalu besar atau koneksi stabil.");
+      alert("Gagal mengunduh file Excel.");
     } finally {
       setIsExporting(false);
     }
@@ -221,6 +216,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
 
+  // Kelola Handlers
   const handleOpenAdd = () => {
     setModalMode('ADD');
     setEditingItem(null);
@@ -239,17 +235,30 @@ const AdminPage: React.FC<AdminPageProps> = ({
     if (!window.confirm(`Yakin ingin menghapus "${item.name}"?`)) return;
 
     let updatedList: any[] = [];
+    let action = '';
+    
     if (subTab === 'INSPEKTOR') {
       updatedList = inspectors.filter(i => i.id !== item.id);
-      onUpdateInspectors(updatedList);
+      action = 'updateInspectors';
     } else if (subTab === 'ULP') {
       updatedList = ulpList.filter(u => u.id !== item.id);
-      onUpdateUlp(updatedList);
+      action = 'updateULP';
     } else {
       updatedList = feeders.filter(f => f.id !== item.id);
-      onUpdateFeeders(updatedList);
+      action = 'updateFeeders';
     }
-    alert('Data berhasil dihapus.');
+
+    try {
+      // In real scenario, we'd call SpreadsheetService.updateMasterData(action, updatedList)
+      // For now, we update parent state
+      if (subTab === 'INSPEKTOR') onUpdateInspectors(updatedList);
+      else if (subTab === 'ULP') onUpdateUlp(updatedList);
+      else onUpdateFeeders(updatedList);
+      
+      alert('Data berhasil dihapus.');
+    } catch (e) {
+      alert('Gagal menghapus data.');
+    }
   };
 
   const handleSaveMaster = async () => {
@@ -281,6 +290,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
         }
         onUpdateFeeders(updatedList);
       }
+
       setIsModalOpen(false);
       alert(`Berhasil ${modalMode === 'ADD' ? 'menambah' : 'mengubah'} data.`);
     } catch (e) {
@@ -313,6 +323,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
       {tab === 'DASHBOARD' && (
         <div className="space-y-6 animate-fade-in">
+          {/* Dashboard contents... */}
           <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Periode Analitik</p>
             <div className="grid grid-cols-2 gap-3 mb-4">
@@ -384,6 +395,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
       {tab === 'REKAP' && (
         <div className="space-y-6 animate-fade-in">
+          {/* Recap contents... */}
           <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Saring Tanggal Rekap</p>
             <div className="grid grid-cols-2 gap-3">
@@ -440,6 +452,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
       {tab === 'DATA' && (
         <div className="space-y-6 animate-fade-in">
+          {/* Data contents... */}
           <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <select className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" value={filterFeeder} onChange={(e) => setFilterFeeder(e.target.value)}>
@@ -590,10 +603,19 @@ const AdminPage: React.FC<AdminPageProps> = ({
                    </div>
                 </div>
              ))}
+
+             {((subTab === 'INSPEKTOR' && inspectors.length === 0) || 
+               (subTab === 'ULP' && ulpList.length === 0) || 
+               (subTab === 'FEEDER' && feeders.length === 0)) && (
+                <div className="text-center py-20 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Belum ada data {subTab}</p>
+                </div>
+             )}
           </div>
         </div>
       )}
 
+      {/* Management Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
            <div className="bg-white w-full max-sm rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up">
