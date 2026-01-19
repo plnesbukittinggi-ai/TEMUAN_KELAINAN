@@ -82,14 +82,18 @@ export const ReportService = {
     worksheet.getColumn(7).width = 25;
     worksheet.getColumn(8).width = 30;
     worksheet.getColumn(9).width = 30;
-    worksheet.getColumn(10).width = 25;
+    worksheet.getColumn(10).width = 25; // Wider for detailed status
     worksheet.getColumn(11).width = 45;
 
     for (let i = 0; i < data.length; i++) {
       const item = data[i];
+      
+      // Bersihkan tanggal eksekusi dari komponen waktu (Time)
+      const cleanEksekusiDate = item.tanggalEksekusi ? item.tanggalEksekusi.split(',')[0] : '-';
+      
       let displayStatus: string = item.status;
       if (item.status === 'SUDAH EKSEKUSI') {
-        displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${item.tanggalEksekusi || '-'}`;
+        displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${cleanEksekusiDate}`;
       }
 
       const row = worksheet.addRow([
@@ -103,8 +107,8 @@ export const ReportService = {
         "",
         "",
         item.keterangan,
-        displayStatus,
-        ]);
+        displayStatus
+      ]);
       row.height = 100;
       row.eachCell((cell) => {
         cell.alignment = { vertical: 'middle', wrapText: true };
@@ -173,7 +177,7 @@ export const ReportService = {
     const body = data.map((item, i) => {
       let displayStatus: string = item.status;
       if (item.status === 'SUDAH EKSEKUSI') {
-        displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${item.tanggalEksekusi || '-'}`;
+        displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${item.tanggalEksekusi ? item.tanggalEksekusi.split(',')[0] : '-'}`;
       }
       return [
         i + 1,
@@ -186,7 +190,7 @@ export const ReportService = {
         '',
         '',
         item.keterangan,
-        displayStatus,
+        displayStatus
       ];
     });
 
