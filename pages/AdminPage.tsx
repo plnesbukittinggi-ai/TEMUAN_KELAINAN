@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fix: Use consistent lowercase casing for service filename to avoid TS1149 casing conflict error.
-import { ReportService } from '../services/reportService';
+// Fixed: Using the correct PascalCase filename to match the root file specified in the program and avoid casing conflicts.
+import { ReportService } from '../services/ReportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
 interface AdminPageProps {
@@ -280,7 +279,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
         } else {
           updatedList = feeders.map(f => f.id === editingItem.id ? { ...f, name: formData.name, ulpId: formData.ulpId } : f);
         }
-        onUpdateUlp(updatedList); // Note: Original code had onUpdateFeeders here but correctly used updatedList.
         onUpdateFeeders(updatedList);
       }
       setIsModalOpen(false);
