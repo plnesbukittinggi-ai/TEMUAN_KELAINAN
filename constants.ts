@@ -3,7 +3,7 @@ import { Inspector, ULP, Feeder, Keterangan, Pekerjaan } from './types';
 
 export const SPREADSHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxbx5jjaOHOPtUBatlAjTYaGnDXJKUB96p8fsU9-myfN7N0qtmDDQWzOeZe6Jj5uPsG/exec';
 
-export const APP_VERSION = '1.0.5';
+export const APP_VERSION = '1.0.6';
 
 export const INITIAL_PEKERJAAN: Pekerjaan[] = [
   { id: 'PEK01', name: 'JTM Tier 1' },
