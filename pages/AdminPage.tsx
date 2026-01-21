@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { TemuanData, ULP, Inspector, Feeder, Pekerjaan } from '../types';
+import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fixed casing for import to match reportService.ts to resolve compilation error
-import { ReportService } from '../services/reportService';
+// Fixed: Using consistent casing for ReportService import to match the file name and resolve TS error
+import { ReportService } from '../services/ReportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
 interface AdminPageProps {
@@ -12,6 +12,8 @@ interface AdminPageProps {
   inspectors: Inspector[];
   feeders: Feeder[];
   pekerjaanList: Pekerjaan[];
+  // Added missing keteranganList property to fix TS error in App.tsx
+  keteranganList: Keterangan[];
   onBack: () => void;
   onUpdateInspectors: (data: Inspector[]) => void;
   onUpdateUlp: (data: ULP[]) => void;
@@ -26,7 +28,7 @@ const MONTHS = [
 ];
 
 const AdminPage: React.FC<AdminPageProps> = ({ 
-  data, ulpList, inspectors, feeders, pekerjaanList, onBack,
+  data, ulpList, inspectors, feeders, pekerjaanList, keteranganList, onBack,
   onUpdateInspectors, onUpdateUlp, onUpdateFeeders
 }) => {
   const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP'>('DASHBOARD');
@@ -43,6 +45,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const [rekapEndDate, setRekapEndDate] = useState<string>('');
 
   // Data Table Filters
+  const [filterUlp, setFilterUlp] = useState<string>('');
   const [filterFeeder, setFilterFeeder] = useState<string>('');
   const [filterPekerjaan, setFilterPekerjaan] = useState<string>('');
   const [filterStartDate, setFilterStartDate] = useState<string>('');
@@ -157,6 +160,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
   const filteredAndSortedData = useMemo(() => {
     const filtered = data.filter(item => {
+      const matchUlp = !filterUlp || item.ulp === filterUlp;
       const matchFeeder = !filterFeeder || item.feeder === filterFeeder;
       const matchPekerjaan = !filterPekerjaan || item.pekerjaan === filterPekerjaan;
       const itemDate = parseIndoDate(item.tanggal);
@@ -173,11 +177,11 @@ const AdminPage: React.FC<AdminPageProps> = ({
         if (itemDate > end) matchDate = false;
       }
 
-      return matchFeeder && matchPekerjaan && matchDate;
+      return matchUlp && matchFeeder && matchPekerjaan && matchDate;
     });
 
     return filtered.sort((a, b) => parseIndoDate(b.tanggal).getTime() - parseIndoDate(a.tanggal).getTime());
-  }, [data, filterFeeder, filterPekerjaan, filterStartDate, filterEndDate]);
+  }, [data, filterUlp, filterFeeder, filterPekerjaan, filterStartDate, filterEndDate]);
 
   const handleDownloadExcel = async () => {
     if (filteredAndSortedData.length === 0) {
@@ -199,6 +203,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
         : `${selectedMonthLabel} ${dashFilterYear}`.toUpperCase();
 
       const filters = {
+        ulp: filterUlp || 'SEMUA UNIT',
         feeder: filterFeeder || 'SEMUA FEEDER',
         pekerjaan: filterPekerjaan || 'SEMUA PEKERJAAN',
         bulan: displayMonth,
@@ -454,15 +459,21 @@ const AdminPage: React.FC<AdminPageProps> = ({
         <div className="space-y-6 animate-fade-in">
           {/* Data contents... */}
           <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <select className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" value={filterFeeder} onChange={(e) => setFilterFeeder(e.target.value)}>
-                <option value="">-- Feeder --</option>
-                {Array.from(new Set(data.map(d => d.feeder))).sort().map(f => <option key={f} value={f}>{f}</option>)}
+            <div className="space-y-3">
+              <select className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" value={filterUlp} onChange={(e) => setFilterUlp(e.target.value)}>
+                <option value="">-- Pilih Unit (ULP) --</option>
+                {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
               </select>
-              <select className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" value={filterPekerjaan} onChange={(e) => setFilterPekerjaan(e.target.value)}>
-                <option value="">-- Pekerjaan --</option>
-                {pekerjaanList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-              </select>
+              <div className="grid grid-cols-2 gap-3">
+                <select className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" value={filterFeeder} onChange={(e) => setFilterFeeder(e.target.value)}>
+                  <option value="">-- Feeder --</option>
+                  {Array.from(new Set(data.map(d => d.feeder))).sort().map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
+                <select className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" value={filterPekerjaan} onChange={(e) => setFilterPekerjaan(e.target.value)}>
+                  <option value="">-- Pekerjaan --</option>
+                  {pekerjaanList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                </select>
+              </div>
             </div>
             
             <div className="grid grid-cols-2 gap-3">
