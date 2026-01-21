@@ -111,8 +111,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
 
   return (
     <div className="py-4 animate-slide-up">
-      <button onClick={handleBack} className="flex items-center gap-2 text-slate-400 text-[10px] font-black uppercase tracking-widest mb-8 hover:text-indigo-600 transition-colors">
-        <span className="text-lg">←</span> Kembali
+      <button 
+        onClick={handleBack} 
+        className="flex items-center gap-3 px-5 py-3 bg-white border border-slate-200 rounded-2xl shadow-sm hover:bg-slate-50 active:scale-95 transition-all mb-8 group"
+      >
+        <span className="text-lg font-black text-slate-900 group-hover:-translate-x-1 transition-transform">←</span>
+        <span className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">Kembali</span>
       </button>
 
       <div className="bg-white p-8 rounded-[3rem] border border-slate-200 shadow-2xl space-y-6">
