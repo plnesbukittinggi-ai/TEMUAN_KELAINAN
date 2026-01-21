@@ -97,7 +97,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
     switch(status) {
       case 'SUDAH EKSEKUSI': return 'text-emerald-700 bg-emerald-50';
       case 'BUTUH PADAM': return 'text-amber-700 bg-amber-50';
-      case 'BUTUH IZIN TEBANG': return 'text-orange-700 bg-orange-50';
+      case 'TIDAK DAPAT IZIN': return 'text-orange-700 bg-orange-50';
       default: return 'text-indigo-700 bg-indigo-50';
     }
   };
@@ -105,8 +105,14 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
   return (
     <div className="pb-10">
       <div className="flex items-center gap-4 mb-8">
-        <button onClick={onBack} className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">←</button>
-        <div>
+        <button 
+          onClick={onBack} 
+          className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 active:scale-95 transition-all group"
+        >
+          <span className="text-sm font-black text-slate-900 group-hover:-translate-x-1 transition-transform">←</span>
+          <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Kembali</span>
+        </button>
+        <div className="flex-1">
           <h2 className="text-lg font-bold text-slate-900 tracking-tight">Monitoring Data</h2>
           <p className="text-[11px] text-indigo-600 font-bold uppercase tracking-wider">{ulp}</p>
         </div>
@@ -165,12 +171,12 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {['ALL', 'BELUM EKSEKUSI', 'SUDAH EKSEKUSI', 'BUTUH PADAM', 'BUTUH IZIN TEBANG'].map((f) => (
+          {['ALL', 'BELUM EKSEKUSI', 'SUDAH EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN'].map((f) => (
             <button
               key={f} onClick={() => setFilter(f as any)}
               className={`whitespace-nowrap px-4 py-2 text-[10px] font-bold rounded-lg border transition-all uppercase tracking-wide ${filter === f ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-400 border-slate-200'}`}
             >
-              {f === 'ALL' ? 'SEMUA' : f === 'TIDAK DAPAT IZIN' ? 'TIDAK DAPAT IZIN' : f}
+              {f === 'ALL' ? 'SEMUA' : f === 'TIDAK DAPAT IZIN' ? 'TDK IZIN' : f}
             </button>
           ))}
         </div>
