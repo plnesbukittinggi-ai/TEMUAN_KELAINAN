@@ -117,8 +117,14 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
   return (
     <div className="pb-10">
       <div className="flex items-center gap-4 mb-8">
-        <button onClick={onBack} className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">←</button>
-        <div>
+        <button 
+          onClick={onBack} 
+          className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 active:scale-95 transition-all group"
+        >
+          <span className="text-sm font-black text-slate-900 group-hover:-translate-x-1 transition-transform">←</span>
+          <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Kembali</span>
+        </button>
+        <div className="flex-1">
           <h2 className="text-lg font-bold text-slate-900 tracking-tight">{initialData ? 'Edit Data Temuan' : 'Formulir Temuan Baru'}</h2>
           <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-widest">
             {initialData ? 'MODE EDIT DATA' : formData.pekerjaan}
