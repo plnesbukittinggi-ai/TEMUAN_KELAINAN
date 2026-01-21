@@ -48,7 +48,7 @@ export interface TemuanData {
   geotag?: string; // Koordinat GPS (Latitude, Longitude)
   fotoTemuan: string; 
   keterangan: string;
-  status: 'BELUM EKSEKUSI' | 'SUDAH EKSEKUSI' | 'BUTUH PADAM';
+  status: 'BELUM EKSEKUSI' | 'SUDAH EKSEKUSI' | 'BUTUH PADAM' | 'BUTUH IZIN TEBANG';
   tanggalEksekusi?: string;
   fotoEksekusi?: string;
   timEksekusi?: string;
