@@ -74,7 +74,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
     }
   };
 
-  const handleAction = async (newStatus: 'SUDAH EKSEKUSI' | 'BUTUH PADAM' | 'BUTUH IZIN TEBANG') => {
+  const handleAction = async (newStatus: 'SUDAH EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN') => {
     if (!selectedTemuan || !executionPhoto) {
       alert('⚠️ Foto bukti perbaikan wajib dilampirkan!');
       return;
@@ -212,7 +212,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                       )}
                       <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${
                         item.status === 'BUTUH PADAM' ? 'bg-amber-50 text-amber-700' : 
-                        item.status === 'BUTUH IZIN TEBANG' ? 'bg-orange-50 text-orange-700' :
+                        item.status === 'TIDAK DAPAT IZIN' ? 'bg-orange-50 text-orange-700' :
                         'bg-indigo-50 text-indigo-700'
                       }`}>
                         {item.status}
@@ -313,11 +313,11 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                       ⚡ BUTUH PADAM
                     </button>
                     <button 
-                      onClick={() => handleAction('BUTUH IZIN TEBANG')}
+                      onClick={() => handleAction('TIDAK DAPAT IZIN')}
                       disabled={isSaving || isCompressing}
                       className={`py-4 rounded-xl shadow-lg uppercase text-[10px] font-bold ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-orange-600 text-white'}`}
                     >
-                      🌳 IZIN TEBANG
+                      🌳 TIDAK DAPAT IZIN
                     </button>
                   </div>
                 </div>
