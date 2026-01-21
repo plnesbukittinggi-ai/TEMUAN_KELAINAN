@@ -170,7 +170,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
               key={f} onClick={() => setFilter(f as any)}
               className={`whitespace-nowrap px-4 py-2 text-[10px] font-bold rounded-lg border transition-all uppercase tracking-wide ${filter === f ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-400 border-slate-200'}`}
             >
-              {f === 'ALL' ? 'SEMUA' : f === 'BUTUH IZIN TEBANG' ? 'IZIN TEBANG' : f}
+              {f === 'ALL' ? 'SEMUA' : f === 'TIDAK DAPAT IZIN' ? 'TIDAK DAPAT IZIN' : f}
             </button>
           ))}
         </div>
