@@ -12,7 +12,7 @@ interface DataViewPageProps {
 }
 
 const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTemuan, onAddEksekusi, onEdit }) => {
-  const [filter, setFilter] = useState<'ALL' | 'BELUM EKSEKUSI' | 'SUDAH EKSEKUSI' | 'BUTUH PADAM'>('ALL');
+  const [filter, setFilter] = useState<'ALL' | 'BELUM EKSEKUSI' | 'SUDAH EKSEKUSI' | 'BUTUH PADAM' | 'BUTUH IZIN TEBANG'>('ALL');
   const [selectedFeeder, setSelectedFeeder] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
@@ -93,6 +93,15 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
     setFilter('ALL');
   };
 
+  const getStatusBadgeClass = (status: string) => {
+    switch(status) {
+      case 'SUDAH EKSEKUSI': return 'text-emerald-700 bg-emerald-50';
+      case 'BUTUH PADAM': return 'text-amber-700 bg-amber-50';
+      case 'BUTUH IZIN TEBANG': return 'text-orange-700 bg-orange-50';
+      default: return 'text-indigo-700 bg-indigo-50';
+    }
+  };
+
   return (
     <div className="pb-10">
       <div className="flex items-center gap-4 mb-8">
@@ -156,12 +165,12 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {['ALL', 'BELUM EKSEKUSI', 'SUDAH EKSEKUSI', 'BUTUH PADAM'].map((f) => (
+          {['ALL', 'BELUM EKSEKUSI', 'SUDAH EKSEKUSI', 'BUTUH PADAM', 'BUTUH IZIN TEBANG'].map((f) => (
             <button
               key={f} onClick={() => setFilter(f as any)}
               className={`whitespace-nowrap px-4 py-2 text-[10px] font-bold rounded-lg border transition-all uppercase tracking-wide ${filter === f ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-400 border-slate-200'}`}
             >
-              {f === 'ALL' ? 'SEMUA' : f}
+              {f === 'ALL' ? 'SEMUA' : f === 'BUTUH IZIN TEBANG' ? 'IZIN TEBANG' : f}
             </button>
           ))}
         </div>
@@ -197,7 +206,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                            ✏️
                          </button>
                        )}
-                       <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${item.status === 'SUDAH EKSEKUSI' ? 'text-emerald-700 bg-emerald-50' : 'text-indigo-700 bg-indigo-50'}`}>
+                       <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${getStatusBadgeClass(item.status)}`}>
                         {item.status.split(' ')[0]}
                       </span>
                     </div>
