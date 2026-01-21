@@ -58,6 +58,11 @@ export const ReportService = {
     worksheet.getCell('A3').font = { bold: true, size: 11 };
     worksheet.getCell('A3').alignment = { horizontal: 'center' };
 
+    worksheet.mergeCells('A4:K4');
+    worksheet.getCell('A4').value = 'ULP ${filters.ulp || 'SEMUA'}';
+    worksheet.getCell('A4').font = { bold: true, size: 11 };
+    worksheet.getCell('A4').alignment = { horizontal: 'center' };
+
     worksheet.addRow([]);
     worksheet.addRow(['NAMA FEEDER', `: ${filters.feeder || 'SEMUA'}`]);
     worksheet.addRow(['BULAN', `: ${filters.bulan || '-'}`]);
