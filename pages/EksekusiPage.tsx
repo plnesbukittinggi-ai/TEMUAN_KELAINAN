@@ -74,7 +74,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
     }
   };
 
-  const handleAction = async (newStatus: 'SUDAH EKSEKUSI' | 'BUTUH PADAM') => {
+  const handleAction = async (newStatus: 'SUDAH EKSEKUSI' | 'BUTUH PADAM' | 'BUTUH IZIN TEBANG') => {
     if (!selectedTemuan || !executionPhoto) {
       alert('⚠️ Foto bukti perbaikan wajib dilampirkan!');
       return;
@@ -210,7 +210,11 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                           📍 Peta
                         </a>
                       )}
-                      <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${item.status === 'BUTUH PADAM' ? 'bg-amber-50 text-amber-700' : 'bg-indigo-50 text-indigo-700'}`}>
+                      <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${
+                        item.status === 'BUTUH PADAM' ? 'bg-amber-50 text-amber-700' : 
+                        item.status === 'BUTUH IZIN TEBANG' ? 'bg-orange-50 text-orange-700' :
+                        'bg-indigo-50 text-indigo-700'
+                      }`}>
                         {item.status}
                       </span>
                     </div>
@@ -292,21 +296,30 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
             </div>
 
             <div className="p-6 bg-slate-50 border-t border-slate-100 rounded-b-3xl">
-               <div className="grid grid-cols-2 gap-3">
+               <div className="space-y-3">
                   <button 
                     onClick={() => handleAction('SUDAH EKSEKUSI')}
                     disabled={isSaving || isCompressing}
-                    className={`py-4 rounded-xl shadow-lg uppercase text-[10px] font-bold ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-emerald-600 text-white'}`}
+                    className={`w-full py-4 rounded-xl shadow-lg uppercase text-[10px] font-black tracking-[0.2em] ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-emerald-600 text-white'}`}
                   >
                     {isSaving ? '⏳' : initialData ? 'Update Selesai' : '✅ SELESAI'}
                   </button>
-                  <button 
-                    onClick={() => handleAction('BUTUH PADAM')}
-                    disabled={isSaving || isCompressing}
-                    className={`py-4 rounded-xl shadow-lg uppercase text-[10px] font-bold ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-amber-500 text-white'}`}
-                  >
-                    ⚡ BUTUH PADAM
-                  </button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button 
+                      onClick={() => handleAction('BUTUH PADAM')}
+                      disabled={isSaving || isCompressing}
+                      className={`py-4 rounded-xl shadow-lg uppercase text-[10px] font-bold ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-amber-500 text-white'}`}
+                    >
+                      ⚡ BUTUH PADAM
+                    </button>
+                    <button 
+                      onClick={() => handleAction('BUTUH IZIN TEBANG')}
+                      disabled={isSaving || isCompressing}
+                      className={`py-4 rounded-xl shadow-lg uppercase text-[10px] font-bold ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-orange-600 text-white'}`}
+                    >
+                      🌳 IZIN TEBANG
+                    </button>
+                  </div>
                 </div>
             </div>
           </div>
