@@ -146,8 +146,14 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   return (
     <div className="pb-10">
       <div className="flex items-center mb-8 gap-4">
-        <button onClick={onBack} className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">←</button>
-        <div>
+        <button 
+          onClick={onBack} 
+          className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 active:scale-95 transition-all group"
+        >
+          <span className="text-sm font-black text-slate-900 group-hover:-translate-x-1 transition-transform">←</span>
+          <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Kembali</span>
+        </button>
+        <div className="flex-1">
           <h2 className="text-lg font-bold text-slate-900 tracking-tight">{initialData ? 'Edit Eksekusi' : 'Antrean Eksekusi'}</h2>
           <p className="text-[11px] text-emerald-600 font-bold uppercase tracking-wider">{initialData ? 'MODE EDIT' : `${session.team || 'TIM'} • ${session.ulp}`}</p>
         </div>
@@ -317,7 +323,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                       disabled={isSaving || isCompressing}
                       className={`py-4 rounded-xl shadow-lg uppercase text-[10px] font-bold ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-orange-600 text-white'}`}
                     >
-                      🌳 TIDAK DAPAT IZIN
+                      🚫 TIDAK DAPAT IZIN
                     </button>
                   </div>
                 </div>
