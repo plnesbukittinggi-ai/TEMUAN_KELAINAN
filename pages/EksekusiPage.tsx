@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { LoginSession, TemuanData } from '../types';
 import { compressImage } from '../utils/imageUtils';
@@ -7,8 +6,8 @@ interface EksekusiPageProps {
   session: LoginSession;
   data: TemuanData[];
   onBack: () => void;
-  onSave: (data: TemuanData) => void;
-  initialData?: TemuanData; // Support for Edit mode
+  onSave: (data: TemuanData) => Promise<void> | void;
+  initialData?: TemuanData;
 }
 
 const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSave, initialData }) => {
@@ -25,14 +24,19 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
 
   useEffect(() => {
     if (initialData?.tanggalEksekusi) {
-        try {
-            const dateStr = initialData.tanggalEksekusi.split(',')[0].trim();
-            const parts = dateStr.split('/');
-            if (parts.length === 3) {
-                const formatted = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
-                setExecutionDate(formatted);
-            }
-        } catch (e) {}
+      try {
+        const dateStr = initialData.tanggalEksekusi.split(',')[0].trim();
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+          const formatted = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+          setExecutionDate(formatted);
+        }
+      } catch (e) {
+        console.error("Date parse error", e);
+      }
+    }
+    if (initialData?.fotoEksekusi) {
+      setExecutionPhoto(initialData.fotoEksekusi);
     }
   }, [initialData]);
 
@@ -148,30 +152,22 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       } catch (e) { return true; }
     });
 
-    // Sorting Logic: 
-    // 1. Newest Date first
-    // 2. Highest Priority first (1-star > 2-stars > 3-stars)
     return filtered.sort((a, b) => {
       const timeA = parseIndoDate(a.tanggal).getTime();
       const timeB = parseIndoDate(b.tanggal).getTime();
-      
       if (timeB !== timeA) return timeB - timeA;
-      
       const pA = Number(a.prioritas || 3);
       const pB = Number(b.prioritas || 3);
       return pA - pB;
     });
   }, [data, startDate, endDate, searchQuery]);
 
-  // Updated star rendering based on exact priority count
   const renderStars = (count: number) => {
     const priority = Number(count || 1);
     return (
       <div className="flex gap-0.5 mt-1">
         {Array.from({ length: priority }).map((_, i) => (
-          <span key={i} className="text-[10px] drop-shadow-sm">
-            ⭐
-          </span>
+          <span key={i} className="text-[10px] drop-shadow-sm">⭐</span>
         ))}
       </div>
     );
@@ -194,29 +190,28 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       </div>
 
       {!initialData && (
-          <div className="bg-white p-5 rounded-3xl border border-slate-200 mb-6 shadow-sm space-y-4">
-            <div>
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Cari No. Tiang</p>
-              <div className="relative">
-                <input 
-                  type="text" 
-                  className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:border-indigo-500 transition-all uppercase"
-                  placeholder="Ketik No. Tiang..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none">🔍</span>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-slate-50">
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Saring Tanggal Temuan</p>
-              <div className="grid grid-cols-2 gap-3">
-                <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-              </div>
+        <div className="bg-white p-5 rounded-3xl border border-slate-200 mb-6 shadow-sm space-y-4">
+          <div>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Cari No. Tiang</p>
+            <div className="relative">
+              <input 
+                type="text" 
+                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:border-indigo-500 transition-all uppercase"
+                placeholder="Ketik No. Tiang..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none">🔍</span>
             </div>
           </div>
+          <div className="pt-2 border-t border-slate-50">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Saring Tanggal Temuan</p>
+            <div className="grid grid-cols-2 gap-3">
+              <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </div>
+          </div>
+        </div>
       )}
 
       {filteredQueue.length === 0 && !initialData ? (
@@ -245,17 +240,13 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="text-[8px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-black uppercase tracking-wider hover:bg-blue-100 transition-colors"
-                        >
-                          📍 Peta
-                        </a>
+                        >📍 Peta</a>
                       )}
                       <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${
                         item.status === 'BUTUH PADAM' ? 'bg-amber-50 text-amber-700' : 
                         item.status === 'TIDAK DAPAT IZIN' ? 'bg-orange-50 text-orange-700' :
                         'bg-indigo-50 text-indigo-700'
-                      }`}>
-                        {item.status}
-                      </span>
+                      }`}>{item.status}</span>
                     </div>
                   </div>
                   <div className="flex justify-between items-start">
@@ -270,9 +261,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
               <button 
                 onClick={() => setSelectedTemuan(item)}
                 className="w-full bg-slate-900 text-white font-bold py-4 text-xs uppercase tracking-[0.2em] active:bg-slate-800 transition-colors"
-              >
-                {initialData ? 'EDIT DETAIL EKSEKUSI' : 'PROSES EKSEKUSI'}
-              </button>
+              >{initialData ? 'EDIT DETAIL EKSEKUSI' : 'PROSES EKSEKUSI'}</button>
             </div>
           ))}
         </div>
@@ -286,7 +275,6 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
               {!isSaving && !initialData && <button onClick={() => setSelectedTemuan(null)} className="text-slate-400 p-2">✕</button>}
               {initialData && <button onClick={onBack} className="text-slate-400 p-2">✕</button>}
             </div>
-
             <div className="p-6 space-y-6">
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex justify-between items-start">
                 <div>
@@ -296,7 +284,6 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                 </div>
                 {renderStars(selectedTemuan.prioritas)}
               </div>
-
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest ml-1">Tanggal Eksekusi Manual (Opsional)</label>
                 <input 
@@ -306,22 +293,17 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                   onChange={(e) => setExecutionDate(e.target.value)}
                 />
               </div>
-
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest ml-1">Bukti Foto Perbaikan *</label>
                 <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl p-4 bg-slate-50/50 min-h-[220px]">
                   <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
-                  
                   {isCompressing ? (
                     <div className="animate-spin h-6 w-6 border-4 border-emerald-500 border-t-transparent rounded-full"></div>
                   ) : executionPhoto ? (
                     <div className="relative w-full">
-                      <img src={executionPhoto.includes('http') ? executionPhoto : executionPhoto} alt="Preview" className="w-full h-56 object-cover rounded-xl" />
+                      <img src={executionPhoto} alt="Preview" className="w-full h-56 object-cover rounded-xl" />
                       {!isSaving && (
-                        <button 
-                          onClick={() => setExecutionPhoto('')}
-                          className="absolute top-2 right-2 bg-slate-900/80 text-white w-8 h-8 rounded-lg flex items-center justify-center"
-                        >✕</button>
+                        <button onClick={() => setExecutionPhoto('')} className="absolute top-2 right-2 bg-slate-900/80 text-white w-8 h-8 rounded-lg flex items-center justify-center">✕</button>
                       )}
                     </div>
                   ) : (
@@ -339,38 +321,30 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                 </div>
               </div>
             </div>
-
             <div className="p-6 bg-slate-50 border-t border-slate-100 rounded-b-3xl">
-               <div className="space-y-3">
+              <div className="space-y-3">
+                <button 
+                  onClick={() => handleAction('SUDAH EKSEKUSI')}
+                  disabled={isSaving || isCompressing}
+                  className={`w-full py-4 rounded-xl shadow-lg uppercase text-[10px] font-black tracking-[0.2em] ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-emerald-600 text-white'}`}
+                >{isSaving ? '⏳' : initialData ? 'Update Selesai' : '✅ SELESAI'}</button>
+                <div className="grid grid-cols-2 gap-3">
                   <button 
-                    onClick={() => handleAction('SUDAH EKSEKUSI')}
+                    onClick={() => handleAction('BUTUH PADAM')}
                     disabled={isSaving || isCompressing}
-                    className={`w-full py-4 rounded-xl shadow-lg uppercase text-[10px] font-black tracking-[0.2em] ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-emerald-600 text-white'}`}
-                  >
-                    {isSaving ? '⏳' : initialData ? 'Update Selesai' : '✅ SELESAI'}
-                  </button>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button 
-                      onClick={() => handleAction('BUTUH PADAM')}
-                      disabled={isSaving || isCompressing}
-                      className={`py-4 rounded-xl shadow-lg uppercase text-[10px] font-bold ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-amber-500 text-white'}`}
-                    >
-                      ⚡ BUTUH PADAM
-                    </button>
-                    <button 
-                      onClick={() => handleAction('TIDAK DAPAT IZIN')}
-                      disabled={isSaving || isCompressing}
-                      className={`py-4 rounded-xl shadow-lg uppercase text-[10px] font-bold ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-orange-600 text-white'}`}
-                    >
-                      🚫 TIDAK DAPAT IZIN
-                    </button>
-                  </div>
+                    className={`py-4 rounded-xl shadow-lg uppercase text-[10px] font-bold ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-amber-500 text-white'}`}
+                  >⚡ BUTUH PADAM</button>
+                  <button 
+                    onClick={() => handleAction('TIDAK DAPAT IZIN')}
+                    disabled={isSaving || isCompressing}
+                    className={`py-4 rounded-xl shadow-lg uppercase text-[10px] font-bold ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-orange-600 text-white'}`}
+                  >🚫 TIDAK DAPAT IZIN</button>
                 </div>
+              </div>
             </div>
           </div>
         </div>
       )}
-
       {previewImage && (
         <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-sm z-[1000] flex flex-col items-center justify-center p-4 animate-fade-in" onClick={() => setPreviewImage(null)}>
           <div className="w-full max-w-md relative">
