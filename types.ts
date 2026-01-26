@@ -49,6 +49,7 @@ export interface TemuanData {
   fotoTemuan: string; 
   keterangan: string;
   status: 'BELUM EKSEKUSI' | 'SUDAH EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN';
+  prioritas: number; // 1, 2, or 3 stars
   tanggalEksekusi?: string;
   fotoEksekusi?: string;
   timEksekusi?: string;
