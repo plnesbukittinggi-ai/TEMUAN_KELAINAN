@@ -1,4 +1,3 @@
-
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -38,6 +37,7 @@ const getBase64FromUrl = async (url: string): Promise<string> => {
 export const ReportService = {
   /**
    * Generates and downloads an Excel report containing inspection details and photos.
+   * NOTE: Priority column is excluded as per user request.
    */
   async downloadExcel(data: TemuanData[], filters: any) {
     const workbook = new ExcelJS.Workbook();
@@ -59,16 +59,16 @@ export const ReportService = {
     worksheet.getCell('A3').alignment = { horizontal: 'center' };
 
     worksheet.mergeCells('A4:K4');
-    worksheet.getCell('A4').value = 'ULP ${filters.ulp || 'SEMUA'}';
+    worksheet.getCell('A4').value = `ULP ${filters.ulp || 'SEMUA'}`;
     worksheet.getCell('A4').font = { bold: true, size: 11 };
     worksheet.getCell('A4').alignment = { horizontal: 'center' };
-
 
     worksheet.addRow([]);
     worksheet.addRow(['NAMA FEEDER', `: ${filters.feeder || 'SEMUA'}`]);
     worksheet.addRow(['BULAN', `: ${filters.bulan || '-'}`]);
     worksheet.addRow([]);
 
+    // Headers excluding Priority
     const headerRow = worksheet.addRow([
       'NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEBELUM', 'FOTO SESUDAH', 'KETERANGAN', 'SARAN'
     ]);
@@ -86,15 +86,14 @@ export const ReportService = {
     worksheet.getColumn(5).width = 20;
     worksheet.getColumn(6).width = 35;
     worksheet.getColumn(7).width = 25;
-    worksheet.getColumn(8).width = 30;
-    worksheet.getColumn(9).width = 30;
-    worksheet.getColumn(10).width = 25; // Wider for detailed status
-    worksheet.getColumn(11).width = 45;
+    worksheet.getColumn(8).width = 30; // Foto Sebelum
+    worksheet.getColumn(9).width = 30; // Foto Sesudah
+    worksheet.getColumn(10).width = 25; // Keterangan
+    worksheet.getColumn(11).width = 45; // Saran
 
     for (let i = 0; i < data.length; i++) {
       const item = data[i];
       
-      // Bersihkan tanggal eksekusi dari komponen waktu (Time)
       const cleanEksekusiDate = item.tanggalEksekusi ? item.tanggalEksekusi.split(',')[0] : '-';
       
       let displayStatus: string = item.status;
@@ -102,6 +101,7 @@ export const ReportService = {
         displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${cleanEksekusiDate}`;
       }
 
+      // Row content excluding Priority
       const row = worksheet.addRow([
         i + 1,
         item.tanggal.split(',')[0],
@@ -110,8 +110,8 @@ export const ReportService = {
         item.feeder,
         item.lokasi || "-",
         item.geotag || "-",
-        "",
-        "",
+        "", // Foto Sebelum (Placeholder)
+        "", // Foto Sesudah (Placeholder)
         item.keterangan,
         displayStatus
       ]);
@@ -127,7 +127,7 @@ export const ReportService = {
           if (base64) {
             const imgId = workbook.addImage({ base64, extension: 'png' });
             worksheet.addImage(imgId, {
-              tl: { col: 7, row: row.number - 1 },
+              tl: { col: 7, row: row.number - 1 }, // Column H (index 7)
               ext: { width: 220, height: 130 }
             });
           }
@@ -140,7 +140,7 @@ export const ReportService = {
           if (base64) {
             const imgId = workbook.addImage({ base64, extension: 'png' });
             worksheet.addImage(imgId, {
-              tl: { col: 8, row: row.number - 1 },
+              tl: { col: 8, row: row.number - 1 }, // Column I (index 8)
               ext: { width: 220, height: 130 }
             });
           }
@@ -149,11 +149,11 @@ export const ReportService = {
     }
 
     worksheet.addRow([]);
-    worksheet.addRow(['', '', '', '', '', '', '', '', 'DILAKSANAKAN', `: ${filters.bulan || '-'}`]);
-    worksheet.addRow(['', '', '', '', '', '', '', '', 'JAM', ': 07.30 S/D 17.00 WIB']);
-    worksheet.addRow(['', '', '', '', '', '', '', '', 'PETUGAS', `: ${filters.inspektor1 || '-'}`]);
-    worksheet.addRow(['', '', '', '', '', '', '', '', '', `: ${filters.inspektor2 || '-'}`]);
-    worksheet.addRow(['', '', '', '', '', '', '', '', 'ADMINSPEKSI', `: ENDANG WINARNINGSIH`]);
+    worksheet.addRow(['', '', '', '', '', '', '', '', '', 'DILAKSANAKAN', `: ${filters.bulan || '-'}`]);
+    worksheet.addRow(['', '', '', '', '', '', '', '', '', 'JAM', ': 07.30 S/D 17.00 WIB']);
+    worksheet.addRow(['', '', '', '', '', '', '', '', '', 'PETUGAS', `: ${filters.inspektor1 || '-'}`]);
+    worksheet.addRow(['', '', '', '', '', '', '', '', '', '', `: ${filters.inspektor2 || '-'}`]);
+    worksheet.addRow(['', '', '', '', '', '', '', '', '', 'ADMINSPEKSI', `: ENDANG WINARNINGSIH`]);
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -192,7 +192,7 @@ export const ReportService = {
         item.noWO,
         item.feeder,
         item.lokasi || "-",
-        item.geotag || "-",
+        item.prioritas ? `${item.prioritas} Bintang` : "-",
         '',
         '',
         item.keterangan,
@@ -202,16 +202,16 @@ export const ReportService = {
 
     autoTable(doc, {
       startY: 48,
-      head: [['NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEB', 'FOTO SES', 'KETERANGAN', 'SARAN']],
+      head: [['NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'PRIORITAS', 'FOTO SEB', 'FOTO SES', 'KETERANGAN', 'SARAN']],
       body: body,
       theme: 'grid',
       headStyles: { fillColor: [40, 40, 40], fontSize: 7, halign: 'center' },
       styles: { fontSize: 6, cellPadding: 1.5, minCellHeight: 25, valign: 'middle' },
       columnStyles: {
         5: { cellWidth: 30 },
-        6: { cellWidth: 20 },
-        7: { cellWidth: 25 },
-        8: { cellWidth: 25 },
+        6: { cellWidth: 15 },
+        7: { cellWidth: 20 },
+        8: { cellWidth: 20 },
         9: { cellWidth: 40 }, 
       }
     });
