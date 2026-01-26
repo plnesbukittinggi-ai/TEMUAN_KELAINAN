@@ -19,7 +19,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const [isCompressing, setIsCompressing] = useState(false);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  const [searchQuery, setSearchQuery] = useState<string>(''); // State baru untuk pencarian
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [previewImage, setPreviewImage] = useState<{url: string, title: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -82,7 +82,6 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
     
     setIsSaving(true);
     
-    // Pastikan format tanggal murni DD/MM/YYYY tanpa waktu
     let finalDateString = new Date().toLocaleDateString('id-ID');
     if (executionDate) {
       const [year, month, day] = executionDate.split('-').map(Number);
@@ -111,21 +110,28 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
     }
   };
 
+  const parseIndoDate = (dateStr: string) => {
+    try {
+      if (!dateStr) return new Date(0);
+      const cleanStr = dateStr.replace('pukul ', '').replace('.', ':');
+      const parts = cleanStr.split(',');
+      const dPart = parts[0].trim();
+      const [day, month, year] = dPart.split('/').map(Number);
+      return new Date(year, month - 1, day);
+    } catch (e) { return new Date(0); }
+  };
+
   const filteredQueue = useMemo(() => {
-    return data.filter(item => {
-      // Filter Pencarian No. Tiang (Dipastikan dikonversi ke String untuk menghindari error jika input adalah number)
+    const filtered = data.filter(item => {
       const noTiangStr = String(item.noTiang || '');
       const matchesSearch = !searchQuery || 
         noTiangStr.toLowerCase().includes(searchQuery.toLowerCase());
       
       if (!matchesSearch) return false;
 
-      // Filter Tanggal
       if (!startDate && !endDate) return true;
       try {
-        const datePart = item.tanggal.split(',')[0].trim();
-        const [day, month, year] = datePart.split('/').map(Number);
-        const itemDate = new Date(year, month - 1, day);
+        const itemDate = parseIndoDate(item.tanggal);
         itemDate.setHours(0,0,0,0);
 
         if (startDate) {
@@ -141,7 +147,35 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
         return true;
       } catch (e) { return true; }
     });
+
+    // Sorting Logic: 
+    // 1. Newest Date first
+    // 2. Highest Priority first (1-star > 2-stars > 3-stars)
+    return filtered.sort((a, b) => {
+      const timeA = parseIndoDate(a.tanggal).getTime();
+      const timeB = parseIndoDate(b.tanggal).getTime();
+      
+      if (timeB !== timeA) return timeB - timeA;
+      
+      const pA = Number(a.prioritas || 3);
+      const pB = Number(b.prioritas || 3);
+      return pA - pB;
+    });
   }, [data, startDate, endDate, searchQuery]);
+
+  // Updated star rendering based on exact priority count
+  const renderStars = (count: number) => {
+    const priority = Number(count || 1);
+    return (
+      <div className="flex gap-0.5 mt-1">
+        {Array.from({ length: priority }).map((_, i) => (
+          <span key={i} className="text-[10px] drop-shadow-sm">
+            ⭐
+          </span>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="pb-10">
@@ -200,7 +234,6 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                   onClick={() => setPreviewImage({ url: formatDriveUrl(item.fotoTemuan), title: `Foto Temuan: ${item.noTiang}` })}
                 >
                   <img src={formatDriveUrl(item.fotoTemuan)} alt="Temuan" className="w-24 h-24 object-cover rounded-xl border border-slate-100" referrerPolicy="no-referrer" />
-                  <div className="absolute inset-0 bg-black/5 rounded-xl group-hover:bg-black/0 transition-all"></div>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start mb-1">
@@ -225,7 +258,10 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                       </span>
                     </div>
                   </div>
-                  <h3 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">{item.noTiang} / {item.feeder}</h3>
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">{item.noTiang} / {item.feeder}</h3>
+                    {renderStars(item.prioritas)}
+                  </div>
                   <p className="text-xs font-bold text-red-600 line-clamp-1">{item.keterangan}</p>
                   <p className="text-[10px] text-slate-500 font-medium line-clamp-1 mt-0.5 italic">{item.alamat || item.lokasi || 'Alamat tidak tersedia'}</p>
                   <p className="text-[8px] text-slate-400 mt-1.5 font-bold uppercase tracking-widest">{item.tanggal.split(',')[0]}</p>
@@ -252,10 +288,13 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
             </div>
 
             <div className="p-6 space-y-6">
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Aset Target</p>
-                <p className="font-bold text-slate-900 text-sm uppercase">{selectedTemuan.noTiang} • {selectedTemuan.feeder}</p>
-                <p className="text-[10px] text-slate-600 mt-1 italic">{selectedTemuan.alamat || selectedTemuan.lokasi}</p>
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex justify-between items-start">
+                <div>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Aset Target</p>
+                  <p className="font-bold text-slate-900 text-sm uppercase">{selectedTemuan.noTiang} • {selectedTemuan.feeder}</p>
+                  <p className="text-[10px] text-slate-600 mt-1 italic">{selectedTemuan.alamat || selectedTemuan.lokasi}</p>
+                </div>
+                {renderStars(selectedTemuan.prioritas)}
               </div>
 
               <div>
@@ -336,11 +375,6 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
         <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-sm z-[1000] flex flex-col items-center justify-center p-4 animate-fade-in" onClick={() => setPreviewImage(null)}>
           <div className="w-full max-w-md relative">
             <img src={previewImage.url} alt="Preview" className="w-full aspect-square object-contain bg-slate-100 rounded-3xl" referrerPolicy="no-referrer" />
-            <div className="absolute bottom-4 left-0 right-0 text-center">
-               <p className="text-white text-[11px] font-black uppercase tracking-widest bg-black/40 inline-block px-4 py-2 rounded-full backdrop-blur-md">
-                 {previewImage.title}
-               </p>
-            </div>
           </div>
           <p className="text-white/50 text-[10px] mt-6 font-bold uppercase tracking-[0.2em]">Sentuh di mana saja untuk menutup</p>
         </div>
