@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fixed: Changed import casing to 'ReportService' to align with the file name 'ReportService.ts' and resolve the TypeScript casing conflict.
+// Fix: Use exact casing 'ReportService' to match the root file name and resolve TypeScript casing conflict errors
 import { ReportService } from '../services/ReportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
@@ -12,7 +12,6 @@ interface AdminPageProps {
   inspectors: Inspector[];
   feeders: Feeder[];
   pekerjaanList: Pekerjaan[];
-  // Added missing keteranganList property to fix TS error in App.tsx
   keteranganList: Keterangan[];
   onBack: () => void;
   onUpdateInspectors: (data: Inspector[]) => void;
@@ -34,17 +33,14 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP'>('DASHBOARD');
   const [aiInsight, setAiInsight] = useState<string>('Menganalisis performa data...');
   
-  // Dashboard Filters
   const [dashFilterMonth, setDashFilterMonth] = useState<number>(new Date().getMonth() + 1);
   const [dashFilterYear, setDashFilterYear] = useState<number>(new Date().getFullYear());
   const [dashFilterUlp, setDashFilterUlp] = useState<string>('');
   const [dashFilterPekerjaan, setDashFilterPekerjaan] = useState<string>('');
 
-  // Recap Filters
   const [rekapStartDate, setRekapStartDate] = useState<string>('');
   const [rekapEndDate, setRekapEndDate] = useState<string>('');
 
-  // Data Table Filters
   const [filterUlp, setFilterUlp] = useState<string>('');
   const [filterFeeder, setFilterFeeder] = useState<string>('');
   const [filterPekerjaan, setFilterPekerjaan] = useState<string>('');
@@ -52,13 +48,26 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const [filterEndDate, setFilterEndDate] = useState<string>('');
   const [isExporting, setIsExporting] = useState(false);
 
-  // Management (Kelola) States
   const [subTab, setSubTab] = useState<'INSPEKTOR' | 'ULP' | 'FEEDER'>('INSPEKTOR');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'ADD' | 'EDIT'>('ADD');
   const [editingItem, setEditingItem] = useState<any>(null);
   const [formData, setFormData] = useState<any>({ name: '', ulpId: '' });
   const [isSaving, setIsSaving] = useState(false);
+
+  const formatDriveUrl = (url?: string) => {
+    if (!url) return '';
+    if (url.indexOf('data:image') === 0) return url;
+    if (url.includes('drive.google.com/file/d/')) {
+      const id = url.split('/d/')[1]?.split('/')[0];
+      if (id) return `https://lh3.googleusercontent.com/d/${id}`;
+    }
+    if (url.includes('id=')) {
+      const id = url.split('id=')[1]?.split('&')[0];
+      if (id) return `https://lh3.googleusercontent.com/d/${id}`;
+    }
+    return url;
+  };
   
   const parseIndoDate = (dateStr: string) => {
     try {
@@ -136,10 +145,10 @@ const AdminPage: React.FC<AdminPageProps> = ({
     };
 
     return [
-      { label: 'JTM Tier 1', ...getStats('JTM Tier 1'), color: 'bg-indigo-600' },
-      { label: 'JTM Tier 1-2', ...getStats('JTM Tier 1 - Tier 2'), color: 'bg-indigo-400' },
-      { label: 'GARDU Tier 1', ...getStats('GARDU Tier 1'), color: 'bg-amber-600' },
-      { label: 'GARDU Tier 1-2', ...getStats('GARDU Tier 1 - Tier 2'), color: 'bg-amber-400' }
+      { label: 'JTM Tier 1', ...getStats('JTM Tier 1'), barColor: 'bg-indigo-600', bgColor: 'bg-indigo-50', borderColor: 'border-indigo-100', textColor: 'text-indigo-900', labelColor: 'text-indigo-500' },
+      { label: 'JTM Tier 1 & 2', ...getStats('JTM Tier 1 & 2'), barColor: 'bg-blue-600', bgColor: 'bg-blue-50', borderColor: 'border-blue-100', textColor: 'text-blue-900', labelColor: 'text-blue-500' },
+      { label: 'GARDU Tier 1', ...getStats('GARDU Tier 1'), barColor: 'bg-amber-600', bgColor: 'bg-amber-50', borderColor: 'border-amber-100', textColor: 'text-amber-900', labelColor: 'text-amber-500' },
+      { label: 'GARDU Tier 1 & 2', ...getStats('GARDU Tier 1 & 2'), barColor: 'bg-orange-600', bgColor: 'bg-orange-50', borderColor: 'border-orange-100', textColor: 'text-orange-900', labelColor: 'text-orange-500' }
     ];
   }, [dashboardData]);
 
@@ -174,7 +183,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
       if (filterEndDate) {
         const end = new Date(filterEndDate);
         end.setHours(23,59,59,999);
-        if (itemDate > end) matchDate = false;
+        if (itemDate < end) matchDate = false;
       }
 
       return matchUlp && matchFeeder && matchPekerjaan && matchDate;
@@ -191,12 +200,10 @@ const AdminPage: React.FC<AdminPageProps> = ({
     
     setIsExporting(true);
     try {
-      // Sorting Ascending khusus untuk Excel (Tanggal Terkecil ke Terbesar)
       const sortedForExport = [...filteredAndSortedData].sort((a, b) => 
         parseIndoDate(a.tanggal).getTime() - parseIndoDate(b.tanggal).getTime()
       );
 
-      // Mendapatkan label bulan dari filter Dashboard
       const selectedMonthLabel = MONTHS.find(m => m.val === dashFilterMonth)?.label || '';
       const displayMonth = filterStartDate && filterEndDate 
         ? `${filterStartDate} s/d ${filterEndDate}` 
@@ -221,7 +228,14 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
 
-  // Kelola Handlers
+  const resetDataFilters = () => {
+    setFilterUlp('');
+    setFilterFeeder('');
+    setFilterPekerjaan('');
+    setFilterStartDate('');
+    setFilterEndDate('');
+  };
+
   const handleOpenAdd = () => {
     setModalMode('ADD');
     setEditingItem(null);
@@ -240,29 +254,30 @@ const AdminPage: React.FC<AdminPageProps> = ({
     if (!window.confirm(`Yakin ingin menghapus "${item.name}"?`)) return;
 
     let updatedList: any[] = [];
-    let action = '';
+    let sheetName: 'Inspectors' | 'ULP' | 'Feeders';
     
     if (subTab === 'INSPEKTOR') {
       updatedList = inspectors.filter(i => i.id !== item.id);
-      action = 'updateInspectors';
+      sheetName = 'Inspectors';
     } else if (subTab === 'ULP') {
       updatedList = ulpList.filter(u => u.id !== item.id);
-      action = 'updateULP';
+      sheetName = 'ULP';
     } else {
       updatedList = feeders.filter(f => f.id !== item.id);
-      action = 'updateFeeders';
+      sheetName = 'Feeders';
     }
 
+    setIsSaving(true);
     try {
-      // In real scenario, we'd call SpreadsheetService.updateMasterData(action, updatedList)
-      // For now, we update parent state
+      await SpreadsheetService.updateMasterData(sheetName, updatedList);
       if (subTab === 'INSPEKTOR') onUpdateInspectors(updatedList);
       else if (subTab === 'ULP') onUpdateUlp(updatedList);
       else onUpdateFeeders(updatedList);
-      
       alert('Data berhasil dihapus.');
     } catch (e) {
-      alert('Gagal menghapus data.');
+      alert('Gagal menghapus data di server.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -273,37 +288,54 @@ const AdminPage: React.FC<AdminPageProps> = ({
     setIsSaving(true);
     try {
       let updatedList: any[] = [];
+      let sheetName: 'Inspectors' | 'ULP' | 'Feeders';
+
       if (subTab === 'INSPEKTOR') {
+        sheetName = 'Inspectors';
         if (modalMode === 'ADD') {
           updatedList = [...inspectors, { id: `INS-${Date.now()}`, name: formData.name }];
         } else {
           updatedList = inspectors.map(i => i.id === editingItem.id ? { ...i, name: formData.name } : i);
         }
-        onUpdateInspectors(updatedList);
       } else if (subTab === 'ULP') {
+        sheetName = 'ULP';
         if (modalMode === 'ADD') {
           updatedList = [...ulpList, { id: `ULP-${Date.now()}`, name: formData.name }];
         } else {
           updatedList = ulpList.map(u => u.id === editingItem.id ? { ...u, name: formData.name } : u);
         }
-        onUpdateUlp(updatedList);
-      } else if (subTab === 'FEEDER') {
+      } else {
+        sheetName = 'Feeders';
         if (modalMode === 'ADD') {
           updatedList = [...feeders, { id: `F-${Date.now()}`, name: formData.name, ulpId: formData.ulpId }];
         } else {
           updatedList = feeders.map(f => f.id === editingItem.id ? { ...f, name: formData.name, ulpId: formData.ulpId } : f);
         }
-        onUpdateFeeders(updatedList);
       }
 
-      setIsModalOpen(false);
-      alert(`Berhasil ${modalMode === 'ADD' ? 'menambah' : 'mengubah'} data.`);
+      const res = await SpreadsheetService.updateMasterData(sheetName, updatedList);
+      if (res.success) {
+        if (subTab === 'INSPEKTOR') onUpdateInspectors(updatedList);
+        else if (subTab === 'ULP') onUpdateUlp(updatedList);
+        else onUpdateFeeders(updatedList);
+        
+        setIsModalOpen(false);
+        alert(`Berhasil ${modalMode === 'ADD' ? 'menambah' : 'mengubah'} data di Spreadsheet.`);
+      } else {
+        alert('Gagal menyimpan ke Spreadsheet.');
+      }
     } catch (e) {
-      alert('Gagal menyimpan data.');
+      alert('Terjadi kesalahan sinkronisasi.');
     } finally {
       setIsSaving(false);
     }
   };
+
+  const currentFilteredFeeders = useMemo(() => {
+    if (!filterUlp) return feeders;
+    const selectedUlpId = ulpList.find(u => u.name === filterUlp)?.id;
+    return feeders.filter(f => f.ulpId === selectedUlpId);
+  }, [feeders, filterUlp, ulpList]);
 
   return (
     <div className="pb-10">
@@ -334,10 +366,9 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
       {tab === 'DASHBOARD' && (
         <div className="space-y-6 animate-fade-in">
-          {/* Dashboard contents... */}
           <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Periode Analitik</p>
-            <div className="grid grid-cols-2 gap-3 mb-4">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Saring Dashboard</p>
+            <div className="grid grid-cols-2 gap-3 mb-3">
               <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={dashFilterMonth} onChange={(e) => setDashFilterMonth(Number(e.target.value))}>
                 {MONTHS.map(m => <option key={m.val} value={m.val}>{m.label}</option>)}
               </select>
@@ -345,60 +376,71 @@ const AdminPage: React.FC<AdminPageProps> = ({
                 {years.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 mb-4">
               <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={dashFilterUlp} onChange={(e) => setDashFilterUlp(e.target.value)}>
-                <option value="">-- Semua Unit --</option>
+                <option value="">Semua ULP</option>
                 {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
               </select>
               <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={dashFilterPekerjaan} onChange={(e) => setDashFilterPekerjaan(e.target.value)}>
-                <option value="">-- Semua Pekerjaan --</option>
+                <option value="">Semua Jenis Pekerjaan</option>
                 {pekerjaanList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
               </select>
             </div>
+            <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4">
+              <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-2">💡 AI Insights</p>
+              <p className="text-xs text-slate-700 leading-relaxed font-medium">{aiInsight}</p>
+            </div>
           </div>
 
-          <div className="bg-indigo-600 p-6 rounded-[2rem] text-white shadow-2xl relative overflow-hidden">
-             <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center text-lg">🤖</span>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">AI Analysis</p>
-                </div>
-                <p className="text-sm font-semibold leading-relaxed italic opacity-90">"{aiInsight}"</p>
-             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {tierStats.map((tier, idx) => (
-              <div key={idx} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">{tier.label}</p>
-                <div className="flex items-baseline justify-between">
-                  <h4 className="text-xl font-black text-slate-900">{tier.total}</h4>
-                  <span className="text-[10px] font-black text-indigo-600">{tier.pct}%</span>
-                </div>
-                <div className="h-1.5 w-full bg-slate-100 rounded-full mt-2 overflow-hidden">
-                  <div className={`h-full ${tier.color}`} style={{ width: `${tier.pct}%` }}></div>
-                </div>
+          <div className="grid grid-cols-2 gap-4">
+            {tierStats.map(s => (
+              <div key={s.label} className={`${s.bgColor} ${s.borderColor} p-5 rounded-[2rem] border shadow-sm transition-all hover:scale-[1.02]`}>
+                 <div className="flex justify-between items-start mb-4">
+                    <div className="text-left">
+                       <p className={`text-[8px] font-black uppercase tracking-widest mb-0.5 ${s.labelColor}`}>Total Temuan</p>
+                       <p className={`text-2xl font-black leading-none ${s.textColor}`}>{s.total}</p>
+                    </div>
+                    <div className="text-right">
+                       <p className={`text-[8px] font-black uppercase tracking-widest mb-0.5 ${s.labelColor}`}>Total Eksekusi</p>
+                       <p className={`text-2xl font-black leading-none ${s.textColor}`}>{s.done}</p>
+                    </div>
+                 </div>
+                 <div className="w-full bg-white/50 h-2 rounded-full overflow-hidden mb-3">
+                    <div className={`${s.barColor} h-full transition-all duration-1000`} style={{ width: `${s.pct}%` }}></div>
+                 </div>
+                 <div className="flex justify-between items-center">
+                    <p className={`text-[9px] font-black uppercase tracking-tight ${s.textColor}`}>{s.label}</p>
+                    <p className={`text-[9px] font-black opacity-60 ${s.textColor}`}>{s.pct}% Selesai</p>
+                 </div>
               </div>
             ))}
           </div>
 
-          <div className="bg-slate-900 p-6 rounded-[2.5rem] text-white shadow-xl">
-             <h3 className="text-sm font-black uppercase tracking-tight mb-4">🏆 Top 10 Feeder</h3>
-             <div className="space-y-3">
-                {topTenFeeders.map((feeder, idx) => (
-                   <div key={idx} className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-[10px] font-black">{idx + 1}</div>
-                      <div className="flex-1">
-                         <div className="flex justify-between items-center mb-1">
-                            <p className="text-[10px] font-bold uppercase">{feeder.name}</p>
-                            <p className="text-[9px] font-black text-indigo-400">{feeder.done}/{feeder.total}</p>
-                         </div>
-                         <div className="h-1 w-full bg-white/5 rounded-full">
-                            <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${(feeder.done / feeder.total) * 100}%` }}></div>
-                         </div>
-                      </div>
-                   </div>
+          <div className="bg-slate-50 p-6 rounded-[2.5rem] border border-slate-200 shadow-sm">
+             <div className="flex justify-between items-center mb-6">
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Top 10 Feeder (Progres Eksekusi)</h3>
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Selesai / Total</span>
+             </div>
+             <div className="space-y-4">
+                {topTenFeeders.map((f, i) => (
+                  <div key={f.name} className="flex items-center gap-4">
+                     <span className="text-[10px] font-black text-slate-300 w-4">{i+1}</span>
+                     <div className="flex-1">
+                        <div className="flex justify-between items-center mb-1.5">
+                           <p className="text-[10px] font-black text-slate-700 uppercase">{f.name}</p>
+                           <p className="text-[9px] font-black text-indigo-600 uppercase tracking-tighter">
+                              Eksekusi: {f.done} / {f.total}
+                           </p>
+                        </div>
+                        <div className="w-full bg-white h-1.5 rounded-full overflow-hidden border border-slate-100">
+                           <div className="bg-slate-900 h-full transition-all duration-700" style={{ width: `${(f.done / (f.total || 1)) * 100}%` }}></div>
+                        </div>
+                     </div>
+                  </div>
                 ))}
+                {topTenFeeders.length === 0 && (
+                   <p className="text-center py-4 text-[10px] font-bold text-slate-400 uppercase italic">Tidak ada data untuk periode ini</p>
+                )}
              </div>
           </div>
         </div>
@@ -406,152 +448,116 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
       {tab === 'REKAP' && (
         <div className="space-y-6 animate-fade-in">
-          {/* Recap contents... */}
           <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Saring Tanggal Rekap</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Dari</label>
-                <input type="date" className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={rekapStartDate} onChange={(e) => setRekapStartDate(e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Sampai</label>
-                <input type="date" className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={rekapEndDate} onChange={(e) => setRekapEndDate(e.target.value)} />
-              </div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Filter Rentang Waktu</p>
+            <div className="grid grid-cols-2 gap-3 mb-2">
+              <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={rekapStartDate} onChange={(e) => setRekapStartDate(e.target.value)} />
+              <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={rekapEndDate} onChange={(e) => setRekapEndDate(e.target.value)} />
             </div>
           </div>
 
-          <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left">
-                <thead className="bg-slate-50 border-b border-slate-100">
-                  <tr className="text-slate-400 text-[8px] uppercase font-black tracking-widest">
-                    <th className="p-4">Inspektor</th>
-                    <th className="p-4">ULP</th>
-                    <th className="p-4">Feeder</th>
-                    <th className="p-4">Pekerjaan</th>
-                    <th className="p-4 text-center">Total</th>
-                  </tr>
+          <div className="bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm">
+             <table className="w-full text-left border-collapse">
+                <thead>
+                   <tr className="bg-slate-50 border-b border-slate-100">
+                      <th className="p-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Inspektor</th>
+                      <th className="p-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Total</th>
+                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {rekapData.length > 0 ? rekapData.map((row, idx) => (
-                    <tr key={idx} className="text-[10px] font-bold text-slate-700 hover:bg-slate-50 transition-colors">
-                      <td className="p-4 font-black text-slate-900">{row.inspektor}</td>
-                      <td className="p-4">{row.ulp}</td>
-                      <td className="p-4 truncate max-w-[80px]">{row.feeder}</td>
-                      <td className="p-4">{row.pekerjaan}</td>
-                      <td className="p-4 text-center">
-                        <span className="bg-indigo-600 text-white px-2.5 py-1 rounded-lg font-black shadow-sm">{row.total}</span>
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan={5} className="p-16 text-center">
-                        <div className="flex flex-col items-center gap-2">
-                           <span className="text-2xl">🔍</span>
-                           <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px]">Data tidak ditemukan pada periode ini</p>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
+                   {rekapData.map((r, i) => (
+                      <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                         <td className="p-4">
+                            <p className="text-[10px] font-black text-slate-900 uppercase">{r.inspektor}</p>
+                            <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tight mt-0.5">{r.pekerjaan} • {r.feeder}</p>
+                         </td>
+                         <td className="p-4 text-center">
+                            <span className="inline-block bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-[10px] font-black">
+                               {r.total}
+                            </span>
+                         </td>
+                      </tr>
+                   ))}
+                   {rekapData.length === 0 && (
+                      <tr>
+                         <td colSpan={2} className="p-10 text-center text-slate-400 text-[10px] font-bold uppercase tracking-widest">Tidak ada data</td>
+                      </tr>
+                   )}
                 </tbody>
-              </table>
-            </div>
+             </table>
           </div>
         </div>
       )}
 
       {tab === 'DATA' && (
         <div className="space-y-6 animate-fade-in">
-          {/* Data contents... */}
-          <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
+          <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
+            <div className="flex justify-between items-center mb-1">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Saring Data Laporan</p>
+              {(filterUlp || filterFeeder || filterPekerjaan || filterStartDate || filterEndDate) && (
+                <button onClick={resetDataFilters} className="text-[9px] font-black text-red-500 uppercase tracking-widest">Reset</button>
+              )}
+            </div>
+            
             <div className="space-y-3">
-              <select className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" value={filterUlp} onChange={(e) => setFilterUlp(e.target.value)}>
-                <option value="">-- Pilih Unit (ULP) --</option>
-                {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
-              </select>
               <div className="grid grid-cols-2 gap-3">
-                <select className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" value={filterFeeder} onChange={(e) => setFilterFeeder(e.target.value)}>
-                  <option value="">-- Feeder --</option>
-                  {Array.from(new Set(data.map(d => d.feeder))).sort().map(f => <option key={f} value={f}>{f}</option>)}
+                <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterUlp} onChange={(e) => setFilterUlp(e.target.value)}>
+                   <option value="">Semua ULP</option>
+                   {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
                 </select>
-                <select className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" value={filterPekerjaan} onChange={(e) => setFilterPekerjaan(e.target.value)}>
-                  <option value="">-- Pekerjaan --</option>
-                  {pekerjaanList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterFeeder} onChange={(e) => setFilterFeeder(e.target.value)}>
+                   <option value="">Semua Feeder</option>
+                   {currentFilteredFeeders.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
                 </select>
+              </div>
+
+              <select className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterPekerjaan} onChange={(e) => setFilterPekerjaan(e.target.value)}>
+                 <option value="">Semua Jenis Pekerjaan</option>
+                 {pekerjaanList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+              </select>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <p className="text-[8px] font-black text-slate-300 uppercase ml-1">Tgl Mulai</p>
+                  <input type="date" className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[8px] font-black text-slate-300 uppercase ml-1">Tgl Akhir</p>
+                  <input type="date" className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} />
+                </div>
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Dari Tanggal</label>
-                <input 
-                  type="date" 
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" 
-                  value={filterStartDate} 
-                  onChange={(e) => setFilterStartDate(e.target.value)} 
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Sampai Tanggal</label>
-                <input 
-                  type="date" 
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-bold outline-none" 
-                  value={filterEndDate} 
-                  onChange={(e) => setFilterEndDate(e.target.value)} 
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button 
-                onClick={handleDownloadExcel} 
-                disabled={isExporting} 
-                className="flex-1 py-4 rounded-xl font-bold text-[10px] uppercase tracking-[0.2em] bg-emerald-600 text-white shadow-lg active:scale-95 transition-all disabled:opacity-50"
-              >
-                {isExporting ? 'Mengekspor...' : '📥 Download Excel'}
-              </button>
-            </div>
+            <button 
+              onClick={handleDownloadExcel}
+              disabled={isExporting}
+              className={`w-full py-4 rounded-2xl shadow-lg font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-3 ${isExporting ? 'bg-slate-200 text-slate-400' : 'bg-emerald-600 text-white active:scale-95'}`}
+            >
+              {isExporting ? '⏳ MENYIAPKAN FILE...' : '📗 DOWNLOAD LAPORAN EXCEL'}
+            </button>
           </div>
 
-          <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
-            <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Menampilkan {filteredAndSortedData.length} Baris Teratas</p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left">
-                <thead className="bg-white border-b border-slate-100">
-                  <tr className="text-slate-400 text-[9px] uppercase font-black tracking-widest">
-                    <th className="p-4">ULP</th>
-                    <th className="p-4">Feeder</th>
-                    <th className="p-4">Pekerjaan</th>
-                    <th className="p-4">Tiang</th>
-                    <th className="p-4">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {filteredAndSortedData.length > 0 ? filteredAndSortedData.slice(0, 50).map((item) => (
-                    <tr key={item.id} className="text-[10px] font-bold text-slate-700 hover:bg-slate-50/50 transition-colors">
-                      <td className="p-4 whitespace-nowrap text-slate-900 font-black">{item.ulp}</td>
-                      <td className="p-4 truncate max-w-[100px]">{item.feeder}</td>
-                      <td className="p-4">{item.pekerjaan}</td>
-                      <td className="p-4 uppercase font-black text-indigo-600">{item.noTiang}</td>
-                      <td className="p-4">
-                        <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-700'}`}>
-                          {item.status.split(' ')[0]}
-                        </span>
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan={5} className="p-16 text-center text-slate-400 uppercase text-[9px] font-bold tracking-widest">
-                        Data Tidak Ditemukan
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+          <div className="space-y-3">
+             <div className="flex justify-between items-center px-1">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Preview {filteredAndSortedData.length} Data Terbaru</p>
+             </div>
+             {filteredAndSortedData.slice(0, 50).map(item => (
+                <div key={item.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex gap-4">
+                   <div className="w-14 h-14 bg-slate-50 rounded-xl overflow-hidden flex-shrink-0">
+                      <img src={formatDriveUrl(item.fotoTemuan)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                   </div>
+                   <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start">
+                         <p className="text-[10px] font-black text-slate-900 truncate uppercase">{item.noTiang} • {item.feeder}</p>
+                         <span className={`text-[7px] px-1.5 py-0.5 rounded font-black uppercase ${item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                            {item.status.split(' ')[0]}
+                         </span>
+                      </div>
+                      <p className="text-[9px] font-bold text-red-500 mt-0.5 truncate uppercase">{item.keterangan}</p>
+                      <p className="text-[8px] text-slate-400 mt-1 font-bold uppercase tracking-widest">{item.tanggal.split(',')[0]} | {item.ulp}</p>
+                   </div>
+                </div>
+             ))}
           </div>
         </div>
       )}
@@ -573,9 +579,10 @@ const AdminPage: React.FC<AdminPageProps> = ({
              <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Daftar {subTab}</h3>
              <button 
                 onClick={handleOpenAdd}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                disabled={isSaving}
+                className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50"
              >
-                + Tambah
+                {isSaving ? '⏳' : '+ Tambah'}
              </button>
           </div>
 
@@ -620,19 +627,10 @@ const AdminPage: React.FC<AdminPageProps> = ({
                    </div>
                 </div>
              ))}
-
-             {((subTab === 'INSPEKTOR' && inspectors.length === 0) || 
-               (subTab === 'ULP' && ulpList.length === 0) || 
-               (subTab === 'FEEDER' && feeders.length === 0)) && (
-                <div className="text-center py-20 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Belum ada data {subTab}</p>
-                </div>
-             )}
           </div>
         </div>
       )}
 
-      {/* Management Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
            <div className="bg-white w-full max-sm rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up">
@@ -681,7 +679,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
                     <button 
                        onClick={handleSaveMaster}
                        disabled={isSaving}
-                       className="flex-2 py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-100 active:scale-95 transition-all disabled:opacity-50 px-8"
+                       className="flex-2 py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50 px-8"
                     >
                        {isSaving ? '⏳' : 'Simpan'}
                     </button>
