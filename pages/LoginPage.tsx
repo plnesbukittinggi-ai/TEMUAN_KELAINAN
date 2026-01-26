@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { AppRole, LoginSession, Inspector, ULP, Pekerjaan } from '../types';
 import { ADMIN_PASSWORD } from '../constants';
@@ -51,9 +50,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
       return;
     }
 
-    if (selectedRole === AppRole.INSPEKSI && (!formData.inspektor1 || !formData.inspektor2 || !formData.ulp || !formData.idPekerjaan)) {
-      alert('⚠️ Mohon lengkapi seluruh detail inspeksi dan Jenis Pekerjaan!');
-      return;
+    if (selectedRole === AppRole.INSPEKSI) {
+      if (!formData.inspektor1 || !formData.inspektor2 || !formData.ulp || !formData.idPekerjaan) {
+        alert('⚠️ Mohon lengkapi seluruh detail inspeksi dan Jenis Pekerjaan!');
+        return;
+      }
+      if (formData.inspektor1 === formData.inspektor2) {
+        alert('⚠️ Nama Inspektur 1 dan Inspektur 2 tidak boleh sama!');
+        return;
+      }
     }
 
     if (selectedRole === AppRole.EKSEKUSI && (!formData.ulp || !formData.team)) {
@@ -145,7 +150,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
 
             <div>
               <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Unit Pelaksana (ULP) *</label>
-              <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" onChange={(e) => setFormData({ ...formData, ulp: e.target.value })}>
+              <select 
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" 
+                value={formData.ulp || ''}
+                onChange={(e) => setFormData({ ...formData, ulp: e.target.value })}
+              >
                 <option value="">Pilih Unit</option>
                 {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
               </select>
@@ -154,16 +163,28 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Inspektur 1</label>
-                <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-[10px] font-bold outline-none" onChange={(e) => setFormData({ ...formData, inspektor1: e.target.value })}>
+                <select 
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-[10px] font-bold outline-none" 
+                  value={formData.inspektor1 || ''}
+                  onChange={(e) => setFormData({ ...formData, inspektor1: e.target.value })}
+                >
                   <option value="">Nama</option>
-                  {inspectors.map(i => <option key={i.id} value={i.name}>{i.name}</option>)}
+                  {inspectors
+                    .filter(i => i.name !== formData.inspektor2)
+                    .map(i => <option key={i.id} value={i.name}>{i.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Inspektur 2</label>
-                <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-[10px] font-bold outline-none" onChange={(e) => setFormData({ ...formData, inspektor2: e.target.value })}>
+                <select 
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-[10px] font-bold outline-none" 
+                  value={formData.inspektor2 || ''}
+                  onChange={(e) => setFormData({ ...formData, inspektor2: e.target.value })}
+                >
                   <option value="">Nama</option>
-                  {inspectors.map(i => <option key={i.id} value={i.name}>{i.name}</option>)}
+                  {inspectors
+                    .filter(i => i.name !== formData.inspektor1)
+                    .map(i => <option key={i.id} value={i.name}>{i.name}</option>)}
                 </select>
               </div>
             </div>
@@ -172,11 +193,19 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
 
         {selectedRole === AppRole.EKSEKUSI && (
           <div className="space-y-4">
-            <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" onChange={(e) => setFormData({ ...formData, ulp: e.target.value })}>
+            <select 
+              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" 
+              value={formData.ulp || ''}
+              onChange={(e) => setFormData({ ...formData, ulp: e.target.value })}
+            >
               <option value="">Pilih Unit (ULP)</option>
               {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
             </select>
-            <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" onChange={(e) => setFormData({ ...formData, team: e.target.value })}>
+            <select 
+              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" 
+              value={formData.team || ''}
+              onChange={(e) => setFormData({ ...formData, team: e.target.value })}
+            >
               <option value="">Pilih Tim Kerja</option>
               <option value="Team ROW">Team ROW</option>
               <option value="Team Yandal">Team Yandal</option>
@@ -196,7 +225,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
         )}
 
         {selectedRole === AppRole.VIEWER && (
-          <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" onChange={(e) => setFormData({ ...formData, ulp: e.target.value })}>
+          <select 
+            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" 
+            value={formData.ulp || ''}
+            onChange={(e) => setFormData({ ...formData, ulp: e.target.value })}
+          >
             <option value="">Pilih Unit (ULP)</option>
             {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
           </select>
