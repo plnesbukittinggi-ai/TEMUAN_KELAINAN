@@ -31,7 +31,6 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
   const parseIndoDate = (dateStr: string) => {
     try {
       if (!dateStr) return new Date(0);
-      // Support formats: "DD/MM/YYYY" or "DD/MM/YYYY, HH:mm:ss"
       const cleanStr = dateStr.replace('pukul ', '').replace('.', ':');
       const parts = cleanStr.split(',');
       const dPart = parts[0].trim();
@@ -40,8 +39,8 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
       const [day, month, year] = dPart.split('/').map(Number);
       
       if (tPart) {
-        const [h, m, s] = tPart.split(':').map(val => Number(val.trim()));
-        return new Date(year, month - 1, day, h || 0, m || 0, s || 0);
+        const timeParts = tPart.split(':').map(val => Number(val.trim()));
+        return new Date(year, month - 1, day, timeParts[0] || 0, timeParts[1] || 0, timeParts[2] || 0);
       }
       return new Date(year, month - 1, day);
     } catch (e) {
@@ -55,7 +54,6 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
   }, [data]);
 
   const sortedAndFilteredData = useMemo(() => {
-    // First, filter the data
     const filtered = data.filter(item => {
       const dDate = parseIndoDate(item.tanggal);
       const dDateNoTime = new Date(dDate.getFullYear(), dDate.getMonth(), dDate.getDate());
@@ -78,11 +76,19 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
       return matchDate && matchStatus && matchFeeder;
     });
 
-    // Then, sort by newest date (descending)
+    // Sort strictly by Date (Newest first)
     return filtered.sort((a, b) => {
       const timeA = parseIndoDate(a.tanggal).getTime();
       const timeB = parseIndoDate(b.tanggal).getTime();
-      return timeB - timeA;
+      
+      if (timeB !== timeA) {
+        return timeB - timeA;
+      }
+      
+      // Secondary sort by Priority (1 is highest)
+      const pA = Number(a.prioritas || 3);
+      const pB = Number(b.prioritas || 3);
+      return pA - pB;
     });
   }, [data, filter, selectedFeeder, startDate, endDate]);
 
@@ -100,6 +106,19 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
       case 'TIDAK DAPAT IZIN': return 'text-orange-700 bg-orange-50';
       default: return 'text-indigo-700 bg-indigo-50';
     }
+  };
+
+  const renderStars = (count: number) => {
+    const priority = Number(count || 1);
+    return (
+      <div className="flex gap-0.5">
+        {Array.from({ length: priority }).map((_, i) => (
+          <span key={i} className="text-[10px] drop-shadow-sm">
+            ⭐
+          </span>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -217,7 +236,10 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                       </span>
                     </div>
                   </div>
-                  <h3 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">{item.noTiang} / {item.feeder}</h3>
+                  <div className="flex justify-between items-center mb-0.5">
+                    <h3 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">{item.noTiang} / {item.feeder}</h3>
+                    {renderStars(item.prioritas)}
+                  </div>
                   <p className="text-xs font-bold text-red-600 line-clamp-1">{item.keterangan}</p>
                   <p className="text-[10px] text-slate-500 font-medium line-clamp-1 mt-0.5 italic">{item.alamat || item.lokasi || 'Alamat tidak tersedia'}</p>
                   <p className="text-[8px] text-slate-400 mt-1.5 font-bold uppercase tracking-widest">{item.tanggal.split(',')[0]}</p>
