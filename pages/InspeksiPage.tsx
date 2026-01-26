@@ -17,9 +17,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
-  const [isManualGeotag, setIsManualGeotag] = useState(false); // State baru untuk input manual
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
+  const [isManualGeotag, setIsManualGeotag] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const normalize = (s: any) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -52,7 +50,8 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
     geotag: initialData?.geotag || '',
     fotoTemuan: initialData?.fotoTemuan || '',
     keterangan: initialData?.keterangan || '',
-    status: initialData?.status || 'BELUM EKSEKUSI'
+    status: initialData?.status || 'BELUM EKSEKUSI',
+    prioritas: initialData?.prioritas || 1
   });
 
   const fetchLocation = () => {
@@ -111,7 +110,9 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
       return;
     }
     setIsSubmitting(true);
-    onSave({ ...formData, lokasi: formData.alamat } as TemuanData);
+    // Ensure priority is number for correct sorting later
+    const priorityValue = Number(formData.prioritas || 1);
+    onSave({ ...formData, prioritas: priorityValue, lokasi: formData.alamat } as TemuanData);
   };
 
   return (
@@ -215,11 +216,9 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
                 </div>
               )}
             </div>
-            {isManualGeotag && (
-              <p className="text-[9px] text-indigo-500 font-bold mt-1 ml-1 uppercase tracking-tight italic">* Masukkan koordinat manual jika GPS otomatis tidak akurat</p>
-            )}
           </div>
         </div>
+        
         <div className="bg-white border-2 border-dashed border-slate-200 rounded-3xl p-4 min-h-[200px] flex flex-col items-center justify-center relative overflow-hidden shadow-sm">
           <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFile} />
           {isCompressing ? (
@@ -243,16 +242,46 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
           )}
         </div>
 
-        <div className="space-y-2">
-          <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1">Kategori Kelainan *</label>
-          <select 
-            className="w-full p-4 bg-white border-2 border-indigo-100 rounded-xl text-sm font-bold shadow-sm outline-none" 
-            value={formData.keterangan} 
-            onChange={e => setFormData({ ...formData, keterangan: e.target.value })}
-          >
-            <option value="">-- Pilih Kelainan --</option>
-            {filteredKeteranganList.map(k => <option key={k.id} value={k.text}>{k.text}</option>)}
-          </select>
+        <div className="space-y-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1 mb-2">Kategori Kelainan *</label>
+            <select 
+              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-500" 
+              value={formData.keterangan} 
+              onChange={e => setFormData({ ...formData, keterangan: e.target.value })}
+            >
+              <option value="">-- Pilih Kelainan --</option>
+              {filteredKeteranganList.map(k => <option key={k.id} value={k.text}>{k.text}</option>)}
+            </select>
+          </div>
+
+          <div className="pt-4 border-t border-slate-100">
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1 mb-3">Prioritas Temuan *</label>
+            <div className="flex gap-6 justify-center">
+              {[1, 2, 3].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, prioritas: star })}
+                  className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition-all duration-300 border ${formData.prioritas === star ? 'bg-indigo-50 border-indigo-200 shadow-inner' : 'bg-white border-transparent'}`}
+                >
+                  <div className="flex gap-0.5">
+                    {Array.from({ length: star }).map((_, i) => (
+                      <span key={i} className={`text-2xl ${formData.prioritas === star ? 'grayscale-0 scale-110 drop-shadow-[0_0_4px_rgba(234,179,8,0.3)]' : 'grayscale opacity-30'}`}>
+                        ⭐
+                      </span>
+                    ))}
+                  </div>
+                  <span className={`text-[9px] font-black uppercase tracking-tighter ${formData.prioritas === star ? 'text-indigo-600' : 'text-slate-400'}`}>
+                    Prioritas {star}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <p className="text-center text-[8px] text-slate-400 font-bold uppercase mt-4 tracking-widest italic">
+              * Bintang 1 adalah prioritas tertinggi (Segera Eksekusi)
+            </p>
+          </div>
         </div>
 
         <button type="submit" disabled={isSubmitting || isCompressing} className={`w-full py-5 rounded-2xl shadow-xl font-bold uppercase tracking-[0.2em] text-xs transition-all ${isSubmitting || isCompressing ? 'bg-slate-300' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>
