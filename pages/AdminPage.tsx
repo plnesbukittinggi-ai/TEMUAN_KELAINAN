@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fixed casing: Use lowercase 'reportService' to match the file name on disk and avoid casing conflict errors
-import { ReportService } from '../services/reportService';
+// Fixed casing: Use PascalCase 'ReportService' to match the standard file naming and avoid casing conflict errors
+import { ReportService } from '../services/ReportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
 interface AdminPageProps {
