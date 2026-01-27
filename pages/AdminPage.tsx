@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fixed casing: Use PascalCase 'ReportService' to match the standard file naming and avoid casing conflict errors
+// Fixed: Using the uppercase casing to match the file name 'ReportService.ts' and resolve casing mismatch error.
 import { ReportService } from '../services/ReportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
@@ -62,28 +62,47 @@ const AdminPage: React.FC<AdminPageProps> = ({
       const id = url.split('/d/')[1]?.split('/')[0];
       if (id) return `https://lh3.googleusercontent.com/d/${id}`;
     }
-    if (url.includes('id=')) {
-      const id = url.split('id=')[1]?.split('&')[0];
-      if (id) return `https://lh3.googleusercontent.com/d/${id}`;
-    }
     return url;
   };
   
-  const parseIndoDate = (dateStr: string) => {
+  /**
+   * Fungsi parsing tanggal robust untuk menangani ISO string dan format lokal
+   */
+  const parseRobustDate = (dateStr: any): Date => {
+    if (!dateStr) return new Date(0);
+    if (dateStr instanceof Date) return dateStr;
+    const s = String(dateStr).trim();
+    
+    // Cek native ISO format (YYYY-MM-DD...)
+    const nativeDate = new Date(s);
+    if (!isNaN(nativeDate.getTime())) return nativeDate;
+
     try {
-      if (!dateStr) return new Date(0);
-      const cleanStr = dateStr.replace('pukul ', '').replace('.', ':');
-      const datePart = cleanStr.split(',')[0].trim();
-      const [day, month, year] = datePart.split('/').map(Number);
-      return new Date(year, month - 1, day);
-    } catch (e) {
-      return new Date(0);
-    }
+      // Handle format Indonesia: "DD/MM/YYYY, pukul HH.MM.SS"
+      const clean = s.replace('pukul ', '').replace(/\./g, ':');
+      const parts = clean.split(',');
+      const dPart = parts[0].trim();
+      const dParts = dPart.split(/[\/\-]/);
+      
+      if (dParts.length === 3) {
+        const day = parseInt(dParts[0], 10);
+        const month = parseInt(dParts[1], 10) - 1;
+        const year = parseInt(dParts[2], 10);
+        
+        const tPart = parts[1] ? parts[1].trim() : null;
+        if (tPart) {
+          const tParts = tPart.split(':');
+          return new Date(year, month, day, parseInt(tParts[0] || '0'), parseInt(tParts[1] || '0'), parseInt(tParts[2] || '0'));
+        }
+        return new Date(year, month, day);
+      }
+    } catch (e) { return new Date(0); }
+    return new Date(0);
   };
 
   const dashboardData = useMemo(() => {
     return data.filter(d => {
-      const dDate = parseIndoDate(d.tanggal);
+      const dDate = parseRobustDate(d.tanggal);
       const matchMonth = dDate.getMonth() + 1 === dashFilterMonth;
       const matchYear = dDate.getFullYear() === dashFilterYear;
       const matchUlp = !dashFilterUlp || d.ulp === dashFilterUlp;
@@ -96,7 +115,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
     const counts: Record<string, { inspektor: string, ulp: string, feeder: string, pekerjaan: string, total: number }> = {};
     
     data.forEach(item => {
-      const dDate = parseIndoDate(item.tanggal);
+      const dDate = parseRobustDate(item.tanggal);
       if (rekapStartDate) {
         const start = new Date(rekapStartDate);
         start.setHours(0,0,0,0);
@@ -152,17 +171,16 @@ const AdminPage: React.FC<AdminPageProps> = ({
     ];
   }, [dashboardData]);
 
+  // Fix: Added missing topTenFeeders calculation for the dashboard view
   const topTenFeeders = useMemo(() => {
-    const counts: Record<string, { total: number, done: number }> = {};
-    dashboardData.forEach(d => {
-      if (!d.feeder) return;
-      if (!counts[d.feeder]) counts[d.feeder] = { total: 0, done: 0 };
-      counts[d.feeder].total++;
-      if (d.status === 'SUDAH EKSEKUSI') counts[d.feeder].done++;
+    const counts: Record<string, { name: string, total: number, done: number }> = {};
+    dashboardData.forEach(item => {
+      const name = item.feeder || 'Tanpa Feeder';
+      if (!counts[name]) counts[name] = { name, total: 0, done: 0 };
+      counts[name].total++;
+      if (item.status === 'SUDAH EKSEKUSI') counts[name].done++;
     });
-
-    return Object.entries(counts)
-      .map(([name, stat]) => ({ name, ...stat }))
+    return Object.values(counts)
       .sort((a, b) => b.total - a.total)
       .slice(0, 10);
   }, [dashboardData]);
@@ -172,7 +190,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
       const matchUlp = !filterUlp || item.ulp === filterUlp;
       const matchFeeder = !filterFeeder || item.feeder === filterFeeder;
       const matchPekerjaan = !filterPekerjaan || item.pekerjaan === filterPekerjaan;
-      const itemDate = parseIndoDate(item.tanggal);
+      const itemDate = parseRobustDate(item.tanggal);
       
       let matchDate = true;
       if (filterStartDate) {
@@ -183,13 +201,13 @@ const AdminPage: React.FC<AdminPageProps> = ({
       if (filterEndDate) {
         const end = new Date(filterEndDate);
         end.setHours(23,59,59,999);
-        if (itemDate < end) matchDate = false;
+        if (itemDate > end) matchDate = false;
       }
 
       return matchUlp && matchFeeder && matchPekerjaan && matchDate;
     });
 
-    return filtered.sort((a, b) => parseIndoDate(b.tanggal).getTime() - parseIndoDate(a.tanggal).getTime());
+    return filtered.sort((a, b) => parseRobustDate(b.tanggal).getTime() - parseRobustDate(a.tanggal).getTime());
   }, [data, filterUlp, filterFeeder, filterPekerjaan, filterStartDate, filterEndDate]);
 
   const handleDownloadExcel = async () => {
@@ -201,7 +219,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
     setIsExporting(true);
     try {
       const sortedForExport = [...filteredAndSortedData].sort((a, b) => 
-        parseIndoDate(a.tanggal).getTime() - parseIndoDate(b.tanggal).getTime()
+        parseRobustDate(a.tanggal).getTime() - parseRobustDate(b.tanggal).getTime()
       );
 
       const selectedMonthLabel = MONTHS.find(m => m.val === dashFilterMonth)?.label || '';
@@ -345,7 +363,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
           className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 active:scale-95 transition-all group"
         >
           <span className="text-sm font-black text-slate-900 group-hover:-translate-x-1 transition-transform">←</span>
-          <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Kembali</span>
+          <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Logout</span>
         </button>
         <div className="flex-1">
           <h2 className="text-xl font-black text-slate-900 tracking-tight">Panel Admin</h2>
@@ -554,10 +572,15 @@ const AdminPage: React.FC<AdminPageProps> = ({
                          </span>
                       </div>
                       <p className="text-[9px] font-bold text-red-500 mt-0.5 truncate uppercase">{item.keterangan}</p>
-                      <p className="text-[8px] text-slate-400 mt-1 font-bold uppercase tracking-widest">{item.tanggal.split(',')[0]} | {item.ulp}</p>
+                      <p className="text-[8px] text-slate-400 mt-1 font-bold uppercase tracking-widest">{parseRobustDate(item.tanggal).toLocaleDateString('id-ID')} | {item.ulp}</p>
                    </div>
                 </div>
              ))}
+             {filteredAndSortedData.length === 0 && (
+                <div className="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-200">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data Tidak Ditemukan</p>
+                </div>
+             )}
           </div>
         </div>
       )}
