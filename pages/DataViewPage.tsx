@@ -28,24 +28,39 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
     return url;
   };
 
-  const parseIndoDate = (dateStr: string) => {
+  /**
+   * Fungsi parsing tanggal robust
+   */
+  const parseRobustDate = (dateStr: any): Date => {
+    if (!dateStr) return new Date(0);
+    if (dateStr instanceof Date) return dateStr;
+
+    const s = String(dateStr).trim();
+    const nativeDate = new Date(s);
+    if (!isNaN(nativeDate.getTime())) return nativeDate;
+
     try {
-      if (!dateStr) return new Date(0);
-      const cleanStr = dateStr.replace('pukul ', '').replace('.', ':');
-      const parts = cleanStr.split(',');
+      const clean = s.replace('pukul ', '').replace(/\./g, ':');
+      const parts = clean.split(',');
       const dPart = parts[0].trim();
-      const tPart = parts[1] ? parts[1].trim() : null;
+      const dParts = dPart.split(/[\/\-]/);
       
-      const [day, month, year] = dPart.split('/').map(Number);
-      
-      if (tPart) {
-        const timeParts = tPart.split(':').map(val => Number(val.trim()));
-        return new Date(year, month - 1, day, timeParts[0] || 0, timeParts[1] || 0, timeParts[2] || 0);
+      if (dParts.length === 3) {
+        const day = parseInt(dParts[0], 10);
+        const month = parseInt(dParts[1], 10) - 1;
+        const year = parseInt(dParts[2], 10);
+        
+        const tPart = parts[1] ? parts[1].trim() : null;
+        if (tPart) {
+          const tParts = tPart.split(':');
+          return new Date(year, month, day, parseInt(tParts[0] || '0'), parseInt(tParts[1] || '0'), parseInt(tParts[2] || '0'));
+        }
+        return new Date(year, month, day);
       }
-      return new Date(year, month - 1, day);
     } catch (e) {
       return new Date(0);
     }
+    return new Date(0);
   };
 
   const uniqueFeeders = useMemo(() => {
@@ -55,7 +70,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
 
   const sortedAndFilteredData = useMemo(() => {
     const filtered = data.filter(item => {
-      const dDate = parseIndoDate(item.tanggal);
+      const dDate = parseRobustDate(item.tanggal);
       const dDateNoTime = new Date(dDate.getFullYear(), dDate.getMonth(), dDate.getDate());
 
       let matchDate = true;
@@ -66,7 +81,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
       }
       if (endDate) {
         const e = new Date(endDate);
-        e.setHours(0, 0, 0, 0);
+        e.setHours(23, 59, 59, 999);
         if (dDateNoTime > e) matchDate = false;
       }
 
@@ -76,16 +91,10 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
       return matchDate && matchStatus && matchFeeder;
     });
 
-    // Sort strictly by Date (Newest first)
     return filtered.sort((a, b) => {
-      const timeA = parseIndoDate(a.tanggal).getTime();
-      const timeB = parseIndoDate(b.tanggal).getTime();
-      
-      if (timeB !== timeA) {
-        return timeB - timeA;
-      }
-      
-      // Secondary sort by Priority (1 is highest)
+      const timeA = parseRobustDate(a.tanggal).getTime();
+      const timeB = parseRobustDate(b.tanggal).getTime();
+      if (timeB !== timeA) return timeB - timeA;
       const pA = Number(a.prioritas || 3);
       const pB = Number(b.prioritas || 3);
       return pA - pB;
@@ -113,9 +122,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
     return (
       <div className="flex gap-0.5">
         {Array.from({ length: priority }).map((_, i) => (
-          <span key={i} className="text-[10px] drop-shadow-sm">
-            ⭐
-          </span>
+          <span key={i} className="text-[10px] drop-shadow-sm">⭐</span>
         ))}
       </div>
     );
@@ -124,10 +131,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
   return (
     <div className="pb-10">
       <div className="flex items-center gap-4 mb-8">
-        <button 
-          onClick={onBack} 
-          className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 active:scale-95 transition-all group"
-        >
+        <button onClick={onBack} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 transition-all group">
           <span className="text-sm font-black text-slate-900 group-hover:-translate-x-1 transition-transform">←</span>
           <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Kembali</span>
         </button>
@@ -136,32 +140,6 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
           <p className="text-[11px] text-indigo-600 font-bold uppercase tracking-wider">{ulp}</p>
         </div>
       </div>
-
-      {(onAddTemuan || onAddEksekusi) && (
-        <div className="mb-8 space-y-3">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1">Pintasan Petugas</p>
-          <div className="grid grid-cols-2 gap-3">
-             {onAddTemuan && (
-                <button 
-                  onClick={onAddTemuan}
-                  className="flex flex-col items-center p-4 bg-indigo-600 text-white rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 active:scale-[0.98] transition-all"
-                >
-                  <span className="text-xl mb-1">📝</span>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-center">Temuan Baru</p>
-                </button>
-             )}
-             {onAddEksekusi && (
-                <button 
-                  onClick={onAddEksekusi}
-                  className="flex flex-col items-center p-4 bg-emerald-600 text-white rounded-2xl shadow-xl shadow-emerald-100 hover:bg-emerald-700 active:scale-[0.98] transition-all"
-                >
-                  <span className="text-xl mb-1">🛠️</span>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-center">Eksekusi Baru</p>
-                </button>
-             )}
-          </div>
-        </div>
-      )}
 
       <div className="bg-white p-5 rounded-3xl border border-slate-200 mb-6 shadow-sm">
         <div className="flex justify-between items-center mb-3 ml-1">
@@ -178,14 +156,12 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
 
         <div className="mb-4">
           <select 
-            className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500"
+            className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none"
             value={selectedFeeder}
             onChange={(e) => setSelectedFeeder(e.target.value)}
           >
             <option value="">-- Semua Feeder --</option>
-            {uniqueFeeders.map(f => (
-              <option key={f} value={f}>{f}</option>
-            ))}
+            {uniqueFeeders.map(f => <option key={f} value={f}>{f}</option>)}
           </select>
         </div>
 
@@ -208,7 +184,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
           </div>
         ) : (
           sortedAndFilteredData.map((item) => (
-            <div key={item.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden hover:border-indigo-200 transition-all group">
+            <div key={item.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden hover:border-indigo-200 transition-all">
               <div className="flex p-4 gap-4">
                 <div 
                   className="relative flex-shrink-0 cursor-zoom-in"
@@ -218,23 +194,12 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                      <img src={formatDriveUrl(item.fotoTemuan)} alt="Temuan" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                    </div>
                 </div>
-                <div className="flex-1 min-w-0 relative">
+                <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start mb-0.5">
                     <p className="text-[9px] font-bold text-slate-400 uppercase">#{item.id.slice(-5)}</p>
-                    <div className="flex items-center gap-2">
-                       {onEdit && (
-                         <button 
-                           onClick={() => onEdit(item)}
-                           className="text-[10px] text-slate-400 hover:text-indigo-600 p-1"
-                           title="Edit Data"
-                         >
-                           ✏️
-                         </button>
-                       )}
-                       <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${getStatusBadgeClass(item.status)}`}>
-                        {item.status.split(' ')[0]}
-                      </span>
-                    </div>
+                    <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${getStatusBadgeClass(item.status)}`}>
+                      {item.status.split(' ')[0]}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center mb-0.5">
                     <h3 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">{item.noTiang} / {item.feeder}</h3>
@@ -242,19 +207,9 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                   </div>
                   <p className="text-xs font-bold text-red-600 line-clamp-1">{item.keterangan}</p>
                   <p className="text-[10px] text-slate-500 font-medium line-clamp-1 mt-0.5 italic">{item.alamat || item.lokasi || 'Alamat tidak tersedia'}</p>
-                  <p className="text-[8px] text-slate-400 mt-1.5 font-bold uppercase tracking-widest">{item.tanggal.split(',')[0]}</p>
-                  
-                  {item.status === 'SUDAH EKSEKUSI' && (
-                    <div className="mt-2 pt-2 border-t border-slate-50 flex items-center gap-2">
-                       <div 
-                         className="w-6 h-6 rounded bg-slate-100 cursor-zoom-in overflow-hidden"
-                         onClick={() => setPreviewImage({ url: formatDriveUrl(item.fotoEksekusi), title: `Bukti Eksekusi: ${item.noTiang}` })}
-                       >
-                         <img src={formatDriveUrl(item.fotoEksekusi)} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                       </div>
-                       <p className="text-[8px] font-bold text-emerald-600 uppercase">Selesai: {item.tanggalEksekusi?.split(',')[0]}</p>
-                    </div>
-                  )}
+                  <p className="text-[8px] text-slate-400 mt-1.5 font-bold uppercase tracking-widest">
+                    {parseRobustDate(item.tanggal).toLocaleDateString('id-ID')}
+                  </p>
                 </div>
               </div>
             </div>
@@ -263,7 +218,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
       </div>
 
       {previewImage && (
-        <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-sm z-[100] flex flex-col items-center justify-center p-4 animate-fade-in" onClick={() => setPreviewImage(null)}>
+        <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-sm z-[100] flex flex-col items-center justify-center p-4" onClick={() => setPreviewImage(null)}>
           <img src={previewImage.url} alt="Preview" className="w-full max-w-md aspect-square object-contain bg-slate-100 rounded-3xl" referrerPolicy="no-referrer" />
           <p className="text-white text-[10px] mt-4 font-bold uppercase tracking-widest">Sentuh untuk menutup</p>
         </div>
