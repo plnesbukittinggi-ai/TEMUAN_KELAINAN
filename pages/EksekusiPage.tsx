@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { LoginSession, TemuanData } from '../types';
 import { compressImage } from '../utils/imageUtils';
@@ -22,14 +23,50 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const [previewImage, setPreviewImage] = useState<{url: string, title: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  /**
+   * Fungsi parsing tanggal robust untuk menangani ISO string dan format lokal
+   */
+  const parseRobustDate = (dateStr: any): Date => {
+    if (!dateStr) return new Date(0);
+    if (dateStr instanceof Date) return dateStr;
+    const s = String(dateStr).trim();
+    
+    // Cek native ISO format (YYYY-MM-DD...)
+    const nativeDate = new Date(s);
+    if (!isNaN(nativeDate.getTime())) return nativeDate;
+
+    try {
+      // Handle format Indonesia: "DD/MM/YYYY, pukul HH.MM.SS"
+      const clean = s.replace('pukul ', '').replace(/\./g, ':');
+      const parts = clean.split(',');
+      const dPart = parts[0].trim();
+      const dParts = dPart.split(/[\/\-]/);
+      
+      if (dParts.length === 3) {
+        const day = parseInt(dParts[0], 10);
+        const month = parseInt(dParts[1], 10) - 1;
+        const year = parseInt(dParts[2], 10);
+        
+        const tPart = parts[1] ? parts[1].trim() : null;
+        if (tPart) {
+          const tParts = tPart.split(':');
+          return new Date(year, month, day, parseInt(tParts[0] || '0'), parseInt(tParts[1] || '0'), parseInt(tParts[2] || '0'));
+        }
+        return new Date(year, month, day);
+      }
+    } catch (e) { return new Date(0); }
+    return new Date(0);
+  };
+
   useEffect(() => {
     if (initialData?.tanggalEksekusi) {
       try {
-        const dateStr = initialData.tanggalEksekusi.split(',')[0].trim();
-        const parts = dateStr.split('/');
-        if (parts.length === 3) {
-          const formatted = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-          setExecutionDate(formatted);
+        const d = parseRobustDate(initialData.tanggalEksekusi);
+        if (d.getTime() > 0) {
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          setExecutionDate(`${year}-${month}-${day}`);
         }
       } catch (e) {
         console.error("Date parse error", e);
@@ -114,17 +151,6 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
     }
   };
 
-  const parseIndoDate = (dateStr: string) => {
-    try {
-      if (!dateStr) return new Date(0);
-      const cleanStr = dateStr.replace('pukul ', '').replace('.', ':');
-      const parts = cleanStr.split(',');
-      const dPart = parts[0].trim();
-      const [day, month, year] = dPart.split('/').map(Number);
-      return new Date(year, month - 1, day);
-    } catch (e) { return new Date(0); }
-  };
-
   const filteredQueue = useMemo(() => {
     const filtered = data.filter(item => {
       const noTiangStr = String(item.noTiang || '');
@@ -133,28 +159,25 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       
       if (!matchesSearch) return false;
 
-      if (!startDate && !endDate) return true;
-      try {
-        const itemDate = parseIndoDate(item.tanggal);
-        itemDate.setHours(0,0,0,0);
+      const itemDate = parseRobustDate(item.tanggal);
+      const itemDateOnly = new Date(itemDate.getFullYear(), itemDate.getMonth(), itemDate.getDate());
 
-        if (startDate) {
-          const s = new Date(startDate);
-          s.setHours(0,0,0,0);
-          if (itemDate < s) return false;
-        }
-        if (endDate) {
-          const e = new Date(endDate);
-          e.setHours(0,0,0,0);
-          if (itemDate > e) return false;
-        }
-        return true;
-      } catch (e) { return true; }
+      if (startDate) {
+        const s = new Date(startDate);
+        s.setHours(0,0,0,0);
+        if (itemDateOnly < s) return false;
+      }
+      if (endDate) {
+        const e = new Date(endDate);
+        e.setHours(0,0,0,0);
+        if (itemDateOnly > e) return false;
+      }
+      return true;
     });
 
     return filtered.sort((a, b) => {
-      const timeA = parseIndoDate(a.tanggal).getTime();
-      const timeB = parseIndoDate(b.tanggal).getTime();
+      const timeA = parseRobustDate(a.tanggal).getTime();
+      const timeB = parseRobustDate(b.tanggal).getTime();
       if (timeB !== timeA) return timeB - timeA;
       const pA = Number(a.prioritas || 3);
       const pB = Number(b.prioritas || 3);
@@ -255,7 +278,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                   </div>
                   <p className="text-xs font-bold text-red-600 line-clamp-1">{item.keterangan}</p>
                   <p className="text-[10px] text-slate-500 font-medium line-clamp-1 mt-0.5 italic">{item.alamat || item.lokasi || 'Alamat tidak tersedia'}</p>
-                  <p className="text-[8px] text-slate-400 mt-1.5 font-bold uppercase tracking-widest">{item.tanggal.split(',')[0]}</p>
+                  <p className="text-[8px] text-slate-400 mt-1.5 font-bold uppercase tracking-widest">{parseRobustDate(item.tanggal).toLocaleDateString('id-ID')}</p>
                 </div>
               </div>
               <button 
