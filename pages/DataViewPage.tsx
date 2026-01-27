@@ -184,7 +184,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
           </div>
         ) : (
           sortedAndFilteredData.map((item) => (
-            <div key={item.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden hover:border-indigo-200 transition-all">
+            <div key={item.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden hover:border-indigo-200 transition-all flex flex-col">
               <div className="flex p-4 gap-4">
                 <div 
                   className="relative flex-shrink-0 cursor-zoom-in"
@@ -193,7 +193,21 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                    <div className="w-20 h-20 bg-slate-100 rounded-xl overflow-hidden border border-slate-100">
                      <img src={formatDriveUrl(item.fotoTemuan)} alt="Temuan" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                    </div>
+                   <p className="text-[7px] font-black text-center mt-1 uppercase text-slate-400">Temuan</p>
                 </div>
+
+                {item.status === 'SUDAH EKSEKUSI' && item.fotoEksekusi && (
+                  <div 
+                    className="relative flex-shrink-0 cursor-zoom-in"
+                    onClick={() => setPreviewImage({ url: formatDriveUrl(item.fotoEksekusi), title: `Foto Eksekusi: ${item.noTiang}` })}
+                  >
+                    <div className="w-20 h-20 bg-emerald-50 rounded-xl overflow-hidden border border-emerald-100">
+                      <img src={formatDriveUrl(item.fotoEksekusi)} alt="Eksekusi" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    </div>
+                    <p className="text-[7px] font-black text-center mt-1 uppercase text-emerald-500">Eksekusi</p>
+                  </div>
+                )}
+
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start mb-0.5">
                     <p className="text-[9px] font-bold text-slate-400 uppercase">#{item.id.slice(-5)}</p>
@@ -210,6 +224,11 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                   <p className="text-[8px] text-slate-400 mt-1.5 font-bold uppercase tracking-widest">
                     {parseRobustDate(item.tanggal).toLocaleDateString('id-ID')}
                   </p>
+                  {item.status === 'SUDAH EKSEKUSI' && (
+                    <p className="text-[8px] text-emerald-600 font-black mt-1 uppercase tracking-tighter">
+                      Eksekusi: {item.tanggalEksekusi ? item.tanggalEksekusi.split(',')[0] : '-'} oleh {item.timEksekusi || '-'}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -218,9 +237,11 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
       </div>
 
       {previewImage && (
-        <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-sm z-[100] flex flex-col items-center justify-center p-4" onClick={() => setPreviewImage(null)}>
-          <img src={previewImage.url} alt="Preview" className="w-full max-w-md aspect-square object-contain bg-slate-100 rounded-3xl" referrerPolicy="no-referrer" />
-          <p className="text-white text-[10px] mt-4 font-bold uppercase tracking-widest">Sentuh untuk menutup</p>
+        <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-sm z-[1000] flex flex-col items-center justify-center p-4 animate-fade-in" onClick={() => setPreviewImage(null)}>
+          <div className="w-full max-w-md relative">
+            <img src={previewImage.url} alt="Preview" className="w-full aspect-square object-contain bg-slate-100 rounded-3xl" referrerPolicy="no-referrer" />
+          </div>
+          <p className="text-white text-[10px] mt-6 font-bold uppercase tracking-[0.2em]">Sentuh di mana saja untuk menutup</p>
         </div>
       )}
     </div>
