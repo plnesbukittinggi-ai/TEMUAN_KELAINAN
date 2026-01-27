@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fixed: Using lowercase 'reportService' to match the file name and follow standard project naming conventions.
-import { ReportService } from '../services/reportService';
+// Fixed: Using 'ReportService' (PascalCase) to match the root file name and resolve casing conflict errors.
+import { ReportService } from '../services/ReportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
 interface AdminPageProps {
@@ -564,9 +564,22 @@ const AdminPage: React.FC<AdminPageProps> = ({
              </div>
              {filteredAndSortedData.slice(0, 50).map(item => (
                 <div key={item.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex gap-4">
-                   <div className="w-14 h-14 bg-slate-50 rounded-xl overflow-hidden flex-shrink-0">
-                      <img src={formatDriveUrl(item.fotoTemuan)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                   <div className="flex flex-col items-center flex-shrink-0">
+                      <div className="w-14 h-14 bg-slate-50 rounded-xl overflow-hidden border border-slate-100">
+                         <img src={formatDriveUrl(item.fotoTemuan)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                      </div>
+                      <p className="text-[7px] font-black uppercase text-slate-400 mt-1">Temuan</p>
                    </div>
+                   
+                   {item.status === 'SUDAH EKSEKUSI' && item.fotoEksekusi && (
+                      <div className="flex flex-col items-center flex-shrink-0">
+                         <div className="w-14 h-14 bg-emerald-50 rounded-xl overflow-hidden border border-emerald-100">
+                            <img src={formatDriveUrl(item.fotoEksekusi)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                         </div>
+                         <p className="text-[7px] font-black uppercase text-emerald-500 mt-1">Eksekusi</p>
+                      </div>
+                   )}
+
                    <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start">
                          <p className="text-[10px] font-black text-slate-900 truncate uppercase">{item.noTiang} • {item.feeder}</p>
