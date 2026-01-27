@@ -86,8 +86,8 @@ export const ReportService = {
     worksheet.getColumn(5).width = 20;
     worksheet.getColumn(6).width = 35;
     worksheet.getColumn(7).width = 25;
-    worksheet.getColumn(8).width = 32; // Foto Sebelum
-    worksheet.getColumn(9).width = 32; // Foto Sesudah
+    worksheet.getColumn(8).width = 31; // Foto Sebelum
+    worksheet.getColumn(9).width = 31; // Foto Sesudah
     worksheet.getColumn(10).width = 25; // Keterangan
     worksheet.getColumn(11).width = 45; // Saran
 
