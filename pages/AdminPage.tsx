@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fixed: Using the uppercase casing to match the file name 'ReportService.ts' and resolve casing mismatch error.
-import { ReportService } from '../services/ReportService';
+// Fixed: Using lowercase 'reportService' to match the file name and follow standard project naming conventions.
+import { ReportService } from '../services/reportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
 interface AdminPageProps {
@@ -171,7 +171,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
     ];
   }, [dashboardData]);
 
-  // Fix: Added missing topTenFeeders calculation for the dashboard view
   const topTenFeeders = useMemo(() => {
     const counts: Record<string, { name: string, total: number, done: number }> = {};
     dashboardData.forEach(item => {
@@ -349,11 +348,15 @@ const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
-  const currentFilteredFeeders = useMemo(() => {
-    if (!filterUlp) return feeders;
-    const selectedUlpId = ulpList.find(u => u.name === filterUlp)?.id;
-    return feeders.filter(f => f.ulpId === selectedUlpId);
-  }, [feeders, filterUlp, ulpList]);
+  /**
+   * Mengambil daftar Feeder unik dari data yang sudah diinputkan (actual records)
+   * difilter berdasarkan ULP jika ada pilihan ULP.
+   */
+  const currentFilteredFeedersInData = useMemo(() => {
+    const relevantData = filterUlp ? data.filter(d => d.ulp === filterUlp) : data;
+    const unique = Array.from(new Set(relevantData.map(d => d.feeder).filter(Boolean))).sort();
+    return unique;
+  }, [data, filterUlp]);
 
   return (
     <div className="pb-10">
@@ -525,7 +528,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
                 </select>
                 <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterFeeder} onChange={(e) => setFilterFeeder(e.target.value)}>
                    <option value="">Semua Feeder</option>
-                   {currentFilteredFeeders.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
+                   {currentFilteredFeedersInData.map(name => <option key={name} value={name}>{name}</option>)}
                 </select>
               </div>
 
