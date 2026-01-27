@@ -35,6 +35,9 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
     });
   }, [keteranganList, session]);
 
+  // Ensure prioritas is a number from the start
+  const initialPrioritas = initialData?.prioritas !== undefined ? Number(initialData.prioritas) : 1;
+
   const [formData, setFormData] = useState<Partial<TemuanData>>({
     id: initialData?.id || `ID-${Date.now().toString().slice(-8)}`,
     tanggal: initialData?.tanggal || new Date().toLocaleString('id-ID'),
@@ -51,7 +54,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
     fotoTemuan: initialData?.fotoTemuan || '',
     keterangan: initialData?.keterangan || '',
     status: initialData?.status || 'BELUM EKSEKUSI',
-    prioritas: initialData?.prioritas || 1
+    prioritas: initialPrioritas
   });
 
   const fetchLocation = () => {
@@ -110,7 +113,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
       return;
     }
     setIsSubmitting(true);
-    // Ensure priority is number for correct sorting later
+    // Ensure priority is number for correct storage
     const priorityValue = Number(formData.prioritas || 1);
     onSave({ ...formData, prioritas: priorityValue, lokasi: formData.alamat } as TemuanData);
   };
@@ -225,7 +228,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
              <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full"></div>
           ) : formData.fotoTemuan ? (
             <div className="w-full h-full relative">
-              <img src={formData.fotoTemuan.includes('http') ? formData.fotoTemuan : formData.fotoTemuan} className="w-full h-64 object-cover rounded-2xl" alt="Preview" />
+              <img src={formData.fotoTemuan} className="w-full h-64 object-cover rounded-2xl" alt="Preview" />
               <button type="button" onClick={() => setFormData({ ...formData, fotoTemuan: '' })} className="absolute top-2 right-2 bg-slate-900/80 text-white w-8 h-8 rounded-lg flex items-center justify-center">✕</button>
             </div>
           ) : (
