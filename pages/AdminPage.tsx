@@ -376,7 +376,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
             ))}
           </div>
 
-          <div className="bg-slate-700 p-6 rounded-[2.5rem] border-2 border-yellow-500 shadow-xl">
+          <div className="bg-slate-900 p-6 rounded-[2.5rem] border-2 border-yellow-500 shadow-xl">
              <div className="flex justify-between items-center mb-6">
                 <h3 className="text-sm font-black text-white uppercase tracking-tight">Top 10 Feeder (Berdasarkan Persentase)</h3>
                 <span className="text-[9px] font-black text-yellow-500 uppercase tracking-widest">Selesai / Total</span>
@@ -412,37 +412,131 @@ const AdminPage: React.FC<AdminPageProps> = ({
       )}
 
       {tab === 'REKAP' && (
-        <div className="space-y-6 animate-fade-in">
-          <div className="bg-blue p-5 rounded-[2rem] border border-slate-100 shadow-sm">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Filter Rentang Waktu</p>
-            <div className="grid grid-cols-2 gap-3 mb-2">
-              <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={rekapStartDate} onChange={(e) => setRekapStartDate(e.target.value)} />
-              <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={rekapEndDate} onChange={(e) => setRekapEndDate(e.target.value)} />
-            </div>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm">
-             <table className="w-full text-left border-collapse">
-                <thead>
-                   <tr className="bg-yellow-50 border-b border-slate-100">
-                      <th className="p-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Inspektor</th>
-                      <th className="p-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Total</th>
-                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                   {rekapData.map((r, i) => (
-                      <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                         <td className="p-4">
-                            <p className="text-[10px] font-black text-slate-900 uppercase">{r.inspektor}</p>
-                            <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tight mt-0.5">{r.pekerjaan} • {r.feeder}</p>
-                         </td>
-                         <td className="p-4 text-center"><span className="inline-block bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-[10px] font-black">{r.total}</span></td>
-                      </tr>
-                   ))}
-                </tbody>
-             </table>
-          </div>
-        </div>
-      )}
+  <div className="space-y-6 animate-fade-in">
+
+    {/* FILTER */}
+    <div
+      className="
+        bg-emerald-50 p-5 rounded-2xl
+        border border-emerald-200
+        shadow-sm
+        transition-all duration-300
+        hover:shadow-md
+      "
+    >
+      <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-3 ml-1">
+        Filter Rentang Waktu
+      </p>
+
+      <div className="grid grid-cols-2 gap-3 mb-2">
+        <input
+          type="date"
+          className="
+            p-3 bg-white border border-emerald-200
+            rounded-xl text-[11px] font-bold
+            text-emerald-800 outline-none
+            focus:border-emerald-400
+            focus:ring-1 focus:ring-emerald-200
+          "
+          value={rekapStartDate}
+          onChange={(e) => setRekapStartDate(e.target.value)}
+        />
+        <input
+          type="date"
+          className="
+            p-3 bg-white border border-emerald-200
+            rounded-xl text-[11px] font-bold
+            text-emerald-800 outline-none
+            focus:border-emerald-400
+            focus:ring-1 focus:ring-emerald-200
+          "
+          value={rekapEndDate}
+          onChange={(e) => setRekapEndDate(e.target.value)}
+        />
+      </div>
+    </div>
+
+    {/* TABLE */}
+    <div
+      className="
+        bg-emerald-50 p-5 rounded-2xl
+        border border-emerald-200
+        shadow-sm
+        transition-all duration-300
+        hover:shadow-md
+      "
+    >
+      <table className="w-full text-left border-collapse">
+        <thead>
+          <tr className="bg-emerald-100 border-b border-emerald-200">
+            <th className="p-4 text-[9px] font-black text-emerald-700 uppercase tracking-widest">
+              Inspektor
+            </th>
+            <th className="p-4 text-[9px] font-black text-emerald-700 uppercase tracking-widest text-center">
+              Total
+            </th>
+          </tr>
+        </thead>
+
+        <tbody className="divide-y divide-emerald-100">
+          {rekapData.map((r, i) => (
+            <tr
+              key={i}
+              className="hover:bg-emerald-100/60 transition-colors"
+            >
+              <td className="p-4">
+                <p className="text-[10px] font-black text-emerald-900 uppercase">
+                  {r.inspektor}
+                </p>
+                <p className="text-[8px] text-emerald-600 font-bold uppercase tracking-tight mt-0.5">
+                  {r.pekerjaan} • {r.feeder}
+                </p>
+              </td>
+
+              <td className="p-4 text-center">
+                <span
+                  className="
+                    inline-block
+                    bg-emerald-100 text-emerald-700
+                    px-3 py-1 rounded-full
+                    text-[10px] font-black
+                  "
+                >
+                  {r.total}
+                </span>
+              </td>
+            </tr>
+          ))}
+
+          {/* SUMMARY ROW */}
+          {rekapData.length > 0 && (
+            <tr className="bg-gradient-to-r from-emerald-200 to-emerald-100 border-t-2 border-emerald-300">
+              <td className="p-4">
+                <p className="text-[10px] font-black text-emerald-900 uppercase tracking-widest">
+                  Total Keseluruhan
+                </p>
+              </td>
+              <td className="p-4 text-center">
+                <span
+                  className="
+                    inline-block
+                    bg-emerald-600 text-white
+                    px-4 py-1.5 rounded-full
+                    text-[11px] font-black
+                  "
+                >
+                  {rekapData.reduce((sum, r) => sum + r.total, 0)}
+                </span>
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+)}
+
 
       {tab === 'DATA' && (
         <div className="space-y-6 animate-fade-in">
