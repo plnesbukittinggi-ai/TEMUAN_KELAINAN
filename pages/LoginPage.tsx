@@ -61,9 +61,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
       }
     }
 
-    if (selectedRole === AppRole.EKSEKUSI && (!formData.ulp || !formData.team)) {
-      alert('⚠️ Mohon lengkapi detail unit dan tim eksekusi!');
-      return;
+    if (selectedRole === AppRole.EKSEKUSI) {
+      if (!formData.ulp) {
+        alert('⚠️ Mohon lengkapi detail unit!');
+        return;
+      }
+      // Memberikan penanda 'team' agar tombol Antrean Eksekusi muncul di Monitoring
+      formData.team = 'EKSEKUTOR';
     }
 
     if (selectedRole === AppRole.VIEWER && !formData.ulp) {
@@ -200,16 +204,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
             >
               <option value="">Pilih Unit (ULP)</option>
               {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
-            </select>
-            <select 
-              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" 
-              value={formData.team || ''}
-              onChange={(e) => setFormData({ ...formData, team: e.target.value })}
-            >
-              <option value="">Pilih Tim Kerja</option>
-              <option value="Team ROW">Team ROW</option>
-              <option value="Team Yandal">Team Yandal</option>
-              <option value="Team Pemeliharaan">Team PLN</option>
             </select>
           </div>
         )}
