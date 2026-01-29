@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { LoginSession, TemuanData } from '../types';
 import { compressImage } from '../utils/imageUtils';
@@ -15,6 +14,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const [selectedTemuan, setSelectedTemuan] = useState<TemuanData | null>(initialData || null);
   const [executionPhoto, setExecutionPhoto] = useState<string>(initialData?.fotoEksekusi || '');
   const [executionDate, setExecutionDate] = useState<string>('');
+  const [selectedTeam, setSelectedTeam] = useState<string>(initialData?.timEksekusi || '');
   const [isSaving, setIsSaving] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   const [startDate, setStartDate] = useState<string>('');
@@ -23,30 +23,22 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const [previewImage, setPreviewImage] = useState<{url: string, title: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  /**
-   * Fungsi parsing tanggal robust untuk menangani ISO string dan format lokal
-   */
   const parseRobustDate = (dateStr: any): Date => {
     if (!dateStr) return new Date(0);
     if (dateStr instanceof Date) return dateStr;
     const s = String(dateStr).trim();
-    
-    // Cek native ISO format (YYYY-MM-DD...)
     const nativeDate = new Date(s);
     if (!isNaN(nativeDate.getTime())) return nativeDate;
 
     try {
-      // Handle format Indonesia: "DD/MM/YYYY, pukul HH.MM.SS"
       const clean = s.replace('pukul ', '').replace(/\./g, ':');
       const parts = clean.split(',');
       const dPart = parts[0].trim();
       const dParts = dPart.split(/[\/\-]/);
-      
       if (dParts.length === 3) {
         const day = parseInt(dParts[0], 10);
         const month = parseInt(dParts[1], 10) - 1;
         const year = parseInt(dParts[2], 10);
-        
         const tPart = parts[1] ? parts[1].trim() : null;
         if (tPart) {
           const tParts = tPart.split(':');
@@ -68,13 +60,10 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
           const day = String(d.getDate()).padStart(2, '0');
           setExecutionDate(`${year}-${month}-${day}`);
         }
-      } catch (e) {
-        console.error("Date parse error", e);
-      }
+      } catch (e) { console.error("Date parse error", e); }
     }
-    if (initialData?.fotoEksekusi) {
-      setExecutionPhoto(initialData.fotoEksekusi);
-    }
+    if (initialData?.fotoEksekusi) setExecutionPhoto(initialData.fotoEksekusi);
+    if (initialData?.timEksekusi) setSelectedTeam(initialData.timEksekusi);
   }, [initialData]);
 
   const formatDriveUrl = (url?: string) => {
@@ -97,11 +86,8 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
           const base64 = reader.result as string;
           const compressed = await compressImage(base64);
           setExecutionPhoto(compressed);
-        } catch (err) {
-          alert('Gagal memproses gambar perbaikan.');
-        } finally {
-          setIsCompressing(false);
-        }
+        } catch (err) { alert('Gagal memproses gambar perbaikan.'); }
+        finally { setIsCompressing(false); }
       };
       reader.readAsDataURL(file);
     }
@@ -116,13 +102,11 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   };
 
   const handleAction = async (newStatus: 'SUDAH EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN' | 'KENDALA MATERIAL') => {
-    if (!selectedTemuan || !executionPhoto) {
-      alert('⚠️ Foto bukti perbaikan wajib dilampirkan!');
-      return;
-    }
+    if (!selectedTemuan) return;
+    if (!selectedTeam) { alert('⚠️ Tim Kerja wajib dipilih!'); return; }
+    if (!executionPhoto) { alert('⚠️ Foto bukti perbaikan wajib dilampirkan!'); return; }
     
     setIsSaving(true);
-    
     let finalDateString = new Date().toLocaleDateString('id-ID');
     if (executionDate) {
       const [year, month, day] = executionDate.split('-').map(Number);
@@ -134,7 +118,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       status: newStatus, 
       tanggalEksekusi: finalDateString,
       fotoEksekusi: executionPhoto,
-      timEksekusi: initialData?.timEksekusi || session.team || 'Team Lapangan'
+      timEksekusi: selectedTeam
     };
     
     try {
@@ -143,46 +127,30 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
         setSelectedTemuan(null);
         setExecutionPhoto('');
         setExecutionDate('');
+        setSelectedTeam('');
       }
-    } catch (err) {
-      alert("❌ Gagal menyimpan data eksekusi.");
-    } finally {
-      setIsSaving(false);
-    }
+    } catch (err) { alert("❌ Gagal menyimpan data eksekusi."); }
+    finally { setIsSaving(false); }
   };
 
   const filteredQueue = useMemo(() => {
     const filtered = data.filter(item => {
       const noTiangStr = String(item.noTiang || '');
-      const matchesSearch = !searchQuery || 
-        noTiangStr.toLowerCase().includes(searchQuery.toLowerCase());
-      
+      const matchesSearch = !searchQuery || noTiangStr.toLowerCase().includes(searchQuery.toLowerCase());
       if (!matchesSearch) return false;
-
       const itemDate = parseRobustDate(item.tanggal);
       const itemDateOnly = new Date(itemDate.getFullYear(), itemDate.getMonth(), itemDate.getDate());
-
       if (startDate) {
-        const s = new Date(startDate);
-        s.setHours(0,0,0,0);
+        const s = new Date(startDate); s.setHours(0,0,0,0);
         if (itemDateOnly < s) return false;
       }
       if (endDate) {
-        const e = new Date(endDate);
-        e.setHours(0,0,0,0);
+        const e = new Date(endDate); e.setHours(0,0,0,0);
         if (itemDateOnly > e) return false;
       }
       return true;
     });
-
-    return filtered.sort((a, b) => {
-      const timeA = parseRobustDate(a.tanggal).getTime();
-      const timeB = parseRobustDate(b.tanggal).getTime();
-      if (timeB !== timeA) return timeB - timeA;
-      const pA = Number(a.prioritas || 3);
-      const pB = Number(b.prioritas || 3);
-      return pA - pB;
-    });
+    return filtered.sort((a, b) => parseRobustDate(b.tanggal).getTime() - parseRobustDate(a.tanggal).getTime());
   }, [data, startDate, endDate, searchQuery]);
 
   const renderStars = (count: number) => {
@@ -199,16 +167,13 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   return (
     <div className="pb-10">
       <div className="flex items-center mb-8 gap-4">
-        <button 
-          onClick={onBack} 
-          className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 active:scale-95 transition-all group"
-        >
+        <button onClick={onBack} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 active:scale-95 transition-all group">
           <span className="text-sm font-black text-slate-900 group-hover:-translate-x-1 transition-transform">←</span>
           <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Kembali</span>
         </button>
         <div className="flex-1">
           <h2 className="text-lg font-bold text-slate-900 tracking-tight">{initialData ? 'Edit Eksekusi' : 'Antrean Eksekusi'}</h2>
-          <p className="text-[11px] text-emerald-600 font-bold uppercase tracking-wider">{initialData ? 'MODE EDIT' : `${session.team || 'TIM'} • ${session.ulp}`}</p>
+          <p className="text-[11px] text-emerald-600 font-bold uppercase tracking-wider">{session.ulp}</p>
         </div>
       </div>
 
@@ -217,13 +182,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
           <div>
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Cari No. Tiang</p>
             <div className="relative">
-              <input 
-                type="text" 
-                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:border-indigo-500 transition-all uppercase"
-                placeholder="Ketik No. Tiang..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+              <input type="text" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:border-indigo-500 transition-all uppercase" placeholder="Ketik No. Tiang..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none">🔍</span>
             </div>
           </div>
@@ -240,52 +199,29 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       {filteredQueue.length === 0 && !initialData ? (
         <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-slate-200">
           <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Tidak ada antrean</p>
-          {searchQuery && <p className="text-[10px] text-slate-400 mt-2">No. Tiang "{searchQuery}" tidak ditemukan</p>}
         </div>
       ) : (
         <div className="space-y-4">
           {(initialData ? [initialData] : filteredQueue).map((item) => (
             <div key={item.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col group">
               <div className="flex p-4 gap-4">
-                <div 
-                  className="relative flex-shrink-0 cursor-zoom-in"
-                  onClick={() => setPreviewImage({ url: formatDriveUrl(item.fotoTemuan), title: `Foto Temuan: ${item.noTiang}` })}
-                >
+                <div className="relative flex-shrink-0 cursor-zoom-in" onClick={() => setPreviewImage({ url: formatDriveUrl(item.fotoTemuan), title: `Foto Temuan: ${item.noTiang}` })}>
                   <img src={formatDriveUrl(item.fotoTemuan)} alt="Temuan" className="w-24 h-24 object-cover rounded-xl border border-slate-100" referrerPolicy="no-referrer" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start mb-1">
                     <p className="text-[9px] font-bold text-slate-400">#{item.id.slice(-5)}</p>
-                    <div className="flex items-center gap-1.5">
-                      {item.geotag && (
-                        <a 
-                          href={`https://www.google.com/maps/search/?api=1&query=${item.geotag}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-[8px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-black uppercase tracking-wider hover:bg-blue-100 transition-colors"
-                        >📍 Peta</a>
-                      )}
-                      <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${
-                        item.status === 'BUTUH PADAM' ? 'bg-amber-50 text-amber-700' : 
-                        item.status === 'TIDAK DAPAT IZIN' ? 'bg-orange-50 text-orange-700' :
-                        item.status === 'KENDALA MATERIAL' ? 'bg-red-50 text-red-700' :
-                        'bg-indigo-50 text-indigo-700'
-                      }`}>{item.status}</span>
-                    </div>
+                    <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${item.status === 'BUTUH PADAM' ? 'bg-amber-50 text-amber-700' : 'bg-indigo-50 text-indigo-700'}`}>{item.status}</span>
                   </div>
                   <div className="flex justify-between items-start">
                     <h3 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">{item.noTiang} / {item.feeder}</h3>
                     {renderStars(item.prioritas)}
                   </div>
                   <p className="text-xs font-bold text-red-600 line-clamp-1">{item.keterangan}</p>
-                  <p className="text-[10px] text-slate-500 font-medium line-clamp-1 mt-0.5 italic">{item.alamat || item.lokasi || 'Alamat tidak tersedia'}</p>
                   <p className="text-[8px] text-slate-400 mt-1.5 font-bold uppercase tracking-widest">{parseRobustDate(item.tanggal).toLocaleDateString('id-ID')}</p>
                 </div>
               </div>
-              <button 
-                onClick={() => setSelectedTemuan(item)}
-                className="w-full bg-slate-900 text-white font-bold py-4 text-xs uppercase tracking-[0.2em] active:bg-slate-800 transition-colors"
-              >{initialData ? 'EDIT DETAIL EKSEKUSI' : 'PROSES EKSEKUSI'}</button>
+              <button onClick={() => setSelectedTemuan(item)} className="w-full bg-slate-900 text-white font-bold py-4 text-xs uppercase tracking-[0.2em] active:bg-slate-800 transition-colors">{initialData ? 'EDIT DETAIL EKSEKUSI' : 'PROSES EKSEKUSI'}</button>
             </div>
           ))}
         </div>
@@ -296,27 +232,29 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
           <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl flex flex-col my-8" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center p-6 border-b border-slate-100">
               <h3 className="text-lg font-bold text-slate-900">Form Laporan Eksekusi</h3>
-              {!isSaving && !initialData && <button onClick={() => setSelectedTemuan(null)} className="text-slate-400 p-2">✕</button>}
-              {initialData && <button onClick={onBack} className="text-slate-400 p-2">✕</button>}
+              <button onClick={() => initialData ? onBack() : setSelectedTemuan(null)} className="text-slate-400 p-2">✕</button>
             </div>
             <div className="p-6 space-y-6">
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex justify-between items-start">
-                <div>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Aset Target</p>
-                  <p className="font-bold text-slate-900 text-sm uppercase">{selectedTemuan.noTiang} • {selectedTemuan.feeder}</p>
-                  <p className="text-[10px] text-slate-600 mt-1 italic">{selectedTemuan.alamat || selectedTemuan.lokasi}</p>
-                </div>
-                {renderStars(selectedTemuan.prioritas)}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Aset Target</p>
+                <p className="font-bold text-slate-900 text-sm uppercase">{selectedTemuan.noTiang} • {selectedTemuan.feeder}</p>
               </div>
+
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest ml-1">Tanggal Eksekusi Manual (Opsional)</label>
-                <input 
-                  type="date" 
-                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-indigo-700 outline-none"
-                  value={executionDate}
-                  onChange={(e) => setExecutionDate(e.target.value)}
-                />
+                <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest ml-1">Pilih Tim Eksekusi *</label>
+                <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-indigo-100 transition-all" value={selectedTeam} onChange={(e) => setSelectedTeam(e.target.value)}>
+                  <option value="">-- Pilih Tim Eksekusi --</option>
+                  <option value="Team ROW">Team ROW</option>
+                  <option value="Team Yandal">Team Yandal</option>
+                  <option value="Team Pemeliharaan">Team PLN</option>
+                </select>
               </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest ml-1">Tanggal Eksekusi</label>
+                <input type="date" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-indigo-700 outline-none" value={executionDate} onChange={(e) => setExecutionDate(e.target.value)} />
+              </div>
+
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest ml-1">Bukti Foto Perbaikan *</label>
                 <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl p-4 bg-slate-50/50 min-h-[220px]">
@@ -326,19 +264,17 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                   ) : executionPhoto ? (
                     <div className="relative w-full">
                       <img src={executionPhoto} alt="Preview" className="w-full h-56 object-cover rounded-xl" />
-                      {!isSaving && (
-                        <button onClick={() => setExecutionPhoto('')} className="absolute top-2 right-2 bg-slate-900/80 text-white w-8 h-8 rounded-lg flex items-center justify-center">✕</button>
-                      )}
+                      <button onClick={() => setExecutionPhoto('')} className="absolute top-2 right-2 bg-slate-900/80 text-white w-8 h-8 rounded-lg flex items-center justify-center">✕</button>
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 gap-3 w-full">
                       <button type="button" onClick={() => openPicker('camera')} className="flex flex-col items-center p-5 bg-white border border-slate-200 rounded-2xl">
                         <span className="text-xl mb-2">📷</span>
-                        <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Kamera</span>
+                        <span className="text-[9px] font-bold text-slate-600 uppercase">Kamera</span>
                       </button>
                       <button type="button" onClick={() => openPicker('gallery')} className="flex flex-col items-center p-5 bg-white border border-slate-200 rounded-2xl">
                         <span className="text-xl mb-2">🖼️</span>
-                        <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Galeri</span>
+                        <span className="text-[9px] font-bold text-slate-600 uppercase">Galeri</span>
                       </button>
                     </div>
                   )}
@@ -346,39 +282,19 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
               </div>
             </div>
             <div className="p-6 bg-slate-50 border-t border-slate-100 rounded-b-3xl">
-              <div className="space-y-3">
-                <button 
-                  onClick={() => handleAction('SUDAH EKSEKUSI')}
-                  disabled={isSaving || isCompressing}
-                  className={`w-full py-4 rounded-xl shadow-lg uppercase text-[10px] font-black tracking-[0.2em] ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-emerald-600 text-white'}`}
-                >{isSaving ? '⏳' : initialData ? 'Update Selesai' : '✅ SELESAI'}</button>
-                <div className="grid grid-cols-3 gap-2">
-                  <button 
-                    onClick={() => handleAction('BUTUH PADAM')}
-                    disabled={isSaving || isCompressing}
-                    className={`py-4 rounded-xl shadow-lg uppercase text-[8px] font-bold leading-tight ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-amber-500 text-white'}`}
-                  >⚡ BUTUH PADAM</button>
-                  <button 
-                    onClick={() => handleAction('TIDAK DAPAT IZIN')}
-                    disabled={isSaving || isCompressing}
-                    className={`py-4 rounded-xl shadow-lg uppercase text-[8px] font-bold leading-tight ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-orange-600 text-white'}`}
-                  >🚫 TIDAK IZIN</button>
-                  <button 
-                    onClick={() => handleAction('KENDALA MATERIAL')}
-                    disabled={isSaving || isCompressing}
-                    className={`py-4 rounded-xl shadow-lg uppercase text-[8px] font-bold leading-tight ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-red-600 text-white'}`}
-                  >📦 KENDALA MATERIAL</button>
-                </div>
+              <button onClick={() => handleAction('SUDAH EKSEKUSI')} disabled={isSaving || isCompressing} className={`w-full py-4 rounded-xl shadow-lg uppercase text-[10px] font-black tracking-[0.2em] ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-emerald-600 text-white'}`}>{isSaving ? '⏳ Menyimpan...' : '✅ SELESAI EKSEKUSI'}</button>
+              <div className="grid grid-cols-3 gap-2 mt-3">
+                <button onClick={() => handleAction('BUTUH PADAM')} className="py-3 rounded-xl bg-amber-500 text-white text-[8px] font-bold uppercase">⚡ BUTUH PADAM</button>
+                <button onClick={() => handleAction('TIDAK DAPAT IZIN')} className="py-3 rounded-xl bg-orange-600 text-white text-[8px] font-bold uppercase">🚫 TIDAK DAPAT IZIN</button>
+                <button onClick={() => handleAction('KENDALA MATERIAL')} className="py-3 rounded-xl bg-red-600 text-white text-[8px] font-bold uppercase">📦 KENDALA MATERIAL</button>
               </div>
             </div>
           </div>
         </div>
       )}
       {previewImage && (
-        <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-sm z-[1000] flex flex-col items-center justify-center p-4 animate-fade-in" onClick={() => setPreviewImage(null)}>
-          <div className="w-full max-w-md relative">
-            <img src={previewImage.url} alt="Preview" className="w-full aspect-square object-contain bg-slate-100 rounded-3xl" referrerPolicy="no-referrer" />
-          </div>
+        <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-sm z-[1000] flex flex-col items-center justify-center p-4" onClick={() => setPreviewImage(null)}>
+          <img src={previewImage.url} alt="Preview" className="w-full max-w-md aspect-square object-contain bg-slate-100 rounded-3xl" referrerPolicy="no-referrer" />
           <p className="text-white/50 text-[10px] mt-6 font-bold uppercase tracking-[0.2em]">Sentuh di mana saja untuk menutup</p>
         </div>
       )}
