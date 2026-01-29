@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fix: Correct casing to reportService to resolve duplicate file casing error.
-import { ReportService } from '../services/reportService';
+// Fix: Use the correct casing for ReportService to match the file name and avoid compilation errors.
+import { ReportService } from '../services/ReportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
 interface AdminPageProps {
@@ -159,10 +159,12 @@ const AdminPage: React.FC<AdminPageProps> = ({
       counts[name].total++;
       if (item.status === 'SUDAH EKSEKUSI') counts[name].done++;
     });
-    // Sort primarily by highest number of executions (done), secondary by total reports
+    // Sort primarily by highest percentage (done / total), then by total volume as a tie-breaker
     return Object.values(counts).sort((a, b) => {
-      if (b.done !== a.done) return b.done - a.done;
-      return b.total - a.total;
+      const pctA = a.total > 0 ? a.done / a.total : 0;
+      const pctB = b.total > 0 ? b.done / b.total : 0;
+      if (pctB !== pctA) return pctB - pctA;
+      return b.total - a.total; // Tie-breaker by total volume
     }).slice(0, 10);
   }, [dashboardData]);
 
@@ -376,22 +378,26 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
           <div className="bg-slate-900 p-6 rounded-[2.5rem] border-2 border-yellow-500 shadow-xl">
              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-sm font-black text-white uppercase tracking-tight">Top 10 Feeder (Berdasarkan Eksekusi)</h3>
+                <h3 className="text-sm font-black text-white uppercase tracking-tight">Top 10 Feeder (Berdasarkan Persentase)</h3>
                 <span className="text-[9px] font-black text-yellow-500 uppercase tracking-widest">Selesai / Total</span>
              </div>
              <div className="space-y-4">
                 {topTenFeeders.map((f, i) => {
                   const isTop3 = i < 3;
+                  const pctValue = f.total > 0 ? Math.round((f.done / f.total) * 100) : 0;
                   return (
                     <div key={f.name} className={`flex items-center gap-4 p-3 rounded-2xl transition-all ${isTop3 ? 'bg-white/5 border border-yellow-500/30' : ''}`}>
                        <span className={`w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-black ${isTop3 ? 'bg-yellow-500 text-slate-900' : 'text-slate-400'}`}>{i+1}</span>
                        <div className="flex-1">
                           <div className="flex justify-between items-center mb-1.5">
-                             <p className="text-[10px] font-black text-white uppercase">{f.name}</p>
+                             <div className="flex flex-col">
+                                <p className="text-[10px] font-black text-white uppercase">{f.name}</p>
+                                <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">{pctValue}% Selesai</p>
+                             </div>
                              <p className="text-[9px] font-black text-yellow-500 uppercase tracking-tighter">{f.done} / {f.total}</p>
                           </div>
                           <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden border border-white/5">
-                             <div className="bg-yellow-500 h-full transition-all duration-700" style={{ width: `${(f.done / (f.total || 1)) * 100}%` }}></div>
+                             <div className="bg-yellow-500 h-full transition-all duration-700" style={{ width: `${pctValue}%` }}></div>
                           </div>
                        </div>
                     </div>
