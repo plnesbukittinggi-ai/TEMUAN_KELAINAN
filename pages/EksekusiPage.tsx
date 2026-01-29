@@ -115,7 +115,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
     }
   };
 
-  const handleAction = async (newStatus: 'SUDAH EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN') => {
+  const handleAction = async (newStatus: 'SUDAH EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN' | 'KENDALA MATERIAL') => {
     if (!selectedTemuan || !executionPhoto) {
       alert('⚠️ Foto bukti perbaikan wajib dilampirkan!');
       return;
@@ -268,6 +268,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                       <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${
                         item.status === 'BUTUH PADAM' ? 'bg-amber-50 text-amber-700' : 
                         item.status === 'TIDAK DAPAT IZIN' ? 'bg-orange-50 text-orange-700' :
+                        item.status === 'KENDALA MATERIAL' ? 'bg-red-50 text-red-700' :
                         'bg-indigo-50 text-indigo-700'
                       }`}>{item.status}</span>
                     </div>
@@ -351,17 +352,22 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                   disabled={isSaving || isCompressing}
                   className={`w-full py-4 rounded-xl shadow-lg uppercase text-[10px] font-black tracking-[0.2em] ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-emerald-600 text-white'}`}
                 >{isSaving ? '⏳' : initialData ? 'Update Selesai' : '✅ SELESAI'}</button>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-2">
                   <button 
                     onClick={() => handleAction('BUTUH PADAM')}
                     disabled={isSaving || isCompressing}
-                    className={`py-4 rounded-xl shadow-lg uppercase text-[10px] font-bold ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-amber-500 text-white'}`}
+                    className={`py-4 rounded-xl shadow-lg uppercase text-[8px] font-bold leading-tight ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-amber-500 text-white'}`}
                   >⚡ BUTUH PADAM</button>
                   <button 
                     onClick={() => handleAction('TIDAK DAPAT IZIN')}
                     disabled={isSaving || isCompressing}
-                    className={`py-4 rounded-xl shadow-lg uppercase text-[10px] font-bold ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-orange-600 text-white'}`}
-                  >🚫 TIDAK DAPAT IZIN</button>
+                    className={`py-4 rounded-xl shadow-lg uppercase text-[8px] font-bold leading-tight ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-orange-600 text-white'}`}
+                  >🚫 TIDAK IZIN</button>
+                  <button 
+                    onClick={() => handleAction('KENDALA MATERIAL')}
+                    disabled={isSaving || isCompressing}
+                    className={`py-4 rounded-xl shadow-lg uppercase text-[8px] font-bold leading-tight ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-red-600 text-white'}`}
+                  >📦 KENDALA MATERIAL</button>
                 </div>
               </div>
             </div>
