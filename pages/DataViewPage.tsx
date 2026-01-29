@@ -27,6 +27,12 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
     return url;
   };
 
+  const openInMaps = (geotag?: string) => {
+    if (!geotag) return;
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(geotag)}`;
+    window.open(url, '_blank');
+  };
+
   const parseRobustDate = (dateStr: any): Date => {
     if (!dateStr) return new Date(0);
     if (dateStr instanceof Date) return dateStr;
@@ -138,7 +144,6 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
         </div>
       </div>
 
-      {/* QUICK ACTIONS SECTION - Tambahkan temuan atau eksekusi baru */}
       {(onAddTemuan || onAddEksekusi) && (
         <div className="grid grid-cols-1 gap-3 mb-6 animate-slide-up">
           {onAddTemuan && (
@@ -218,7 +223,24 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
         ) : (
           sortedAndFilteredData.map((item) => (
             <div key={item.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden hover:border-indigo-200 transition-all flex flex-col">
-              <div className="flex p-4 gap-4">
+              {/* Tanggal di atas */}
+              <div className="px-4 pt-3 pb-1 border-b border-slate-50 flex justify-between items-center">
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+                  🗓️ {parseRobustDate(item.tanggal).toLocaleDateString('id-ID')}
+                </p>
+                <div className="flex flex-col items-end">
+                  <span className={`text-[8px] px-2 py-0.5 rounded font-black uppercase ${getStatusBadgeClass(item.status)}`}>
+                    {item.status}
+                  </span>
+                  {item.status === 'SUDAH EKSEKUSI' && (
+                    <p className="text-[7px] font-bold text-emerald-600 mt-1 uppercase tracking-tighter">
+                      {item.timEksekusi} - {item.tanggalEksekusi ? parseRobustDate(item.tanggalEksekusi).toLocaleDateString('id-ID') : '-'}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex p-4 gap-4 pb-2">
                 <div 
                   className="relative flex-shrink-0 cursor-zoom-in"
                   onClick={() => setPreviewImage({ url: formatDriveUrl(item.fotoTemuan), title: `Foto Temuan: ${item.noTiang}` })}
@@ -242,23 +264,36 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                 )}
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start mb-0.5">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase">#{item.id.slice(-5)}</p>
-                    <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${getStatusBadgeClass(item.status)}`}>
-                      {item.status.split(' ')[0]}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center mb-0.5">
-                    <h3 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">{item.noTiang} / {item.feeder}</h3>
+                  <div className="mb-1">
                     {renderStars(item.prioritas)}
                   </div>
-                  <p className="text-xs font-bold text-red-600 line-clamp-1">{item.keterangan}</p>
-                  <p className="text-[10px] text-slate-500 font-medium line-clamp-1 mt-0.5 italic">{item.alamat || item.lokasi || 'Alamat tidak tersedia'}</p>
-                  <p className="text-[8px] text-slate-400 mt-1.5 font-bold uppercase tracking-widest">
-                    {parseRobustDate(item.tanggal).toLocaleDateString('id-ID')}
+                  <p className="text-[10px] font-black text-indigo-600 uppercase tracking-tight mb-0.5">
+                    {item.feeder}
                   </p>
+                  <h3 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight mb-0.5">
+                    {item.noTiang}
+                  </h3>
+                  <p className="text-xs font-bold text-red-600 line-clamp-1">{item.keterangan}</p>
                 </div>
               </div>
+
+              <div className="px-4 pb-3">
+                <div className="flex items-center justify-between gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <p className="text-[10px] text-slate-600 font-bold italic flex-1 leading-tight">
+                    📍 {item.alamat || item.lokasi || 'Alamat tidak tersedia'}
+                  </p>
+                  {item.geotag && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); openInMaps(item.geotag); }}
+                      className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg active:scale-90 transition-all hover:bg-white shadow-sm"
+                    >
+                      <span className="text-[10px]">🗺️</span>
+                      <span className="text-[8px] font-black text-indigo-600 uppercase tracking-widest">Map</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {onEdit && (
                 <button 
                   onClick={() => onEdit(item)}
