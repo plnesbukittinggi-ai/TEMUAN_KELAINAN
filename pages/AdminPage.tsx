@@ -376,7 +376,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
             ))}
           </div>
 
-          <div className="bg-slate-900 p-6 rounded-[2.5rem] border-2 border-yellow-500 shadow-xl">
+          <div className="bg-slate-700 p-6 rounded-[2.5rem] border-2 border-yellow-500 shadow-xl">
              <div className="flex justify-between items-center mb-6">
                 <h3 className="text-sm font-black text-white uppercase tracking-tight">Top 10 Feeder (Berdasarkan Persentase)</h3>
                 <span className="text-[9px] font-black text-yellow-500 uppercase tracking-widest">Selesai / Total</span>
