@@ -23,6 +23,12 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const [previewImage, setPreviewImage] = useState<{url: string, title: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const openInMaps = (geotag?: string) => {
+    if (!geotag) return;
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(geotag)}`;
+    window.open(url, '_blank');
+  };
+
   const parseRobustDate = (dateStr: any): Date => {
     if (!dateStr) return new Date(0);
     if (dateStr instanceof Date) return dateStr;
@@ -156,7 +162,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const renderStars = (count: number) => {
     const priority = Number(count || 1);
     return (
-      <div className="flex gap-0.5 mt-1">
+      <div className="flex gap-0.5">
         {Array.from({ length: priority }).map((_, i) => (
           <span key={i} className="text-[10px] drop-shadow-sm">⭐</span>
         ))}
@@ -204,23 +210,51 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
         <div className="space-y-4">
           {(initialData ? [initialData] : filteredQueue).map((item) => (
             <div key={item.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col group">
-              <div className="flex p-4 gap-4">
+              {/* Tanggal di atas */}
+              <div className="px-4 pt-3 pb-1 border-b border-slate-50 flex justify-between items-center">
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+                  🗓️ {parseRobustDate(item.tanggal).toLocaleDateString('id-ID')}
+                </p>
+                <span className={`text-[8px] px-2 py-0.5 rounded font-black uppercase ${item.status === 'BUTUH PADAM' ? 'bg-amber-50 text-amber-700' : 'bg-indigo-50 text-indigo-700'}`}>
+                  {item.status}
+                </span>
+              </div>
+
+              <div className="flex p-4 gap-4 pb-0">
                 <div className="relative flex-shrink-0 cursor-zoom-in" onClick={() => setPreviewImage({ url: formatDriveUrl(item.fotoTemuan), title: `Foto Temuan: ${item.noTiang}` })}>
                   <img src={formatDriveUrl(item.fotoTemuan)} alt="Temuan" className="w-24 h-24 object-cover rounded-xl border border-slate-100" referrerPolicy="no-referrer" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start mb-1">
-                    <p className="text-[9px] font-bold text-slate-400">#{item.id.slice(-5)}</p>
-                    <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${item.status === 'BUTUH PADAM' ? 'bg-amber-50 text-amber-700' : 'bg-indigo-50 text-indigo-700'}`}>{item.status}</span>
-                  </div>
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight">{item.noTiang} / {item.feeder}</h3>
+                  <div className="mb-1">
                     {renderStars(item.prioritas)}
                   </div>
+                  <p className="text-[10px] font-black text-indigo-600 uppercase tracking-tight mb-0.5">
+                    {item.feeder}
+                  </p>
+                  <h3 className="font-bold text-slate-900 text-sm truncate uppercase tracking-tight mb-0.5">
+                    {item.noTiang}
+                  </h3>
                   <p className="text-xs font-bold text-red-600 line-clamp-1">{item.keterangan}</p>
-                  <p className="text-[8px] text-slate-400 mt-1.5 font-bold uppercase tracking-widest">{parseRobustDate(item.tanggal).toLocaleDateString('id-ID')}</p>
                 </div>
               </div>
+              
+              <div className="px-4 pb-4 mt-2">
+                <div className="flex items-center justify-between gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <p className="text-[10px] text-slate-600 font-bold italic flex-1 leading-tight">
+                    📍 {item.alamat || item.lokasi || 'Alamat tidak tersedia'}
+                  </p>
+                  {item.geotag && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); openInMaps(item.geotag); }}
+                      className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 rounded-lg active:scale-90 transition-all hover:bg-white shadow-sm"
+                    >
+                      <span className="text-[11px]">🗺️</span>
+                      <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Navigasi</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
               <button onClick={() => setSelectedTemuan(item)} className="w-full bg-slate-900 text-white font-bold py-4 text-xs uppercase tracking-[0.2em] active:bg-slate-800 transition-colors">{initialData ? 'EDIT DETAIL EKSEKUSI' : 'PROSES EKSEKUSI'}</button>
             </div>
           ))}
@@ -229,7 +263,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
 
       {selectedTemuan && (
         <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-md z-[999] flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl flex flex-col my-8" onClick={e => e.stopPropagation()}>
+          <div className="bg-white w-full max-sm rounded-3xl shadow-2xl flex flex-col my-8" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center p-6 border-b border-slate-100">
               <h3 className="text-lg font-bold text-slate-900">Form Laporan Eksekusi</h3>
               <button onClick={() => initialData ? onBack() : setSelectedTemuan(null)} className="text-slate-400 p-2">✕</button>
@@ -241,9 +275,9 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest ml-1">Pilih Tim Eksekusi *</label>
+                <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest ml-1">Pilih Tim Kerja *</label>
                 <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-indigo-100 transition-all" value={selectedTeam} onChange={(e) => setSelectedTeam(e.target.value)}>
-                  <option value="">-- Pilih Tim Eksekusi --</option>
+                  <option value="">-- Pilih Tim Kerja --</option>
                   <option value="Team ROW">Team ROW</option>
                   <option value="Team Yandal">Team Yandal</option>
                   <option value="Team Pemeliharaan">Team PLN</option>
@@ -282,11 +316,12 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
               </div>
             </div>
             <div className="p-6 bg-slate-50 border-t border-slate-100 rounded-b-3xl">
-              <button onClick={() => handleAction('SUDAH EKSEKUSI')} disabled={isSaving || isCompressing} className={`w-full py-4 rounded-xl shadow-lg uppercase text-[10px] font-black tracking-[0.2em] ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-emerald-600 text-white'}`}>{isSaving ? '⏳ Menyimpan...' : '✅ SELESAI EKSEKUSI'}</button>
+              {/* Fix: Wrap handleAction in an arrow function to pass 'SUDAH EKSEKUSI' status correctly */}
+              <button onClick={() => handleAction('SUDAH EKSEKUSI')} disabled={isSaving || isCompressing} className={`w-full py-4 rounded-xl shadow-lg uppercase text-[10px] font-black tracking-[0.2em] ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-emerald-600 text-white'}`}>{isSaving ? '⏳ Menyimpan...' : '✅ Simpan Laporan Selesai'}</button>
               <div className="grid grid-cols-3 gap-2 mt-3">
-                <button onClick={() => handleAction('BUTUH PADAM')} className="py-3 rounded-xl bg-amber-500 text-white text-[8px] font-bold uppercase">⚡ BUTUH PADAM</button>
-                <button onClick={() => handleAction('TIDAK DAPAT IZIN')} className="py-3 rounded-xl bg-orange-600 text-white text-[8px] font-bold uppercase">🚫 TIDAK DAPAT IZIN</button>
-                <button onClick={() => handleAction('KENDALA MATERIAL')} className="py-3 rounded-xl bg-red-600 text-white text-[8px] font-bold uppercase">📦 KENDALA MATERIAL</button>
+                <button onClick={() => handleAction('BUTUH PADAM')} className="py-3 rounded-xl bg-amber-500 text-white text-[8px] font-bold uppercase">⚡ Butuh Padam</button>
+                <button onClick={() => handleAction('TIDAK DAPAT IZIN')} className="py-3 rounded-xl bg-orange-600 text-white text-[8px] font-bold uppercase">🚫 Tidak Dapat Izin</button>
+                <button onClick={() => handleAction('KENDALA MATERIAL')} className="py-3 rounded-xl bg-red-600 text-white text-[8px] font-bold uppercase">📦 Kendala Material</button>
               </div>
             </div>
           </div>
