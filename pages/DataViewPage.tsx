@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { TemuanData } from '../types';
 
@@ -28,9 +27,6 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
     return url;
   };
 
-  /**
-   * Fungsi parsing tanggal robust
-   */
   const parseRobustDate = (dateStr: any): Date => {
     if (!dateStr) return new Date(0);
     if (dateStr instanceof Date) return dateStr;
@@ -134,13 +130,49 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
       <div className="flex items-center gap-4 mb-8">
         <button onClick={onBack} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 transition-all group">
           <span className="text-sm font-black text-slate-900 group-hover:-translate-x-1 transition-transform">←</span>
-          <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Kembali</span>
+          <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Logout</span>
         </button>
         <div className="flex-1">
           <h2 className="text-lg font-bold text-slate-900 tracking-tight">Monitoring Data</h2>
           <p className="text-[11px] text-indigo-600 font-bold uppercase tracking-wider">{ulp}</p>
         </div>
       </div>
+
+      {/* QUICK ACTIONS SECTION - Tambahkan temuan atau eksekusi baru */}
+      {(onAddTemuan || onAddEksekusi) && (
+        <div className="grid grid-cols-1 gap-3 mb-6 animate-slide-up">
+          {onAddTemuan && (
+            <button 
+              onClick={onAddTemuan}
+              className="flex items-center justify-center gap-4 p-5 bg-slate-900 text-white rounded-[2rem] shadow-xl hover:bg-slate-800 active:scale-[0.98] transition-all border border-slate-800 group"
+            >
+              <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                📝
+              </div>
+              <div className="text-left flex-1">
+                <p className="text-xs font-black uppercase tracking-widest">Tambahkan Temuan Baru</p>
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter mt-0.5">Lapor Kelainan Jaringan</p>
+              </div>
+              <span className="text-slate-500 text-lg">→</span>
+            </button>
+          )}
+          {onAddEksekusi && (
+            <button 
+              onClick={onAddEksekusi}
+              className="flex items-center justify-center gap-4 p-5 bg-emerald-600 text-white rounded-[2rem] shadow-xl hover:bg-emerald-700 active:scale-[0.98] transition-all border border-emerald-500 group"
+            >
+              <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                🛠️
+              </div>
+              <div className="text-left flex-1">
+                <p className="text-xs font-black uppercase tracking-widest">Tambahkan Eksekusi Baru</p>
+                <p className="text-[9px] text-emerald-100 font-bold uppercase tracking-tighter mt-0.5">Input Hasil Perbaikan</p>
+              </div>
+              <span className="text-emerald-300 text-lg">→</span>
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="bg-white p-5 rounded-3xl border border-slate-200 mb-6 shadow-sm">
         <div className="flex justify-between items-center mb-3 ml-1">
@@ -225,13 +257,16 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                   <p className="text-[8px] text-slate-400 mt-1.5 font-bold uppercase tracking-widest">
                     {parseRobustDate(item.tanggal).toLocaleDateString('id-ID')}
                   </p>
-                  {item.status === 'SUDAH EKSEKUSI' && (
-                    <p className="text-[8px] text-emerald-600 font-black mt-1 uppercase tracking-tighter">
-                      Eksekusi: {item.tanggalEksekusi ? item.tanggalEksekusi.split(',')[0] : '-'} oleh {item.timEksekusi || '-'}
-                    </p>
-                  )}
                 </div>
               </div>
+              {onEdit && (
+                <button 
+                  onClick={() => onEdit(item)}
+                  className="bg-slate-50 border-t border-slate-100 py-2.5 text-[9px] font-black text-slate-500 uppercase tracking-widest hover:bg-slate-100 transition-all"
+                >
+                  Ubah Data / Edit
+                </button>
+              )}
             </div>
           ))
         )}
