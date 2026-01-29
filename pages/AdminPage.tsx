@@ -413,7 +413,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
       {tab === 'REKAP' && (
         <div className="space-y-6 animate-fade-in">
-          <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
+          <div className="bg-blue p-5 rounded-[2rem] border border-slate-100 shadow-sm">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Filter Rentang Waktu</p>
             <div className="grid grid-cols-2 gap-3 mb-2">
               <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={rekapStartDate} onChange={(e) => setRekapStartDate(e.target.value)} />
@@ -423,7 +423,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
           <div className="bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm">
              <table className="w-full text-left border-collapse">
                 <thead>
-                   <tr className="bg-slate-50 border-b border-slate-100">
+                   <tr className="bg-yellow-50 border-b border-slate-100">
                       <th className="p-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Inspektor</th>
                       <th className="p-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Total</th>
                    </tr>
