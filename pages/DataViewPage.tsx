@@ -12,7 +12,7 @@ interface DataViewPageProps {
 }
 
 const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTemuan, onAddEksekusi, onEdit }) => {
-  const [filter, setFilter] = useState<'ALL' | 'BELUM EKSEKUSI' | 'SUDAH EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN'>('ALL');
+  const [filter, setFilter] = useState<'ALL' | 'BELUM EKSEKUSI' | 'SUDAH EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN' | 'KENDALA MATERIAL'>('ALL');
   const [selectedFeeder, setSelectedFeeder] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
@@ -113,6 +113,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
       case 'SUDAH EKSEKUSI': return 'text-emerald-700 bg-emerald-50';
       case 'BUTUH PADAM': return 'text-amber-700 bg-amber-50';
       case 'TIDAK DAPAT IZIN': return 'text-orange-700 bg-orange-50';
+      case 'KENDALA MATERIAL': return 'text-red-700 bg-red-50';
       default: return 'text-indigo-700 bg-indigo-50';
     }
   };
@@ -166,12 +167,12 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {['ALL', 'BELUM EKSEKUSI', 'SUDAH EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN'].map((f) => (
+          {['ALL', 'BELUM EKSEKUSI', 'SUDAH EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN', 'KENDALA MATERIAL'].map((f) => (
             <button
               key={f} onClick={() => setFilter(f as any)}
               className={`whitespace-nowrap px-4 py-2 text-[10px] font-bold rounded-lg border transition-all uppercase tracking-wide ${filter === f ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-400 border-slate-200'}`}
             >
-              {f === 'ALL' ? 'SEMUA' : f === 'TIDAK DAPAT IZIN' ? 'TDK IZIN' : f}
+              {f === 'ALL' ? 'SEMUA' : f === 'TIDAK DAPAT IZIN' ? 'TDK IZIN' : f === 'KENDALA MATERIAL' ? 'KENDALA MATERIAL' : f}
             </button>
           ))}
         </div>
