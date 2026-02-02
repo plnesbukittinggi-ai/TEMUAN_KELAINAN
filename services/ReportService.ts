@@ -86,8 +86,11 @@ export const ReportService = {
     worksheet.getColumn(5).width = 20;
     worksheet.getColumn(6).width = 35;
     worksheet.getColumn(7).width = 25;
-    worksheet.getColumn(8).width = 31; // Foto Sebelum
-    worksheet.getColumn(9).width = 31; // Foto Sesudah
+    
+    // Width set to approx 128px (approx 18.2 units)
+    worksheet.getColumn(8).width = 18.2; // Foto Sebelum
+    worksheet.getColumn(9).width = 18.2; // Foto Sesudah
+    
     worksheet.getColumn(10).width = 25; // Keterangan
     worksheet.getColumn(11).width = 45; // Saran
 
@@ -115,7 +118,10 @@ export const ReportService = {
         item.keterangan,
         displayStatus
       ]);
-      row.height = 100;
+      
+      // Height set to 135px (101.25 points)
+      row.height = 101.25;
+      
       row.eachCell((cell) => {
         cell.alignment = { vertical: 'middle', wrapText: true };
         cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
@@ -128,7 +134,7 @@ export const ReportService = {
             const imgId = workbook.addImage({ base64, extension: 'png' });
             worksheet.addImage(imgId, {
               tl: { col: 7, row: row.number - 1 }, // Column H (index 7)
-              ext: { width: 220, height: 130 }
+              ext: { width: 128, height: 135 } // Fill exact 128x135px
             });
           }
         } catch (e) {}
@@ -141,7 +147,7 @@ export const ReportService = {
             const imgId = workbook.addImage({ base64, extension: 'png' });
             worksheet.addImage(imgId, {
               tl: { col: 8, row: row.number - 1 }, // Column I (index 8)
-              ext: { width: 220, height: 130 }
+              ext: { width: 128, height: 135 } // Fill exact 128x135px
             });
           }
         } catch (e) {}
