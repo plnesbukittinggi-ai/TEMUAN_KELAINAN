@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fixed: Using uppercase 'ReportService' to resolve casing conflict errors with existing file on disk.
+// Fixed: Using 'ReportService' (uppercase R) to match the root file casing 'services/ReportService.ts'
 import { ReportService } from '../services/ReportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
@@ -55,16 +55,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const [formData, setFormData] = useState<any>({ name: '', ulpId: '' });
   const [isSaving, setIsSaving] = useState(false);
 
-  const formatDriveUrl = (url?: string) => {
-    if (!url) return '';
-    if (url.indexOf('data:image') === 0) return url;
-    if (url.includes('drive.google.com/file/d/')) {
-      const id = url.split('/d/')[1]?.split('/')[0];
-      if (id) return `https://lh3.googleusercontent.com/d/${id}`;
-    }
-    return url;
-  };
-  
   const parseRobustDate = (dateStr: any): Date => {
     if (!dateStr) return new Date(0);
     if (dateStr instanceof Date) return dateStr;
@@ -197,12 +187,26 @@ const AdminPage: React.FC<AdminPageProps> = ({
     }
     setIsExporting(true);
     try {
-      const sortedForExport = [...filteredAndSortedData].sort((a, b) => parseRobustDate(a.tanggal).getTime() - parseRobustDate(b.tanggal).getTime());
-      const selectedMonthLabel = MONTHS.find(m => m.val === dashFilterMonth)?.label || '';
-      const displayMonth = filterStartDate && filterEndDate ? `${filterStartDate} s/d ${filterEndDate}` : `${selectedMonthLabel} ${dashFilterYear}`.toUpperCase();
-      const filters = { ulp: filterUlp || 'SEMUA UNIT', feeder: filterFeeder || 'SEMUA FEEDER', pekerjaan: filterPekerjaan || 'SEMUA PEKERJAAN', bulan: displayMonth, inspektor1: sortedForExport[0]?.inspektor1 || '-', inspektor2: sortedForExport[0]?.inspektor2 || '-' };
+      const sortedForExport = [...filteredAndSortedData].sort((a, b) => parseRobustDate(a.tanggal).getTime() - parseRobustDate(a.tanggal).getTime());
+      
+      // Ambil bulan dan tahun dari data pertama (tetap Bulan & Tahun saja walau difilter tanggal)
+      const firstDataDate = parseRobustDate(sortedForExport[0]?.tanggal);
+      const monthLabel = MONTHS.find(m => m.val === (firstDataDate.getMonth() + 1))?.label || 'Unknown';
+      const yearLabel = firstDataDate.getFullYear();
+      const displayMonth = `${monthLabel} ${yearLabel}`;
+
+      const filters = { 
+        ulp: filterUlp || 'SEMUA UNIT', 
+        feeder: filterFeeder || 'SEMUA FEEDER', 
+        pekerjaan: filterPekerjaan || 'SEMUA PEKERJAAN', 
+        bulan: displayMonth, 
+        inspektor1: sortedForExport[0]?.inspektor1 || '-', 
+        inspektor2: sortedForExport[0]?.inspektor2 || '-' 
+      };
+      
       await ReportService.downloadExcel(sortedForExport, filters);
     } catch (error) {
+      console.error(error);
       alert("Gagal mengunduh file Excel.");
     } finally { setIsExporting(false); }
   };
@@ -413,130 +417,49 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
       {tab === 'REKAP' && (
   <div className="space-y-6 animate-fade-in">
-
     {/* FILTER */}
-    <div
-      className="
-        bg-emerald-50 p-5 rounded-2xl
-        border border-emerald-200
-        shadow-sm
-        transition-all duration-300
-        hover:shadow-md
-      "
-    >
-      <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-3 ml-1">
-        Filter Rentang Waktu
-      </p>
-
+    <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 shadow-sm transition-all duration-300 hover:shadow-md">
+      <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-3 ml-1">Filter Rentang Waktu</p>
       <div className="grid grid-cols-2 gap-3 mb-2">
-        <input
-          type="date"
-          className="
-            p-3 bg-white border border-emerald-200
-            rounded-xl text-[11px] font-bold
-            text-emerald-800 outline-none
-            focus:border-emerald-400
-            focus:ring-1 focus:ring-emerald-200
-          "
-          value={rekapStartDate}
-          onChange={(e) => setRekapStartDate(e.target.value)}
-        />
-        <input
-          type="date"
-          className="
-            p-3 bg-white border border-emerald-200
-            rounded-xl text-[11px] font-bold
-            text-emerald-800 outline-none
-            focus:border-emerald-400
-            focus:ring-1 focus:ring-emerald-200
-          "
-          value={rekapEndDate}
-          onChange={(e) => setRekapEndDate(e.target.value)}
-        />
+        <input type="date" className="p-3 bg-white border border-emerald-200 rounded-xl text-[11px] font-bold text-emerald-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200" value={rekapStartDate} onChange={(e) => setRekapStartDate(e.target.value)} />
+        <input type="date" className="p-3 bg-white border border-emerald-200 rounded-xl text-[11px] font-bold text-emerald-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200" value={rekapEndDate} onChange={(e) => setRekapEndDate(e.target.value)} />
       </div>
     </div>
 
     {/* TABLE */}
-    <div
-      className="
-        bg-emerald-50 p-5 rounded-2xl
-        border border-emerald-200
-        shadow-sm
-        transition-all duration-300
-        hover:shadow-md
-      "
-    >
+    <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 shadow-sm transition-all duration-300 hover:shadow-md">
       <table className="w-full text-left border-collapse">
         <thead>
           <tr className="bg-emerald-100 border-b border-emerald-200">
-            <th className="p-4 text-[9px] font-black text-emerald-700 uppercase tracking-widest">
-              Inspektor
-            </th>
-            <th className="p-4 text-[9px] font-black text-emerald-700 uppercase tracking-widest text-center">
-              Total
-            </th>
+            <th className="p-4 text-[9px] font-black text-emerald-700 uppercase tracking-widest">Inspektor</th>
+            <th className="p-4 text-[9px] font-black text-emerald-700 uppercase tracking-widest text-center">Total</th>
           </tr>
         </thead>
-
         <tbody className="divide-y divide-emerald-100">
           {rekapData.map((r, i) => (
-            <tr
-              key={i}
-              className="hover:bg-emerald-100/60 transition-colors"
-            >
+            <tr key={i} className="hover:bg-emerald-100/60 transition-colors">
               <td className="p-4">
-                <p className="text-[10px] font-black text-emerald-900 uppercase">
-                  {r.inspektor}
-                </p>
-                <p className="text-[8px] text-emerald-600 font-bold uppercase tracking-tight mt-0.5">
-                  {r.pekerjaan} • {r.feeder}
-                </p>
+                <p className="text-[10px] font-black text-emerald-900 uppercase">{r.inspektor}</p>
+                <p className="text-[8px] text-emerald-600 font-bold uppercase tracking-tight mt-0.5">{r.pekerjaan} • {r.feeder}</p>
               </td>
-
               <td className="p-4 text-center">
-                <span
-                  className="
-                    inline-block
-                    bg-emerald-100 text-emerald-700
-                    px-3 py-1 rounded-full
-                    text-[10px] font-black
-                  "
-                >
-                  {r.total}
-                </span>
+                <span className="inline-block bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black">{r.total}</span>
               </td>
             </tr>
           ))}
-
-          {/* SUMMARY ROW */}
           {rekapData.length > 0 && (
             <tr className="bg-gradient-to-r from-emerald-200 to-emerald-100 border-t-2 border-emerald-300">
-              <td className="p-4">
-                <p className="text-[10px] font-black text-emerald-900 uppercase tracking-widest">
-                  Total Keseluruhan
-                </p>
-              </td>
+              <td className="p-4"><p className="text-[10px] font-black text-emerald-900 uppercase tracking-widest">Total Keseluruhan</p></td>
               <td className="p-4 text-center">
-                <span
-                  className="
-                    inline-block
-                    bg-emerald-600 text-white
-                    px-4 py-1.5 rounded-full
-                    text-[11px] font-black
-                  "
-                >
-                  {rekapData.reduce((sum, r) => sum + r.total, 0)}
-                </span>
+                <span className="inline-block bg-emerald-600 text-white px-4 py-1.5 rounded-full text-[11px] font-black">{rekapData.reduce((sum, r) => sum + r.total, 0)}</span>
               </td>
             </tr>
           )}
         </tbody>
       </table>
     </div>
-
   </div>
 )}
-
 
       {tab === 'DATA' && (
         <div className="space-y-6 animate-fade-in">
@@ -571,14 +494,37 @@ const AdminPage: React.FC<AdminPageProps> = ({
             <button onClick={handleDownloadExcel} disabled={isExporting} className={`w-full py-4 rounded-2xl shadow-lg font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-3 ${isExporting ? 'bg-slate-200 text-slate-400' : 'bg-emerald-600 text-white active:scale-95'}`}>{isExporting ? '⏳ MENYIAPKAN FILE...' : '📗 DOWNLOAD LAPORAN EXCEL'}</button>
           </div>
           <div className="space-y-3">
-             <div className="flex justify-between items-center px-1"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Preview {filteredAndSortedData.length} Data Terbaru</p></div>
-             {filteredAndSortedData.slice(0, 50).map(item => (
+             <div className="flex justify-between items-center px-1">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Preview {filteredAndSortedData.length} Data Terbaru</p>
+             </div>
+             {filteredAndSortedData.slice(0, 50).map(item => {
+                const itemDate = parseRobustDate(item.tanggal);
+                return (
                 <div key={item.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex gap-4">
-                   <div className="flex flex-col items-center flex-shrink-0"><div className="w-14 h-14 bg-slate-50 rounded-xl overflow-hidden border border-slate-100"><img src={formatDriveUrl(item.fotoTemuan)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" /></div><p className="text-[7px] font-black uppercase text-slate-400 mt-1">Temuan</p></div>
-                   {item.status === 'SUDAH EKSEKUSI' && item.fotoEksekusi && (<div className="flex flex-col items-center flex-shrink-0"><div className="w-14 h-14 bg-emerald-50 rounded-xl overflow-hidden border border-emerald-100"><img src={formatDriveUrl(item.fotoEksekusi)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" /></div><p className="text-[7px] font-black uppercase text-emerald-500 mt-1">Eksekusi</p></div>)}
-                   <div className="flex-1 min-w-0"><div className="flex justify-between items-start"><p className="text-[10px] font-black text-slate-900 truncate uppercase">{item.noTiang} • {item.feeder}</p><span className={`text-[7px] px-1.5 py-0.5 rounded font-black uppercase ${item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>{item.status.split(' ')[0]}</span></div><p className="text-[9px] font-bold text-red-500 mt-0.5 truncate uppercase">{item.keterangan}</p><p className="text-[8px] text-slate-400 mt-1 font-bold uppercase tracking-widest">{parseRobustDate(item.tanggal).toLocaleDateString('id-ID')} | {item.ulp}</p></div>
+                   <div className="flex flex-col items-center flex-shrink-0">
+                      <div className="w-14 h-14 bg-slate-50 rounded-xl overflow-hidden border border-slate-100">
+                        <img src={item.fotoTemuan ? (item.fotoTemuan.includes('drive.google.com') ? `https://lh3.googleusercontent.com/d/${item.fotoTemuan.split('/d/')[1]?.split('/')[0]}` : item.fotoTemuan) : ''} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                      </div>
+                      <p className="text-[7px] font-black uppercase text-slate-400 mt-1">Temuan</p>
+                   </div>
+                   {item.status === 'SUDAH EKSEKUSI' && item.fotoEksekusi && (
+                      <div className="flex flex-col items-center flex-shrink-0">
+                        <div className="w-14 h-14 bg-emerald-50 rounded-xl overflow-hidden border border-emerald-100">
+                           <img src={item.fotoEksekusi.includes('drive.google.com') ? `https://lh3.googleusercontent.com/d/${item.fotoEksekusi.split('/d/')[1]?.split('/')[0]}` : item.fotoEksekusi} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                        </div>
+                        <p className="text-[7px] font-black uppercase text-emerald-500 mt-1">Eksekusi</p>
+                      </div>
+                   )}
+                   <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start">
+                         <p className="text-[10px] font-black text-slate-900 truncate uppercase">{item.noTiang} • {item.feeder}</p>
+                         <span className={`text-[7px] px-1.5 py-0.5 rounded font-black uppercase ${item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>{item.status.split(' ')[0]}</span>
+                      </div>
+                      <p className="text-[9px] font-bold text-red-500 mt-0.5 truncate uppercase">{item.keterangan}</p>
+                      <p className="text-[8px] text-slate-400 mt-1 font-bold uppercase tracking-widest">{itemDate.toLocaleDateString('id-ID')} | {item.ulp}</p>
+                   </div>
                 </div>
-             ))}
+              )})}
           </div>
         </div>
       )}
