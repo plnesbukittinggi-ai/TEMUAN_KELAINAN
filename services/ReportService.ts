@@ -1,3 +1,4 @@
+
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -64,8 +65,9 @@ export const ReportService = {
     worksheet.getCell('A4').alignment = { horizontal: 'center' };
 
     worksheet.addRow([]);
-    worksheet.addRow(['NAMA FEEDER', `: ${filters.feeder || 'SEMUA'}`]);
-    worksheet.addRow(['BULAN', `: ${filters.bulan || '-'}`]);
+    // Pindah ke Kolom ke dua (Kolom B)
+    worksheet.addRow(['', 'NAMA FEEDER', `: ${filters.feeder || 'SEMUA'}`]);
+    worksheet.addRow(['', 'BULAN', `: ${filters.bulan || '-'}`]);
     worksheet.addRow([]);
 
     // Headers excluding Priority
@@ -87,7 +89,7 @@ export const ReportService = {
     worksheet.getColumn(6).width = 35;
     worksheet.getColumn(7).width = 25;
     
-    // Width set to approx 128px (approx 18.2 units)
+    // Set Column Width to 128 pixels (approx 18.2 in Excel units)
     worksheet.getColumn(8).width = 18.2; // Foto Sebelum
     worksheet.getColumn(9).width = 18.2; // Foto Sesudah
     
@@ -97,17 +99,20 @@ export const ReportService = {
     for (let i = 0; i < data.length; i++) {
       const item = data[i];
       
-      const cleanEksekusiDate = item.tanggalEksekusi ? item.tanggalEksekusi.split(',')[0] : '-';
+      // Membersihkan tanggal agar hanya menampilkan YYYY-MM-DD (menghapus T... atau spasi...)
+      const cleanEksekusiDate = item.tanggalEksekusi ? item.tanggalEksekusi.split(/[ T,]/)[0] : '-';
       
       let displayStatus: string = item.status;
       if (item.status === 'SUDAH EKSEKUSI') {
         displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${cleanEksekusiDate}`;
       }
 
-      // Row content excluding Priority
+      // Format tanggal inspeksi juga dibersihkan
+      const cleanInspeksiDate = item.tanggal ? item.tanggal.split(/[ T,]/)[0] : '-';
+
       const row = worksheet.addRow([
         i + 1,
-        item.tanggal.split(',')[0],
+        cleanInspeksiDate,
         item.noTiang,
         item.noWO,
         item.feeder,
@@ -119,7 +124,6 @@ export const ReportService = {
         displayStatus
       ]);
       
-      // Height set to 135px (101.25 points)
       row.height = 101.25;
       
       row.eachCell((cell) => {
@@ -134,7 +138,7 @@ export const ReportService = {
             const imgId = workbook.addImage({ base64, extension: 'png' });
             worksheet.addImage(imgId, {
               tl: { col: 7, row: row.number - 1 }, // Column H (index 7)
-              ext: { width: 128, height: 135 } // Fill exact 128x135px
+              ext: { width: 128, height: 135 }
             });
           }
         } catch (e) {}
@@ -147,7 +151,7 @@ export const ReportService = {
             const imgId = workbook.addImage({ base64, extension: 'png' });
             worksheet.addImage(imgId, {
               tl: { col: 8, row: row.number - 1 }, // Column I (index 8)
-              ext: { width: 128, height: 135 } // Fill exact 128x135px
+              ext: { width: 128, height: 135 }
             });
           }
         } catch (e) {}
@@ -155,11 +159,20 @@ export const ReportService = {
     }
 
     worksheet.addRow([]);
-    worksheet.addRow(['', '', '', '', '', '', '', '', '', 'DILAKSANAKAN', `: ${filters.bulan || '-'}`]);
-    worksheet.addRow(['', '', '', '', '', '', '', '', '', 'JAM', ': 07.30 S/D 17.00 WIB']);
-    worksheet.addRow(['', '', '', '', '', '', '', '', '', 'PETUGAS', `: ${filters.inspektor1 || '-'}`]);
-    worksheet.addRow(['', '', '', '', '', '', '', '', '', '', `: ${filters.inspektor2 || '-'}`]);
-    worksheet.addRow(['', '', '', '', '', '', '', '', '', 'ADMINSPEKSI', `: ENDANG WINARNINGSIH`]);
+    const rowSig1 = worksheet.addRow(['', '', '', '', '', '', '', '', '', 'DILAKSANAKAN', `: ${filters.bulan || '-'}`]);
+    const rowSig2 = worksheet.addRow(['', '', '', '', '', '', '', '', '', 'JAM', ': 07.30 S/D 17.00 WIB']);
+    const rowSig3 = worksheet.addRow(['', '', '', '', '', '', '', '', '', 'PETUGAS', `: ${filters.inspektor1 || '-'}`]);
+    const rowSig4 = worksheet.addRow(['', '', '', '', '', '', '', '', '', '', `: ${filters.inspektor2 || '-'}`]);
+    const rowSig5 = worksheet.addRow(['', '', '', '', '', '', '', '', '', 'ADMINSPEKSI', `: ENDANG WINARNINGSIH`]);
+
+    // Tambahkan border untuk baris tanda tangan (Kolom J dan K)
+    [rowSig1, rowSig2, rowSig3, rowSig4, rowSig5].forEach(row => {
+      const cellJ = row.getCell(10);
+      const cellK = row.getCell(11);
+      const borderStyle: Partial<ExcelJS.Border> = { style: 'thin' };
+      cellJ.border = { top: borderStyle, left: borderStyle, bottom: borderStyle, right: borderStyle };
+      cellK.border = { top: borderStyle, left: borderStyle, bottom: borderStyle, right: borderStyle };
+    });
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -170,9 +183,6 @@ export const ReportService = {
     a.click();
   },
 
-  /**
-   * Generates and downloads a PDF report.
-   */
   async downloadPDF(data: TemuanData[], filters: any) {
     const doc = new jsPDF('l', 'mm', 'a4');
     
@@ -189,11 +199,13 @@ export const ReportService = {
     const body = data.map((item, i) => {
       let displayStatus: string = item.status;
       if (item.status === 'SUDAH EKSEKUSI') {
-        displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${item.tanggalEksekusi ? item.tanggalEksekusi.split(',')[0] : '-'}`;
+        const cleanEksekusiDate = item.tanggalEksekusi ? item.tanggalEksekusi.split(/[ T,]/)[0] : '-';
+        displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${cleanEksekusiDate}`;
       }
+      const cleanInspeksiDate = item.tanggal ? item.tanggal.split(/[ T,]/)[0] : '-';
       return [
         i + 1,
-        item.tanggal.split(',')[0],
+        cleanInspeksiDate,
         item.noTiang,
         item.noWO,
         item.feeder,
@@ -208,7 +220,7 @@ export const ReportService = {
 
     autoTable(doc, {
       startY: 48,
-      head: [['NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'PRIORITAS', 'FOTO SEB', 'FOTO SES', 'KETERANGAN', 'SARAN']],
+      head: [['NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEB', 'FOTO SES', 'KETERANGAN', 'SARAN']],
       body: body,
       theme: 'grid',
       headStyles: { fillColor: [40, 40, 40], fontSize: 7, halign: 'center' },
