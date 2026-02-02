@@ -30,13 +30,36 @@ const App: React.FC = () => {
     try {
       const config = await SpreadsheetService.fetchAllData() as any;
       
-      if (config.inspectors && config.inspectors.length > 0) setInspectors(config.inspectors);
-      if (config.ulpList && config.ulpList.length > 0) setUlpList(config.ulpList);
-      if (config.feeders && config.feeders.length > 0) setFeeders(config.feeders);
-      if (config.pekerjaanList && config.pekerjaanList.length > 0) setPekerjaanList(config.pekerjaanList);
-      if (config.keteranganList && config.keteranganList.length > 0) setKeteranganList(config.keteranganList);
+      // Normalisasi kunci objek agar sesuai dengan interface TypeScript (CamelCase)
+      // Karena Google Apps Script mengembalikan header dalam format lowercase.
+      const normalize = (arr: any[]) => {
+        if (!arr || !Array.isArray(arr)) return [];
+        return arr.map(item => {
+          const newItem: any = {};
+          for (const key in item) {
+            let mappedKey = key;
+            // Mapping manual untuk kunci-kunci krusial yang menggunakan camelCase di Frontend
+            if (key === 'ulpid') mappedKey = 'ulpId';
+            if (key === 'idpekerjaan') mappedKey = 'idPekerjaan';
+            if (key === 'notiang') mappedKey = 'noTiang';
+            if (key === 'nowo') mappedKey = 'noWO';
+            if (key === 'fototemuan') mappedKey = 'fotoTemuan';
+            if (key === 'fotoeksekusi') mappedKey = 'fotoEksekusi';
+            if (key === 'timeksekusi') mappedKey = 'timEksekusi';
+            if (key === 'tanggaleksekusi') mappedKey = 'tanggalEksekusi';
+            newItem[mappedKey] = item[key];
+          }
+          return newItem;
+        });
+      };
+
+      if (config.inspectors) setInspectors(normalize(config.inspectors));
+      if (config.ulpList) setUlpList(normalize(config.ulpList));
+      if (config.feeders) setFeeders(normalize(config.feeders));
+      if (config.pekerjaanList) setPekerjaanList(normalize(config.pekerjaanList));
+      if (config.keteranganList) setKeteranganList(normalize(config.keteranganList));
+      if (config.allData) setAllData(normalize(config.allData));
       
-      if (config.allData) setAllData(config.allData);
     } catch (err) {
       console.error("Connection failed:", err);
       setConnectionError(true);
@@ -161,7 +184,6 @@ const App: React.FC = () => {
         );
       case AppRole.ADMIN:
         return (
-          /* Added missing keteranganList prop to AdminPage to fix missing property error */
           <AdminPage 
             data={allData} 
             ulpList={ulpList} 
