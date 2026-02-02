@@ -1,7 +1,7 @@
 
 import { Inspector, ULP, Feeder, Keterangan, Pekerjaan } from './types';
 
-export const SPREADSHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxbx5jjaOHOPtUBatlAjTYaGnDXJKUB96p8fsU9-myfN7N0qtmDDQWzOeZe6Jj5uPsG/exec';
+export const SPREADSHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyZBrWEElyF7GwAfoFsQwHPUI1c9G3PMjxy0EQj7Ne3hwI5gUg9aRZuBdv4PZ7VIn8k/exec';
 
 export const APP_VERSION = '1.0.7';
 
