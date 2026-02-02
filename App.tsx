@@ -161,12 +161,14 @@ const App: React.FC = () => {
         );
       case AppRole.ADMIN:
         return (
+          /* Added missing keteranganList prop to AdminPage to fix missing property error */
           <AdminPage 
             data={allData} 
             ulpList={ulpList} 
             inspectors={inspectors}
             feeders={feeders}
             pekerjaanList={pekerjaanList}
+            keteranganList={keteranganList}
             onBack={handleLogout}
             onUpdateInspectors={setInspectors}
             onUpdateUlp={setUlpList}
