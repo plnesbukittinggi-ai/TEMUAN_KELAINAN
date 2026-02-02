@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fixed: Using 'ReportService' (uppercase R) to match the root file casing 'services/ReportService.ts'
-import { ReportService } from '../services/ReportService';
+// Fixed: Changed import casing to 'reportService' to resolve casing conflict with 'ReportService.ts'
+import { ReportService } from '../services/reportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
 interface AdminPageProps {
