@@ -1,4 +1,3 @@
-
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -99,7 +98,7 @@ export const ReportService = {
     for (let i = 0; i < data.length; i++) {
       const item = data[i];
       
-      // Membersihkan tanggal agar hanya menampilkan YYYY-MM-DD (menghapus T... atau spasi...)
+      // Membersihkan tanggal agar hanya menampilkan YYYY-MM-DD
       const cleanEksekusiDate = item.tanggalEksekusi ? item.tanggalEksekusi.split(/[ T,]/)[0] : '-';
       
       let displayStatus: string = item.status;
