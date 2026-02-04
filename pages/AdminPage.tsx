@@ -2,10 +2,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Memperbaiki import: Hanya satu referensi ke service laporan yang stabil
-import { ReportService } from '../services/laporan-final';
+// Fixed: Using 'ReportService' (uppercase R) to match the root file casing 'services/ReportService.ts'
+import { ReportService } from '../services/ReportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
-import { getDisplayImageUrl } from '../utils/imageUtils';
 
 interface AdminPageProps {
   data: TemuanData[];
@@ -33,7 +32,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
 }) => {
   const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP'>('DASHBOARD');
   const [aiInsight, setAiInsight] = useState<string>('Menganalisis performa data...');
-
+  
   const [dashFilterMonth, setDashFilterMonth] = useState<number>(new Date().getMonth() + 1);
   const [dashFilterYear, setDashFilterYear] = useState<number>(new Date().getFullYear());
   const [dashFilterUlp, setDashFilterUlp] = useState<string>('');
@@ -188,8 +187,9 @@ const AdminPage: React.FC<AdminPageProps> = ({
     }
     setIsExporting(true);
     try {
-      const sortedForExport = [...filteredAndSortedData].sort((a, b) => parseRobustDate(a.tanggal).getTime() - parseRobustDate(b.tanggal).getTime());
-
+      const sortedForExport = [...filteredAndSortedData].sort((a, b) => parseRobustDate(a.tanggal).getTime() - parseRobustDate(a.tanggal).getTime());
+      
+      // Ambil bulan dan tahun dari data pertama (tetap Bulan & Tahun saja walau difilter tanggal)
       const firstDataDate = parseRobustDate(sortedForExport[0]?.tanggal);
       const monthLabel = MONTHS.find(m => m.val === (firstDataDate.getMonth() + 1))?.label || 'Unknown';
       const yearLabel = firstDataDate.getFullYear();
@@ -203,7 +203,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
         inspektor1: sortedForExport[0]?.inspektor1 || '-', 
         inspektor2: sortedForExport[0]?.inspektor2 || '-' 
       };
-
+      
       await ReportService.downloadExcel(sortedForExport, filters);
     } catch (error) {
       console.error(error);
@@ -231,12 +231,12 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const handleOpenEdit = (item: any) => {
     setModalMode('EDIT');
     setEditingItem(item);
-    setFormData({ name: item.name || item.text || '', ulpId: item.ulpId || '' });
+    setFormData({ name: item.name, ulpId: item.ulpId || '' });
     setIsModalOpen(true);
   };
 
   const handleDelete = async (item: any) => {
-    if (!window.confirm(`Yakin ingin menghapus "${item.name || item.text}"?`)) return;
+    if (!window.confirm(`Yakin ingin menghapus "${item.name}"?`)) return;
     let updatedList: any[] = [];
     let sheetName: 'Inspectors' | 'ULP' | 'Feeders';
     if (subTab === 'INSPEKTOR') {
@@ -382,7 +382,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
           <div className="bg-slate-900 p-6 rounded-[2.5rem] border-2 border-yellow-500 shadow-xl">
              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-sm font-black text-white uppercase tracking-tight">Top 10 Feeder</h3>
+                <h3 className="text-sm font-black text-white uppercase tracking-tight">Top 10 Feeder (Berdasarkan Persentase)</h3>
                 <span className="text-[9px] font-black text-yellow-500 uppercase tracking-widest">Selesai / Total</span>
              </div>
              <div className="space-y-4">
@@ -407,162 +407,150 @@ const AdminPage: React.FC<AdminPageProps> = ({
                     </div>
                   );
                 })}
+                {topTenFeeders.length === 0 && (
+                   <p className="text-center py-4 text-[10px] font-bold text-slate-500 uppercase italic">Tidak ada data untuk periode ini</p>
+                )}
              </div>
           </div>
         </div>
       )}
 
       {tab === 'REKAP' && (
-        <div className="space-y-6 animate-fade-in">
-          <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 shadow-sm transition-all duration-300 hover:shadow-md">
-            <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-3 ml-1">Filter Rentang Waktu</p>
-            <div className="grid grid-cols-2 gap-3 mb-2">
-              <input type="date" className="p-3 bg-white border border-emerald-200 rounded-xl text-[11px] font-bold text-emerald-800 outline-none" value={rekapStartDate} onChange={(e) => setRekapStartDate(e.target.value)} />
-              <input type="date" className="p-3 bg-white border border-emerald-200 rounded-xl text-[11px] font-bold text-emerald-800 outline-none" value={rekapEndDate} onChange={(e) => setRekapEndDate(e.target.value)} />
-            </div>
-          </div>
+  <div className="space-y-6 animate-fade-in">
+    {/* FILTER */}
+    <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 shadow-sm transition-all duration-300 hover:shadow-md">
+      <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-3 ml-1">Filter Rentang Waktu</p>
+      <div className="grid grid-cols-2 gap-3 mb-2">
+        <input type="date" className="p-3 bg-white border border-emerald-200 rounded-xl text-[11px] font-bold text-emerald-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200" value={rekapStartDate} onChange={(e) => setRekapStartDate(e.target.value)} />
+        <input type="date" className="p-3 bg-white border border-emerald-200 rounded-xl text-[11px] font-bold text-emerald-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200" value={rekapEndDate} onChange={(e) => setRekapEndDate(e.target.value)} />
+      </div>
+    </div>
 
-          <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 shadow-sm">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-emerald-100 border-b border-emerald-200">
-                  <th className="p-4 text-[9px] font-black text-emerald-700 uppercase tracking-widest">Inspektor</th>
-                  <th className="p-4 text-[9px] font-black text-emerald-700 uppercase tracking-widest text-center">Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-emerald-100">
-                {rekapData.map((r, i) => (
-                  <tr key={i} className="hover:bg-emerald-100/60 transition-colors">
-                    <td className="p-4">
-                      <p className="text-[10px] font-black text-emerald-900 uppercase">{r.inspektor}</p>
-                      <p className="text-[8px] text-emerald-600 font-bold uppercase tracking-tight mt-0.5">{r.pekerjaan} • {r.feeder}</p>
-                    </td>
-                    <td className="p-4 text-center">
-                      <span className="inline-block bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black">{r.total}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+    {/* TABLE */}
+    <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 shadow-sm transition-all duration-300 hover:shadow-md">
+      <table className="w-full text-left border-collapse">
+        <thead>
+          <tr className="bg-emerald-100 border-b border-emerald-200">
+            <th className="p-4 text-[9px] font-black text-emerald-700 uppercase tracking-widest">Inspektor</th>
+            <th className="p-4 text-[9px] font-black text-emerald-700 uppercase tracking-widest text-center">Total</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-emerald-100">
+          {rekapData.map((r, i) => (
+            <tr key={i} className="hover:bg-emerald-100/60 transition-colors">
+              <td className="p-4">
+                <p className="text-[10px] font-black text-emerald-900 uppercase">{r.inspektor}</p>
+                <p className="text-[8px] text-emerald-600 font-bold uppercase tracking-tight mt-0.5">{r.pekerjaan} • {r.feeder}</p>
+              </td>
+              <td className="p-4 text-center">
+                <span className="inline-block bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black">{r.total}</span>
+              </td>
+            </tr>
+          ))}
+          {rekapData.length > 0 && (
+            <tr className="bg-gradient-to-r from-emerald-200 to-emerald-100 border-t-2 border-emerald-300">
+              <td className="p-4"><p className="text-[10px] font-black text-emerald-900 uppercase tracking-widest">Total Keseluruhan</p></td>
+              <td className="p-4 text-center">
+                <span className="inline-block bg-emerald-600 text-white px-4 py-1.5 rounded-full text-[11px] font-black">{rekapData.reduce((sum, r) => sum + r.total, 0)}</span>
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
 
       {tab === 'DATA' && (
         <div className="space-y-6 animate-fade-in">
           <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
-            <div className="flex justify-between items-center ml-1">
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Saring Laporan Data</p>
-              <button onClick={resetDataFilters} className="text-[8px] font-black text-red-500 uppercase tracking-widest">Reset Filter</button>
+            <div className="flex justify-between items-center mb-1"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Saring Data Laporan</p>
+              {(filterUlp || filterFeeder || filterPekerjaan || filterStartDate || filterEndDate) && (<button onClick={resetDataFilters} className="text-[9px] font-black text-red-500 uppercase tracking-widest">Reset</button>)}
             </div>
-            
-            <div className="grid grid-cols-2 gap-3">
-              <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterUlp} onChange={(e) => setFilterUlp(e.target.value)}>
-                 <option value="">Semua ULP</option>
-                 {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
-              </select>
-              <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterFeeder} onChange={(e) => setFilterFeeder(e.target.value)}>
-                 <option value="">Semua Feeder</option>
-                 {currentFilteredFeedersInData.map(name => <option key={name} value={name}>{name}</option>)}
-              </select>
-            </div>
-            
-            <div className="grid grid-cols-1 gap-3">
-              <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterPekerjaan} onChange={(e) => setFilterPekerjaan(e.target.value)}>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterUlp} onChange={(e) => setFilterUlp(e.target.value)}>
+                   <option value="">Semua ULP</option>
+                   {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+                </select>
+                <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterFeeder} onChange={(e) => setFilterFeeder(e.target.value)}>
+                   <option value="">Semua Feeder</option>
+                   {currentFilteredFeedersInData.map(name => <option key={name} value={name}>{name}</option>)}
+                </select>
+              </div>
+              <select className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterPekerjaan} onChange={(e) => setFilterPekerjaan(e.target.value)}>
                  <option value="">Semua Jenis Pekerjaan</option>
                  {pekerjaanList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
               </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col">
-                <label className="text-[8px] font-black text-slate-400 uppercase ml-1 mb-1">Mulai Tanggal</label>
-                <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} />
-              </div>
-              <div className="flex flex-col">
-                <label className="text-[8px] font-black text-slate-400 uppercase ml-1 mb-1">Sampai Tanggal</label>
-                <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1"><p className="text-[8px] font-black text-slate-300 uppercase ml-1">Tgl Mulai</p>
+                  <input type="date" className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} />
+                </div>
+                <div className="space-y-1"><p className="text-[8px] font-black text-slate-300 uppercase ml-1">Tgl Akhir</p>
+                  <input type="date" className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} />
+                </div>
               </div>
             </div>
-
-            <button onClick={handleDownloadExcel} disabled={isExporting} className={`w-full py-4 rounded-2xl shadow-lg font-black uppercase text-[10px] transition-all active:scale-[0.98] ${isExporting ? 'bg-slate-200 text-slate-400' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}>
-              {isExporting ? '⏳ MENYIAPKAN DATA...' : '📗 DOWNLOAD LAPORAN EXCEL'}
-            </button>
+            <button onClick={handleDownloadExcel} disabled={isExporting} className={`w-full py-4 rounded-2xl shadow-lg font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-3 ${isExporting ? 'bg-slate-200 text-slate-400' : 'bg-emerald-600 text-white active:scale-95'}`}>{isExporting ? '⏳ MENYIAPKAN FILE...' : '📗 DOWNLOAD LAPORAN EXCEL'}</button>
           </div>
-
           <div className="space-y-3">
-             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Hasil Filter: {filteredAndSortedData.length} Baris</p>
-             {filteredAndSortedData.slice(0, 50).map(item => (
-                <div key={item.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex gap-4 hover:border-indigo-100 transition-colors">
-                   <div className="w-14 h-14 bg-slate-50 rounded-xl overflow-hidden border border-slate-100 flex-shrink-0">
-                     <img src={getDisplayImageUrl(item.fotoTemuan)} className="w-full h-full object-cover" alt="" />
+             <div className="flex justify-between items-center px-1">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Preview {filteredAndSortedData.length} Data Terbaru</p>
+             </div>
+             {filteredAndSortedData.slice(0, 50).map(item => {
+                const itemDate = parseRobustDate(item.tanggal);
+                return (
+                <div key={item.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex gap-4">
+                   <div className="flex flex-col items-center flex-shrink-0">
+                      <div className="w-14 h-14 bg-slate-50 rounded-xl overflow-hidden border border-slate-100">
+                        <img src={item.fotoTemuan ? (item.fotoTemuan.includes('drive.google.com') ? `https://lh3.googleusercontent.com/d/${item.fotoTemuan.split('/d/')[1]?.split('/')[0]}` : item.fotoTemuan) : ''} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                      </div>
+                      <p className="text-[7px] font-black uppercase text-slate-400 mt-1">Temuan</p>
                    </div>
+                   {item.status === 'SUDAH EKSEKUSI' && item.fotoEksekusi && (
+                      <div className="flex flex-col items-center flex-shrink-0">
+                        <div className="w-14 h-14 bg-emerald-50 rounded-xl overflow-hidden border border-emerald-100">
+                           <img src={item.fotoEksekusi.includes('drive.google.com') ? `https://lh3.googleusercontent.com/d/${item.fotoEksekusi.split('/d/')[1]?.split('/')[0]}` : item.fotoEksekusi} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                        </div>
+                        <p className="text-[7px] font-black uppercase text-emerald-500 mt-1">Eksekusi</p>
+                      </div>
+                   )}
                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-black text-slate-900 truncate uppercase">{item.noTiang} • {item.feeder}</p>
+                      <div className="flex justify-between items-start">
+                         <p className="text-[10px] font-black text-slate-900 truncate uppercase">{item.noTiang} • {item.feeder}</p>
+                         <span className={`text-[7px] px-1.5 py-0.5 rounded font-black uppercase ${item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>{item.status.split(' ')[0]}</span>
+                      </div>
                       <p className="text-[9px] font-bold text-red-500 mt-0.5 truncate uppercase">{item.keterangan}</p>
-                      <p className="text-[8px] text-slate-400 mt-1 font-bold uppercase tracking-widest">{item.tanggal?.split(',')[0]} | {item.ulp}</p>
-                   </div>
-                   <div className="flex flex-col items-end justify-center">
-                      <span className={`text-[7px] font-black px-2 py-0.5 rounded uppercase ${item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'}`}>
-                        {item.status.split(' ')[0]}
-                      </span>
+                      <p className="text-[8px] text-slate-400 mt-1 font-bold uppercase tracking-widest">{itemDate.toLocaleDateString('id-ID')} | {item.ulp}</p>
                    </div>
                 </div>
-              ))}
+              )})}
           </div>
         </div>
       )}
 
       {tab === 'KELOLA' && (
         <div className="space-y-6 animate-fade-in">
-          <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
-             {(['INSPEKTOR', 'ULP', 'FEEDER'] as const).map(s => (
-               <button key={s} onClick={() => setSubTab(s)} className={`flex-1 py-3 text-[10px] font-black rounded-xl ${subTab === s ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>
-                 {s}
-               </button>
-             ))}
+          <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+             {(['INSPEKTOR', 'ULP', 'FEEDER'] as const).map(s => (<button key={s} onClick={() => setSubTab(s)} className={`flex-1 py-2.5 text-[10px] font-black rounded-lg transition-all uppercase tracking-widest ${subTab === s ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>{s}</button>))}
           </div>
-          <div className="flex justify-between items-center px-2">
-            <h3 className="text-sm font-black text-slate-900 uppercase">Kelola {subTab}</h3>
-            <button onClick={handleOpenAdd} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest">
-              + Tambah
-            </button>
-          </div>
+          <div className="flex justify-between items-center px-1"><h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Daftar {subTab}</h3><button onClick={handleOpenAdd} disabled={isSaving} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50">{isSaving ? '⏳' : '+ Tambah'}</button></div>
           <div className="grid grid-cols-1 gap-3">
-             {(subTab === 'INSPEKTOR' ? inspectors : subTab === 'ULP' ? ulpList : feeders).map((i: any) => (
-               <div key={i.id} className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center group">
-                 <div>
-                   <p className="text-[11px] font-black text-slate-900 uppercase">{i.name || i.text}</p>
-                   <p className="text-[8px] text-slate-400 font-bold uppercase mt-1">ID: {i.id}</p>
-                 </div>
-                 <div className="flex gap-2">
-                   <button onClick={() => handleOpenEdit(i)} className="p-2 text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors">✏️</button>
-                   <button onClick={() => handleDelete(i)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button>
-                 </div>
-               </div>
-             ))}
+             {subTab === 'INSPEKTOR' && inspectors.map(i => (<div key={i.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all"><div><p className="text-[11px] font-black text-slate-900 uppercase">{i.name}</p><p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">ID: {i.id}</p></div><div className="flex gap-2"><button onClick={() => handleOpenEdit(i)} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">✏️</button><button onClick={() => handleDelete(i)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button></div></div>))}
+             {subTab === 'ULP' && ulpList.map(u => (<div key={u.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all"><div><p className="text-[11px] font-black text-slate-900 uppercase">{u.name}</p><p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Unit Pelaksana</p></div><div className="flex gap-2"><button onClick={() => handleOpenEdit(u)} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">✏️</button><button onClick={() => handleDelete(u)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button></div></div>))}
+             {subTab === 'FEEDER' && feeders.map(f => (<div key={f.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all"><div><p className="text-[11px] font-black text-slate-900 uppercase">{f.name}</p><p className="text-[8px] text-indigo-600 font-bold uppercase tracking-widest mt-0.5">{ulpList.find(u => u.id === f.ulpId)?.name || 'Unit Unknown'}</p></div><div className="flex gap-2"><button onClick={() => handleOpenEdit(f)} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">✏️</button><button onClick={() => handleDelete(f)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button></div></div>))}
           </div>
         </div>
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-           <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8" onClick={e => e.stopPropagation()}>
-              <h3 className="text-lg font-black text-slate-900 uppercase mb-6">{modalMode === 'ADD' ? 'Input Data Baru' : 'Ubah Data'}</h3>
-              <div className="space-y-6">
-                <input type="text" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none uppercase" placeholder="Nama" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-                {subTab === 'FEEDER' && (
-                  <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold" value={formData.ulpId} onChange={(e) => setFormData({ ...formData, ulpId: e.target.value })}>
-                    <option value="">Pilih Unit</option>
-                    {ulpList.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                  </select>
-                )}
-              </div>
-              <div className="mt-10 flex gap-3">
-                <button onClick={() => setIsModalOpen(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest">Batal</button>
-                <button onClick={handleSaveMaster} disabled={isSaving} className="flex-[1.5] py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest">{isSaving ? 'Simpan...' : 'Simpan'}</button>
-              </div>
-           </div>
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
+           <div className="bg-white w-full max-sm rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up"><div className="p-8"><div className="flex justify-between items-center mb-6"><h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">{modalMode === 'ADD' ? 'Tambah' : 'Edit'} {subTab}</h3><button onClick={() => setIsModalOpen(false)} className="text-slate-400 p-2 hover:text-slate-600">✕</button></div>
+                 <div className="space-y-4"><div><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Nama {subTab} *</label><input type="text" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-indigo-500 transition-all uppercase" placeholder={`Masukkan nama ${subTab.toLowerCase()}`} value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} /></div>
+                    {subTab === 'FEEDER' && (<div><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Tautkan ke ULP *</label><select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" value={formData.ulpId} onChange={(e) => setFormData({ ...formData, ulpId: e.target.value })}><option value="">Pilih Unit</option>{ulpList.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></div>)}
+                 </div>
+                 <div className="mt-8 flex gap-3"><button onClick={() => setIsModalOpen(false)} className="flex-1 py-4 bg-slate-100 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Batal</button><button onClick={handleSaveMaster} disabled={isSaving} className="flex-2 py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50 px-8">{isSaving ? '⏳' : 'Simpan'}</button></div>
+              </div></div>
         </div>
       )}
     </div>
