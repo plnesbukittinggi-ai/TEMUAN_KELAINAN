@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { AppRole, TemuanData, LoginSession, Inspector, ULP, Feeder, Keterangan, Pekerjaan } from './types';
+import { AppRole, TemuanData, LoginSession, Inspector, ULP, Feeder, Pekerjaan, Keterangan } from './types';
 import { INITIAL_INSPECTORS, INITIAL_ULP, INITIAL_FEEDERS, INITIAL_KETERANGAN, INITIAL_PEKERJAAN, APP_VERSION } from './constants';
 import { SpreadsheetService } from './services/spreadsheetService';
 import LoginPage from './pages/LoginPage';
@@ -30,15 +30,12 @@ const App: React.FC = () => {
     try {
       const config = await SpreadsheetService.fetchAllData() as any;
       
-      // Normalisasi kunci objek agar sesuai dengan interface TypeScript (CamelCase)
-      // Karena Google Apps Script mengembalikan header dalam format lowercase.
       const normalize = (arr: any[]) => {
         if (!arr || !Array.isArray(arr)) return [];
         return arr.map(item => {
           const newItem: any = {};
           for (const key in item) {
             let mappedKey = key;
-            // Mapping manual untuk kunci-kunci krusial yang menggunakan camelCase di Frontend
             if (key === 'ulpid') mappedKey = 'ulpId';
             if (key === 'idpekerjaan') mappedKey = 'idPekerjaan';
             if (key === 'notiang') mappedKey = 'noTiang';
@@ -88,6 +85,7 @@ const App: React.FC = () => {
       alert(`BERHASIL: Data temuan telah ${isEdit ? 'diperbarui' : 'tersimpan'}.`);
       await refreshData();
       setEditingData(null);
+      // Mantain inspector info if it was there
       setSession({ ...session!, role: AppRole.VIEWER, ulp: newTemuan.ulp });
     } else {
       alert('GAGAL: ' + (result.message || 'Terjadi kesalahan sistem.'));
@@ -206,6 +204,7 @@ const App: React.FC = () => {
             onAddTemuan={session.inspektor1 ? () => { setEditingData(null); setSession({ ...session, role: AppRole.INSPEKSI }); } : undefined}
             onAddEksekusi={session.team ? () => { setEditingData(null); setSession({ ...session, role: AppRole.EKSEKUSI }); } : undefined}
             onEdit={startEdit}
+            currentSession={session}
           />
         );
       default:
@@ -237,7 +236,6 @@ const App: React.FC = () => {
       
       <main className="p-5 animate-fade-in">{renderContent()}</main>
 
-      {/* Footer Super Minimalis (Status Bar Style) */}
       <footer className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white/80 backdrop-blur-sm border-t border-slate-100 py-1 px-4 flex items-center justify-between z-[60] h-7 shadow-[0_-2px_4px_rgba(0,0,0,0.02)]">
         <div className="flex items-center gap-1">
           <div className={`w-1 h-1 rounded-full ${connectionError ? 'bg-red-500' : 'bg-emerald-500'} animate-pulse`}></div>
