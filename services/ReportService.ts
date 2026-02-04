@@ -4,6 +4,9 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { TemuanData } from '../types';
 
+/**
+ * Utility to format Google Drive URLs for direct image access.
+ */
 const formatDriveUrl = (url?: string) => {
   if (!url) return '';
   if (url.indexOf('data:image') === 0) return url;
@@ -14,8 +17,10 @@ const formatDriveUrl = (url?: string) => {
   return url;
 };
 
+/**
+ * Utility to convert image URL or base64 to base64 for PDF/Excel inclusion.
+ */
 const getBase64FromUrl = async (url: string): Promise<string> => {
-  if (!url) return "";
   if (url.indexOf('data:image') === 0) return url;
   try {
     const res = await fetch(url);
@@ -30,24 +35,14 @@ const getBase64FromUrl = async (url: string): Promise<string> => {
   }
 };
 
-const extractCoordinates = (geotag: string): string => {
-  if (!geotag || geotag === "-") return "-";
-  const str = geotag.toString().trim();
-  const coordRegex = /(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/;
-  const match = str.match(coordRegex);
-  if (match) return `${match[1]}, ${match[2]}`;
-  const atMatch = str.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (atMatch) return `${atMatch[1]}, ${atMatch[2]}`;
-  const qMatch = str.match(/[?&]q=([-.\d]+)(?:,|%2C)([-.\d]+)/);
-  if (qMatch) return `${qMatch[1]}, ${qMatch[2]}`;
-  return str.replace(/[📍]/g, '').replace(/https?:\/\/\S+/g, '').replace(/pukul\s\d{2}[:.]\d{2}[:.]\d{2}/gi, '').trim() || str;
-};
-
 export const ReportService = {
+  /**
+   * Generates and downloads an Excel report containing inspection details and photos.
+   * NOTE: Priority column is excluded as per user request.
+   */
   async downloadExcel(data: TemuanData[], filters: any) {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Laporan');
-    worksheet.pageSetup = { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
 
     worksheet.mergeCells('A1:K1');
     worksheet.getCell('A1').value = 'LAPORAN BULANAN';
@@ -64,49 +59,71 @@ export const ReportService = {
     worksheet.getCell('A3').font = { bold: true, size: 11 };
     worksheet.getCell('A3').alignment = { horizontal: 'center' };
 
+    worksheet.mergeCells('A4:K4');
+    worksheet.getCell('A4').value = `ULP ${filters.ulp || 'SEMUA'}`;
+    worksheet.getCell('A4').font = { bold: true, size: 11 };
+    worksheet.getCell('A4').alignment = { horizontal: 'center' };
+
     worksheet.addRow([]);
-    worksheet.addRow(['', 'NAMA FEEDER', `: ${(filters.feeder || 'SEMUA').toUpperCase()}`]);
-    worksheet.addRow(['', 'BULAN', `: ${(filters.bulan || '-').toUpperCase()}`]);
+    // Pindah ke Kolom ke dua (Kolom B)
+    worksheet.addRow(['', 'NAMA FEEDER', `: ${filters.feeder || 'SEMUA'}`]);
+    worksheet.addRow(['', 'BULAN', `: ${filters.bulan || '-'}`]);
     worksheet.addRow([]);
 
-    const headers = ['NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEBELUM', 'FOTO SESUDAH', 'KETERANGAN', 'SARAN'];
-    const headerRow = worksheet.addRow(headers);
+    // Headers excluding Priority
+    const headerRow = worksheet.addRow([
+      'NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEBELUM', 'FOTO SESUDAH', 'KETERANGAN', 'SARAN'
+    ]);
     headerRow.eachCell((cell) => {
-      cell.font = { bold: true, color: { argb: 'FF000000' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB7DFF5' } };
+      cell.font = { bold: true, color: { argb: 'FFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '333333' } };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
       cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
     });
 
-    /**
-     * Konversi Piksel ke Unit Lebar Excel:
-     * (Pixels - 5) / 7 ≈ Units.
-     * 128 Pixels ≈ 17.57 Units.
-     */
-    const colWidths = [5, 15, 15, 10, 20, 35, 25, 17.57, 17.57, 25, 45];
-    colWidths.forEach((w, i) => { 
-      worksheet.getColumn(i + 1).width = w; 
-    });
+    worksheet.getColumn(1).width = 5;
+    worksheet.getColumn(2).width = 15;
+    worksheet.getColumn(3).width = 15;
+    worksheet.getColumn(4).width = 10;
+    worksheet.getColumn(5).width = 20;
+    worksheet.getColumn(6).width = 35;
+    worksheet.getColumn(7).width = 25;
+    
+    // Set Column Width to 128 pixels (approx 18.2 in Excel units)
+    worksheet.getColumn(8).width = 18.2; // Foto Sebelum
+    worksheet.getColumn(9).width = 18.2; // Foto Sesudah
+    
+    worksheet.getColumn(10).width = 25; // Keterangan
+    worksheet.getColumn(11).width = 45; // Saran
 
     for (let i = 0; i < data.length; i++) {
       const item = data[i];
-      const cleanInspeksiDate = item.tanggal ? item.tanggal.split(/[ T,]/)[0] : '-';
+      
+      // Membersihkan tanggal agar hanya menampilkan YYYY-MM-DD (menghapus T... atau spasi...)
       const cleanEksekusiDate = item.tanggalEksekusi ? item.tanggalEksekusi.split(/[ T,]/)[0] : '-';
       
-      let statusText: string = item.status;
+      let displayStatus: string = item.status;
       if (item.status === 'SUDAH EKSEKUSI') {
-        statusText = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${cleanEksekusiDate}`;
+        displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${cleanEksekusiDate}`;
       }
 
+      // Format tanggal inspeksi juga dibersihkan
+      const cleanInspeksiDate = item.tanggal ? item.tanggal.split(/[ T,]/)[0] : '-';
+
       const row = worksheet.addRow([
-        i + 1, cleanInspeksiDate, item.noTiang, item.noWO, item.feeder, item.lokasi || "-", extractCoordinates(item.geotag || ""), "", "", item.keterangan, statusText
+        i + 1,
+        cleanInspeksiDate,
+        item.noTiang,
+        item.noWO,
+        item.feeder,
+        item.lokasi || "-",
+        item.geotag || "-",
+        "", // Foto Sebelum (Placeholder)
+        "", // Foto Sesudah (Placeholder)
+        item.keterangan,
+        displayStatus
       ]);
       
-      /**
-       * Konversi Piksel ke Poin Tinggi Baris:
-       * 1 Pixel = 0.75 Poin.
-       * 135 Pixels = 101.25 Poin.
-       */
       row.height = 101.25;
       
       row.eachCell((cell) => {
@@ -116,54 +133,45 @@ export const ReportService = {
 
       if (item.fotoTemuan) {
         try {
-          const b64 = await getBase64FromUrl(formatDriveUrl(item.fotoTemuan));
-          if (b64) {
-            const imgId = workbook.addImage({ base64: b64, extension: 'png' });
-            // Posisi kolom H (indeks 7), ukuran pixel 128x135
-            worksheet.addImage(imgId, { 
-              tl: { col: 7, row: row.number - 1 }, 
-              ext: { width: 128, height: 135 } 
+          const base64 = await getBase64FromUrl(formatDriveUrl(item.fotoTemuan));
+          if (base64) {
+            const imgId = workbook.addImage({ base64, extension: 'png' });
+            worksheet.addImage(imgId, {
+              tl: { col: 7, row: row.number - 1 }, // Column H (index 7)
+              ext: { width: 128, height: 135 }
             });
           }
-        } catch (e) {
-          console.error("Gagal memuat foto temuan ke Excel", e);
-        }
+        } catch (e) {}
       }
 
       if (item.fotoEksekusi) {
         try {
-          const b64 = await getBase64FromUrl(formatDriveUrl(item.fotoEksekusi));
-          if (b64) {
-            const imgId = workbook.addImage({ base64: b64, extension: 'png' });
-            // Posisi kolom I (indeks 8), ukuran pixel 128x135
-            worksheet.addImage(imgId, { 
-              tl: { col: 8, row: row.number - 1 }, 
-              ext: { width: 128, height: 135 } 
+          const base64 = await getBase64FromUrl(formatDriveUrl(item.fotoEksekusi));
+          if (base64) {
+            const imgId = workbook.addImage({ base64, extension: 'png' });
+            worksheet.addImage(imgId, {
+              tl: { col: 8, row: row.number - 1 }, // Column I (index 8)
+              ext: { width: 128, height: 135 }
             });
           }
-        } catch (e) {
-          console.error("Gagal memuat foto eksekusi ke Excel", e);
-        }
+        } catch (e) {}
       }
     }
 
     worksheet.addRow([]);
-    const footerData = [
-      ['DILAKSANAKAN', `: ${(filters.bulan || '-').toUpperCase()}`],
-      ['JAM', ': 07.30 S/D 17.00 WIB'],
-      ['PETUGAS', `: ${filters.inspektor1 || '-'}`],
-      ['', `: ${filters.inspektor2 || '-'}`],
-      ['ADMINSPEKSI', ': ENDANG WINARNINGSIH']
-    ];
+    const rowSig1 = worksheet.addRow(['', '', '', '', '', '', '', '', '', 'DILAKSANAKAN', `: ${filters.bulan || '-'}`]);
+    const rowSig2 = worksheet.addRow(['', '', '', '', '', '', '', '', '', 'JAM', ': 07.30 S/D 17.00 WIB']);
+    const rowSig3 = worksheet.addRow(['', '', '', '', '', '', '', '', '', 'PETUGAS', `: ${filters.inspektor1 || '-'}`]);
+    const rowSig4 = worksheet.addRow(['', '', '', '', '', '', '', '', '', '', `: ${filters.inspektor2 || '-'}`]);
+    const rowSig5 = worksheet.addRow(['', '', '', '', '', '', '', '', '', 'ADMINSPEKSI', `: ENDANG WINARNINGSIH`]);
 
-    footerData.forEach(f => {
-      const row = worksheet.addRow(['', '', '', '', '', '', '', '', '', f[0], f[1]]);
-      const cJ = row.getCell(10);
-      const cK = row.getCell(11);
-      [cJ, cK].forEach(c => {
-        c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-        c.font = { bold: true, size: 9 };
-      });
+    // Tambahkan border untuk baris tanda tangan (Kolom J dan K)
+    [rowSig1, rowSig2, rowSig3, rowSig4, rowSig5].forEach(row => {
+      const cellJ = row.getCell(10);
+      const cellK = row.getCell(11);
+      const borderStyle: Partial<ExcelJS.Border> = { style: 'thin' };
+      cellJ.border = { top: borderStyle, left: borderStyle, bottom: borderStyle, right: borderStyle };
+      cellK.border = { top: borderStyle, left: borderStyle, bottom: borderStyle, right: borderStyle };
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
@@ -171,37 +179,68 @@ export const ReportService = {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Laporan_${filters.bulan || 'Export'}.xlsx`;
+    a.download = `Laporan_${filters.pekerjaan || 'PLN'}_${filters.bulan || 'Export'}.xlsx`;
     a.click();
   },
 
   async downloadPDF(data: TemuanData[], filters: any) {
     const doc = new jsPDF('l', 'mm', 'a4');
+    
     doc.setFontSize(14);
     doc.text('LAPORAN BULANAN', 148, 15, { align: 'center' });
-    doc.setFontSize(11);
+    doc.setFontSize(12);
     doc.text(`FOTO INSPEKSI TEMUAN KELAINAN KONTRUKSI ${filters.pekerjaan || 'SEMUA'}`, 148, 22, { align: 'center' });
+    doc.setFontSize(10);
     doc.text('TIM DIVISI INSPEKSI PLN ELECTRICITY SERVICES UL BUKITTINGGI', 148, 28, { align: 'center' });
-    
-    const tableBody = data.map((item, i) => {
-      const cleanEksekusiDate = item.tanggalEksekusi ? item.tanggalEksekusi.split(/[ T,]/)[0] : '-';
-      const statusText = item.status === 'SUDAH EKSEKUSI' ? `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${cleanEksekusiDate}` : item.status;
-      return [ 
-        i + 1, item.tanggal ? item.tanggal.split(/[ T,]/)[0] : '-', item.noTiang, item.noWO, item.feeder, item.lokasi || "-", 
-        extractCoordinates(item.geotag || ""), '', '', item.keterangan, statusText 
+
+    doc.text(`NAMA FEEDER : ${filters.feeder || 'SEMUA'}`, 15, 38);
+    doc.text(`BULAN       : ${filters.bulan || '-'}`, 15, 43);
+
+    const body = data.map((item, i) => {
+      let displayStatus: string = item.status;
+      if (item.status === 'SUDAH EKSEKUSI') {
+        const cleanEksekusiDate = item.tanggalEksekusi ? item.tanggalEksekusi.split(/[ T,]/)[0] : '-';
+        displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${cleanEksekusiDate}`;
+      }
+      const cleanInspeksiDate = item.tanggal ? item.tanggal.split(/[ T,]/)[0] : '-';
+      return [
+        i + 1,
+        cleanInspeksiDate,
+        item.noTiang,
+        item.noWO,
+        item.feeder,
+        item.lokasi || "-",
+        item.prioritas ? `${item.prioritas} Bintang` : "-",
+        '',
+        '',
+        item.keterangan,
+        displayStatus
       ];
     });
 
     autoTable(doc, {
       startY: 48,
       head: [['NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEB', 'FOTO SES', 'KETERANGAN', 'SARAN']],
-      body: tableBody,
+      body: body,
       theme: 'grid',
-      headStyles: { fillColor: [51, 153, 255], fontSize: 7, halign: 'center' },
-      styles: { fontSize: 6, minCellHeight: 25, valign: 'middle' },
-      columnStyles: { 5: { cellWidth: 30 }, 6: { cellWidth: 15 }, 9: { cellWidth: 40 } }
+      headStyles: { fillColor: [40, 40, 40], fontSize: 7, halign: 'center' },
+      styles: { fontSize: 6, cellPadding: 1.5, minCellHeight: 25, valign: 'middle' },
+      columnStyles: {
+        5: { cellWidth: 30 },
+        6: { cellWidth: 15 },
+        7: { cellWidth: 20 },
+        8: { cellWidth: 20 },
+        9: { cellWidth: 40 }, 
+      }
     });
 
-    doc.save(`Laporan_${filters.bulan || 'PDF'}.pdf`);
+    const finalY = (doc as any).lastAutoTable?.finalY || 150;
+    doc.text(`DILAKSANAKAN : ${filters.bulan || '-'}`, 220, finalY + 10);
+    doc.text(`JAM          : 07.30 S/D 17.00 WIB`, 220, finalY + 15);
+    doc.text(`PETUGAS      : ${filters.inspektor1 || '-'}`, 220, finalY + 20);
+    doc.text(`               ${filters.inspektor2 || '-'}`, 220, finalY + 25);
+    doc.text(`ADMINSPEKSI  : ENDANG WINARNINGSIH`, 220, finalY + 30);
+
+    doc.save(`Laporan_${filters.pekerjaan || 'PLN'}.pdf`);
   }
 };
