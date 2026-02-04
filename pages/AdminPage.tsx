@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fixed: Use uppercase ReportService to resolve casing conflict in compilation environment
-import { ReportService } from '../services/ReportService';
+// Fixed casing conflict: importing from lowercase reportService
+import { ReportService } from '../services/reportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 import { getDisplayImageUrl } from '../utils/imageUtils';
 
