@@ -81,12 +81,12 @@ export const ReportService = {
 
     worksheet.mergeCells('A2:K2');
     worksheet.getCell('A2').value = `FOTO INSPEKSI TEMUAN KELAINAN KONTRUKSI ${filters.pekerjaan || 'SEMUA'}`;
-    worksheet.getCell('A2').font = { bold: true, size: 12 };
+    worksheet.getCell('A2').font = { bold: true, size: 14 };
     worksheet.getCell('A2').alignment = { horizontal: 'center' };
 
     worksheet.mergeCells('A3:K3');
     worksheet.getCell('A3').value = 'TIM DIVISI INSPEKSI PLN ELECTRICITY SERVICES UL BUKITTINGGI';
-    worksheet.getCell('A3').font = { bold: true, size: 11 };
+    worksheet.getCell('A3').font = { bold: true, size: 14 };
     worksheet.getCell('A3').alignment = { horizontal: 'center' };
 
     worksheet.addRow([]);
