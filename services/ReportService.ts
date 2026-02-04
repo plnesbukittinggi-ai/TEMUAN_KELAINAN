@@ -225,7 +225,9 @@ worksheet.addRow([]);
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Laporan_${filters.pekerjaan || 'PLN'}_${filters.bulan || 'Export'}.xlsx`;
+    const fileNameExcel = `${(filters.pekerjaan || 'LAPORAN')}_${(filters.feeder || 'SEMUA')}_${(filters.bulan || 'TAHUN')}`.toUpperCase();
+
+    a.download = `${fileNameExcel}.xlsx`;
     a.click();
   },
 
