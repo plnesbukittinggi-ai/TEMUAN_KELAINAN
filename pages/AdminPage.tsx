@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fixed casing conflict: importing from lowercase reportService
-import { ReportService } from '../services/reportService';
+// Memperbaiki import ke file baru 'reporting' untuk menghindari error casing di Vercel
+import { ReportService } from '../services/reporting';
 import { SpreadsheetService } from '../services/spreadsheetService';
 import { getDisplayImageUrl } from '../utils/imageUtils';
 
