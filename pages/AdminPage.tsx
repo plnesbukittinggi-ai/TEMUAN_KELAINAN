@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Memperbaiki import ke file baru 'reporting' untuk menghindari error casing di Vercel
-import { ReportService } from '../services/reporting';
+// Memperbaiki import: Hanya satu referensi ke service laporan yang stabil
+import { ReportService } from '../services/laporan-final';
 import { SpreadsheetService } from '../services/spreadsheetService';
 import { getDisplayImageUrl } from '../utils/imageUtils';
 
@@ -33,7 +33,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
 }) => {
   const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP'>('DASHBOARD');
   const [aiInsight, setAiInsight] = useState<string>('Menganalisis performa data...');
-  
+
   const [dashFilterMonth, setDashFilterMonth] = useState<number>(new Date().getMonth() + 1);
   const [dashFilterYear, setDashFilterYear] = useState<number>(new Date().getFullYear());
   const [dashFilterUlp, setDashFilterUlp] = useState<string>('');
@@ -49,7 +49,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const [filterEndDate, setFilterEndDate] = useState<string>('');
   const [isExporting, setIsExporting] = useState(false);
 
-  // Status untuk Sistem Kelola
   const [subTab, setSubTab] = useState<'INSPEKTOR' | 'ULP' | 'FEEDER'>('INSPEKTOR');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'ADD' | 'EDIT'>('ADD');
@@ -190,7 +189,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
     setIsExporting(true);
     try {
       const sortedForExport = [...filteredAndSortedData].sort((a, b) => parseRobustDate(a.tanggal).getTime() - parseRobustDate(b.tanggal).getTime());
-      
+
       const firstDataDate = parseRobustDate(sortedForExport[0]?.tanggal);
       const monthLabel = MONTHS.find(m => m.val === (firstDataDate.getMonth() + 1))?.label || 'Unknown';
       const yearLabel = firstDataDate.getFullYear();
@@ -204,7 +203,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
         inspektor1: sortedForExport[0]?.inspektor1 || '-', 
         inspektor2: sortedForExport[0]?.inspektor2 || '-' 
       };
-      
+
       await ReportService.downloadExcel(sortedForExport, filters);
     } catch (error) {
       console.error(error);
@@ -222,8 +221,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
     setFilterEndDate('');
   };
 
-  // --- LOGIKA SISTEM KELOLA (INPUT, EDIT, HAPUS) ---
-
   const handleOpenAdd = () => {
     setModalMode('ADD');
     setEditingItem(null);
@@ -234,20 +231,14 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const handleOpenEdit = (item: any) => {
     setModalMode('EDIT');
     setEditingItem(item);
-    setFormData({ 
-      name: item.name || item.text || '', 
-      ulpId: item.ulpId || '' 
-    });
+    setFormData({ name: item.name || item.text || '', ulpId: item.ulpId || '' });
     setIsModalOpen(true);
   };
 
   const handleDelete = async (item: any) => {
-    const itemName = item.name || item.text || 'item';
-    if (!window.confirm(`SISTEM HAPUS: Yakin ingin menghapus "${itemName}" secara permanen dari database?`)) return;
-    
+    if (!window.confirm(`Yakin ingin menghapus "${item.name || item.text}"?`)) return;
     let updatedList: any[] = [];
     let sheetName: 'Inspectors' | 'ULP' | 'Feeders';
-    
     if (subTab === 'INSPEKTOR') {
       updatedList = inspectors.filter(i => i.id !== item.id);
       sheetName = 'Inspectors';
@@ -258,34 +249,24 @@ const AdminPage: React.FC<AdminPageProps> = ({
       updatedList = feeders.filter(f => f.id !== item.id);
       sheetName = 'Feeders';
     }
-
     setIsSaving(true);
     try {
-      const res = await SpreadsheetService.updateMasterData(sheetName, updatedList);
-      if (res.success) {
-        if (subTab === 'INSPEKTOR') onUpdateInspectors(updatedList);
-        else if (subTab === 'ULP') onUpdateUlp(updatedList);
-        else onUpdateFeeders(updatedList);
-        alert('Hapus Berhasil: Data telah diperbarui di Spreadsheet.');
-      } else {
-        alert('Gagal Hapus: Server tidak merespon dengan benar.');
-      }
-    } catch (e) { 
-      alert('Error: Koneksi terputus saat mencoba menghapus data.'); 
-    } finally { 
-      setIsSaving(false); 
-    }
+      await SpreadsheetService.updateMasterData(sheetName, updatedList);
+      if (subTab === 'INSPEKTOR') onUpdateInspectors(updatedList);
+      else if (subTab === 'ULP') onUpdateUlp(updatedList);
+      else onUpdateFeeders(updatedList);
+      alert('Data berhasil dihapus.');
+    } catch (e) { alert('Gagal menghapus data di server.'); }
+    finally { setIsSaving(false); }
   };
 
   const handleSaveMaster = async () => {
     if (!formData.name.trim()) return alert('Nama wajib diisi!');
     if (subTab === 'FEEDER' && !formData.ulpId) return alert('Pilih ULP untuk feeder!');
-    
     setIsSaving(true);
     try {
       let updatedList: any[] = [];
       let sheetName: 'Inspectors' | 'ULP' | 'Feeders';
-      
       if (subTab === 'INSPEKTOR') {
         sheetName = 'Inspectors';
         if (modalMode === 'ADD') {
@@ -308,23 +289,16 @@ const AdminPage: React.FC<AdminPageProps> = ({
           updatedList = feeders.map(f => f.id === editingItem.id ? { ...f, name: formData.name, ulpId: formData.ulpId } : f);
         }
       }
-
       const res = await SpreadsheetService.updateMasterData(sheetName, updatedList);
       if (res.success) {
         if (subTab === 'INSPEKTOR') onUpdateInspectors(updatedList);
         else if (subTab === 'ULP') onUpdateUlp(updatedList);
         else onUpdateFeeders(updatedList);
-        
         setIsModalOpen(false);
-        alert(`SISTEM INPUT/EDIT: Berhasil ${modalMode === 'ADD' ? 'menambah' : 'mengubah'} data di Spreadsheet.`);
-      } else { 
-        alert('Gagal Simpan: Masalah pada koneksi Apps Script.'); 
-      }
-    } catch (e) { 
-      alert('Terjadi kesalahan sinkronisasi sistem.'); 
-    } finally { 
-      setIsSaving(false); 
-    }
+        alert(`Berhasil ${modalMode === 'ADD' ? 'menambah' : 'mengubah'} data di Spreadsheet.`);
+      } else { alert('Gagal menyimpan ke Spreadsheet.'); }
+    } catch (e) { alert('Terjadi kesalahan sinkronisasi.'); }
+    finally { setIsSaving(false); }
   };
 
   const currentFilteredFeedersInData = useMemo(() => {
@@ -406,10 +380,9 @@ const AdminPage: React.FC<AdminPageProps> = ({
             ))}
           </div>
 
-          {/* Top 10 Feeder Card */}
           <div className="bg-slate-900 p-6 rounded-[2.5rem] border-2 border-yellow-500 shadow-xl">
              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-sm font-black text-white uppercase tracking-tight">Top 10 Feeder (Berdasarkan Persentase)</h3>
+                <h3 className="text-sm font-black text-white uppercase tracking-tight">Top 10 Feeder</h3>
                 <span className="text-[9px] font-black text-yellow-500 uppercase tracking-widest">Selesai / Total</span>
              </div>
              <div className="space-y-4">
@@ -434,9 +407,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
                     </div>
                   );
                 })}
-                {topTenFeeders.length === 0 && (
-                   <p className="text-center py-4 text-[10px] font-bold text-slate-500 uppercase italic">Tidak ada data untuk periode ini</p>
-                )}
              </div>
           </div>
         </div>
@@ -444,7 +414,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
       {tab === 'REKAP' && (
         <div className="space-y-6 animate-fade-in">
-          <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 shadow-sm">
+          <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 shadow-sm transition-all duration-300 hover:shadow-md">
             <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-3 ml-1">Filter Rentang Waktu</p>
             <div className="grid grid-cols-2 gap-3 mb-2">
               <input type="date" className="p-3 bg-white border border-emerald-200 rounded-xl text-[11px] font-bold text-emerald-800 outline-none" value={rekapStartDate} onChange={(e) => setRekapStartDate(e.target.value)} />
@@ -452,23 +422,23 @@ const AdminPage: React.FC<AdminPageProps> = ({
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+          <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 shadow-sm">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest">Inspektor</th>
-                  <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Total</th>
+                <tr className="bg-emerald-100 border-b border-emerald-200">
+                  <th className="p-4 text-[9px] font-black text-emerald-700 uppercase tracking-widest">Inspektor</th>
+                  <th className="p-4 text-[9px] font-black text-emerald-700 uppercase tracking-widest text-center">Total</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-emerald-100">
                 {rekapData.map((r, i) => (
-                  <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                  <tr key={i} className="hover:bg-emerald-100/60 transition-colors">
                     <td className="p-4">
-                      <p className="text-[10px] font-black text-slate-900 uppercase">{r.inspektor}</p>
-                      <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tight mt-0.5">{r.pekerjaan} • {r.feeder}</p>
+                      <p className="text-[10px] font-black text-emerald-900 uppercase">{r.inspektor}</p>
+                      <p className="text-[8px] text-emerald-600 font-bold uppercase tracking-tight mt-0.5">{r.pekerjaan} • {r.feeder}</p>
                     </td>
                     <td className="p-4 text-center">
-                      <span className="inline-block bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-[10px] font-black">{r.total}</span>
+                      <span className="inline-block bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black">{r.total}</span>
                     </td>
                   </tr>
                 ))}
@@ -481,209 +451,116 @@ const AdminPage: React.FC<AdminPageProps> = ({
       {tab === 'DATA' && (
         <div className="space-y-6 animate-fade-in">
           <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
-            <div className="flex justify-between items-center mb-1"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Saring Data Laporan</p>
-              {(filterUlp || filterFeeder || filterPekerjaan || filterStartDate || filterEndDate) && (<button onClick={resetDataFilters} className="text-[9px] font-black text-red-500 uppercase tracking-widest">Reset</button>)}
+            <div className="flex justify-between items-center ml-1">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Saring Laporan Data</p>
+              <button onClick={resetDataFilters} className="text-[8px] font-black text-red-500 uppercase tracking-widest">Reset Filter</button>
             </div>
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterUlp} onChange={(e) => setFilterUlp(e.target.value)}>
-                   <option value="">Semua ULP</option>
-                   {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
-                </select>
-                <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterFeeder} onChange={(e) => setFilterFeeder(e.target.value)}>
-                   <option value="">Semua Feeder</option>
-                   {currentFilteredFeedersInData.map(name => <option key={name} value={name}>{name}</option>)}
-                </select>
-              </div>
-              <select className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterPekerjaan} onChange={(e) => setFilterPekerjaan(e.target.value)}>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterUlp} onChange={(e) => setFilterUlp(e.target.value)}>
+                 <option value="">Semua ULP</option>
+                 {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+              </select>
+              <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterFeeder} onChange={(e) => setFilterFeeder(e.target.value)}>
+                 <option value="">Semua Feeder</option>
+                 {currentFilteredFeedersInData.map(name => <option key={name} value={name}>{name}</option>)}
+              </select>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-3">
+              <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterPekerjaan} onChange={(e) => setFilterPekerjaan(e.target.value)}>
                  <option value="">Semua Jenis Pekerjaan</option>
                  {pekerjaanList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
               </select>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><p className="text-[8px] font-black text-slate-300 uppercase ml-1">Tgl Mulai</p>
-                  <input type="date" className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} />
-                </div>
-                <div className="space-y-1"><p className="text-[8px] font-black text-slate-300 uppercase ml-1">Tgl Akhir</p>
-                  <input type="date" className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} />
-                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col">
+                <label className="text-[8px] font-black text-slate-400 uppercase ml-1 mb-1">Mulai Tanggal</label>
+                <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-[8px] font-black text-slate-400 uppercase ml-1 mb-1">Sampai Tanggal</label>
+                <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} />
               </div>
             </div>
-            <button onClick={handleDownloadExcel} disabled={isExporting} className={`w-full py-4 rounded-2xl shadow-lg font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-3 ${isExporting ? 'bg-slate-200 text-slate-400' : 'bg-emerald-600 text-white active:scale-95'}`}>{isExporting ? '⏳ MENYIAPKAN FILE...' : '📗 DOWNLOAD LAPORAN EXCEL'}</button>
+
+            <button onClick={handleDownloadExcel} disabled={isExporting} className={`w-full py-4 rounded-2xl shadow-lg font-black uppercase text-[10px] transition-all active:scale-[0.98] ${isExporting ? 'bg-slate-200 text-slate-400' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}>
+              {isExporting ? '⏳ MENYIAPKAN DATA...' : '📗 DOWNLOAD LAPORAN EXCEL'}
+            </button>
           </div>
-          
+
           <div className="space-y-3">
-             <div className="flex justify-between items-center px-1">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Preview {filteredAndSortedData.length} Data Terbaru</p>
-             </div>
-             {filteredAndSortedData.slice(0, 50).map(item => {
-                const itemDate = parseRobustDate(item.tanggal);
-                return (
-                <div key={item.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex gap-4">
-                   <div className="flex flex-col items-center flex-shrink-0">
-                      <div className="w-14 h-14 bg-slate-50 rounded-xl overflow-hidden border border-slate-100">
-                        <img src={getDisplayImageUrl(item.fotoTemuan)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
-                      </div>
-                      <p className="text-[7px] font-black uppercase text-slate-400 mt-1">Temuan</p>
+             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Hasil Filter: {filteredAndSortedData.length} Baris</p>
+             {filteredAndSortedData.slice(0, 50).map(item => (
+                <div key={item.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex gap-4 hover:border-indigo-100 transition-colors">
+                   <div className="w-14 h-14 bg-slate-50 rounded-xl overflow-hidden border border-slate-100 flex-shrink-0">
+                     <img src={getDisplayImageUrl(item.fotoTemuan)} className="w-full h-full object-cover" alt="" />
                    </div>
-                   {item.status === 'SUDAH EKSEKUSI' && item.fotoEksekusi && (
-                      <div className="flex flex-col items-center flex-shrink-0">
-                        <div className="w-14 h-14 bg-emerald-50 rounded-xl overflow-hidden border border-emerald-100">
-                           <img src={getDisplayImageUrl(item.fotoEksekusi)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
-                        </div>
-                        <p className="text-[7px] font-black uppercase text-emerald-500 mt-1">Eksekusi</p>
-                      </div>
-                   )}
                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start">
-                         <p className="text-[10px] font-black text-slate-900 truncate uppercase">{item.noTiang} • {item.feeder}</p>
-                         <span className={`text-[7px] px-1.5 py-0.5 rounded font-black uppercase ${item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>{item.status.split(' ')[0]}</span>
-                      </div>
+                      <p className="text-[10px] font-black text-slate-900 truncate uppercase">{item.noTiang} • {item.feeder}</p>
                       <p className="text-[9px] font-bold text-red-500 mt-0.5 truncate uppercase">{item.keterangan}</p>
-                      <p className="text-[8px] text-slate-400 mt-1 font-bold uppercase tracking-widest">{itemDate.toLocaleDateString('id-ID')} | {item.ulp}</p>
+                      <p className="text-[8px] text-slate-400 mt-1 font-bold uppercase tracking-widest">{item.tanggal?.split(',')[0]} | {item.ulp}</p>
+                   </div>
+                   <div className="flex flex-col items-end justify-center">
+                      <span className={`text-[7px] font-black px-2 py-0.5 rounded uppercase ${item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'}`}>
+                        {item.status.split(' ')[0]}
+                      </span>
                    </div>
                 </div>
-              )})}
+              ))}
           </div>
         </div>
       )}
 
       {tab === 'KELOLA' && (
         <div className="space-y-6 animate-fade-in">
-          {/* Sub Tab Pemilih */}
           <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
              {(['INSPEKTOR', 'ULP', 'FEEDER'] as const).map(s => (
-               <button 
-                 key={s} 
-                 onClick={() => setSubTab(s)} 
-                 className={`flex-1 py-3 text-[10px] font-black rounded-xl transition-all uppercase tracking-widest ${subTab === s ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-indigo-400'}`}
-               >
+               <button key={s} onClick={() => setSubTab(s)} className={`flex-1 py-3 text-[10px] font-black rounded-xl ${subTab === s ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>
                  {s}
                </button>
              ))}
           </div>
-
-          {/* Header Aksi */}
           <div className="flex justify-between items-center px-2">
-            <div>
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Sistem Kelola {subTab}</h3>
-              <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Master Data Database</p>
-            </div>
-            <button 
-              onClick={handleOpenAdd} 
-              disabled={isSaving} 
-              className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50"
-            >
-              {isSaving ? '⏳...' : `+ Tambah ${subTab}`}
+            <h3 className="text-sm font-black text-slate-900 uppercase">Kelola {subTab}</h3>
+            <button onClick={handleOpenAdd} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest">
+              + Tambah
             </button>
           </div>
-
-          {/* List Data Kelola */}
           <div className="grid grid-cols-1 gap-3">
-             {subTab === 'INSPEKTOR' && inspectors.map(i => (
-               <div key={i.id} className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all">
+             {(subTab === 'INSPEKTOR' ? inspectors : subTab === 'ULP' ? ulpList : feeders).map((i: any) => (
+               <div key={i.id} className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center group">
                  <div>
-                   <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight">{i.name}</p>
-                   <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-1">Petugas Inspeksi • {i.id}</p>
+                   <p className="text-[11px] font-black text-slate-900 uppercase">{i.name || i.text}</p>
+                   <p className="text-[8px] text-slate-400 font-bold uppercase mt-1">ID: {i.id}</p>
                  </div>
-                 <div className="flex gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                   <button onClick={() => handleOpenEdit(i)} className="w-10 h-10 flex items-center justify-center text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors">✏️</button>
-                   <button onClick={() => handleDelete(i)} className="w-10 h-10 flex items-center justify-center text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-colors">🗑️</button>
+                 <div className="flex gap-2">
+                   <button onClick={() => handleOpenEdit(i)} className="p-2 text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors">✏️</button>
+                   <button onClick={() => handleDelete(i)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button>
                  </div>
                </div>
              ))}
-
-             {subTab === 'ULP' && ulpList.map(u => (
-               <div key={u.id} className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all">
-                 <div>
-                   <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight">{u.name}</p>
-                   <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-1">Unit Layanan Pelanggan • {u.id}</p>
-                 </div>
-                 <div className="flex gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                   <button onClick={() => handleOpenEdit(u)} className="w-10 h-10 flex items-center justify-center text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors">✏️</button>
-                   <button onClick={() => handleDelete(u)} className="w-10 h-10 flex items-center justify-center text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-colors">🗑️</button>
-                 </div>
-               </div>
-             ))}
-
-             {subTab === 'FEEDER' && feeders.map(f => (
-               <div key={f.id} className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all">
-                 <div>
-                   <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight">{f.name}</p>
-                   <p className="text-[8px] text-indigo-600 font-bold uppercase tracking-widest mt-1">{ulpList.find(u => u.id === f.ulpId)?.name || 'Unit Belum Ditautkan'}</p>
-                 </div>
-                 <div className="flex gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                   <button onClick={() => handleOpenEdit(f)} className="w-10 h-10 flex items-center justify-center text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors">✏️</button>
-                   <button onClick={() => handleDelete(f)} className="w-10 h-10 flex items-center justify-center text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-colors">🗑️</button>
-                 </div>
-               </div>
-             ))}
-
-             {((subTab === 'INSPEKTOR' && inspectors.length === 0) || 
-               (subTab === 'ULP' && ulpList.length === 0) || 
-               (subTab === 'FEEDER' && feeders.length === 0)) && (
-               <div className="text-center py-20 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200">
-                  <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Belum ada data {subTab}</p>
-               </div>
-             )}
           </div>
         </div>
       )}
 
-      {/* Modal Input/Edit Master Data */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
-           <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up" onClick={e => e.stopPropagation()}>
-              <div className="p-8">
-                <div className="flex justify-between items-center mb-8">
-                  <div>
-                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">{modalMode === 'ADD' ? 'Input Data Baru' : 'Sistem Ubah Data'}</h3>
-                    <p className="text-[8px] font-black text-indigo-600 uppercase tracking-widest">Kategori: {subTab}</p>
-                  </div>
-                  <button onClick={() => setIsModalOpen(false)} className="text-slate-400 p-2 hover:bg-slate-50 rounded-full transition-colors">✕</button>
-                </div>
-                
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Nama {subTab} *</label>
-                    <input 
-                      type="text" 
-                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:border-indigo-500 transition-all uppercase placeholder:text-slate-300" 
-                      placeholder={`Ketik nama ${subTab.toLowerCase()}`}
-                      value={formData.name} 
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
-                    />
-                  </div>
-                  
-                  {subTab === 'FEEDER' && (
-                    <div>
-                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Tautkan ke ULP *</label>
-                      <select 
-                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none" 
-                        value={formData.ulpId} 
-                        onChange={(e) => setFormData({ ...formData, ulpId: e.target.value })}
-                      >
-                        <option value="">Pilih Unit Pelaksana</option>
-                        {ulpList.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                      </select>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-10 flex gap-3">
-                  <button 
-                    onClick={() => setIsModalOpen(false)} 
-                    className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all"
-                  >
-                    Batal
-                  </button>
-                  <button 
-                    onClick={handleSaveMaster} 
-                    disabled={isSaving} 
-                    className="flex-[1.5] py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50"
-                  >
-                    {isSaving ? 'Menyimpan...' : 'Simpan Data'}
-                  </button>
-                </div>
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+           <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8" onClick={e => e.stopPropagation()}>
+              <h3 className="text-lg font-black text-slate-900 uppercase mb-6">{modalMode === 'ADD' ? 'Input Data Baru' : 'Ubah Data'}</h3>
+              <div className="space-y-6">
+                <input type="text" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none uppercase" placeholder="Nama" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+                {subTab === 'FEEDER' && (
+                  <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold" value={formData.ulpId} onChange={(e) => setFormData({ ...formData, ulpId: e.target.value })}>
+                    <option value="">Pilih Unit</option>
+                    {ulpList.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  </select>
+                )}
+              </div>
+              <div className="mt-10 flex gap-3">
+                <button onClick={() => setIsModalOpen(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest">Batal</button>
+                <button onClick={handleSaveMaster} disabled={isSaving} className="flex-[1.5] py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest">{isSaving ? 'Simpan...' : 'Simpan'}</button>
               </div>
            </div>
         </div>
