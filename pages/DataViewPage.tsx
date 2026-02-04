@@ -1,5 +1,6 @@
+
 import React, { useState, useMemo } from 'react';
-import { TemuanData } from '../types';
+import { TemuanData, LoginSession } from '../types';
 
 interface DataViewPageProps {
   ulp: string;
@@ -8,15 +9,44 @@ interface DataViewPageProps {
   onAddTemuan?: () => void;
   onAddEksekusi?: () => void;
   onEdit?: (data: TemuanData) => void;
+  currentSession?: LoginSession;
 }
 
-const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTemuan, onAddEksekusi, onEdit }) => {
+// Helper to get default month dates
+const getDefaultMonthDates = () => {
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  
+  const formatDate = (date: Date) => {
+    const d = new Date(date);
+    let month = '' + (d.getMonth() + 1);
+    let day = '' + d.getDate();
+    const year = d.getFullYear();
+
+    if (month.length < 2) month = '0' + month;
+    if (day.length < 2) day = '0' + day;
+
+    return [year, month, day].join('-');
+  };
+
+  return {
+    start: formatDate(firstDay),
+    end: formatDate(lastDay)
+  };
+};
+
+const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTemuan, onAddEksekusi, onEdit, currentSession }) => {
+  const initialDates = getDefaultMonthDates();
   const [filter, setFilter] = useState<'ALL' | 'BELUM EKSEKUSI' | 'SUDAH EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN' | 'KENDALA MATERIAL'>('ALL');
   const [selectedFeeder, setSelectedFeeder] = useState<string>('');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>(initialDates.start);
+  const [endDate, setEndDate] = useState<string>(initialDates.end);
   const [previewImage, setPreviewImage] = useState<{url: string, title: string} | null>(null);
   
+  // State for toggling "Only My Data" filter
+  const [showOnlyMyData, setShowOnlyMyData] = useState<boolean>(!!(currentSession?.inspektor1 || currentSession?.inspektor2));
+
   const formatDriveUrl = (url?: string) => {
     if (!url) return '';
     if (url.indexOf('data:image') === 0) return url;
@@ -90,7 +120,14 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
       const matchStatus = filter === 'ALL' ? true : item.status === filter;
       const matchFeeder = !selectedFeeder || item.feeder === selectedFeeder;
       
-      return matchDate && matchStatus && matchFeeder;
+      // Inspector Filter Logic
+      let matchInspector = true;
+      if (showOnlyMyData && (currentSession?.inspektor1 || currentSession?.inspektor2)) {
+        const myNames = [currentSession.inspektor1, currentSession.inspektor2].filter(Boolean);
+        matchInspector = myNames.includes(item.inspektor1) || myNames.includes(item.inspektor2);
+      }
+      
+      return matchDate && matchStatus && matchFeeder && matchInspector;
     });
 
     return filtered.sort((a, b) => {
@@ -101,13 +138,15 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
       const pB = Number(b.prioritas || 3);
       return pA - pB;
     });
-  }, [data, filter, selectedFeeder, startDate, endDate]);
+  }, [data, filter, selectedFeeder, startDate, endDate, showOnlyMyData, currentSession]);
 
   const resetFilters = () => {
-    setStartDate('');
-    setEndDate('');
+    const dates = getDefaultMonthDates();
+    setStartDate(dates.start);
+    setEndDate(dates.end);
     setSelectedFeeder('');
     setFilter('ALL');
+    setShowOnlyMyData(!!(currentSession?.inspektor1 || currentSession?.inspektor2));
   };
 
   const getStatusBadgeClass = (status: string) => {
@@ -130,6 +169,8 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
       </div>
     );
   };
+
+  const isInspector = !!(currentSession?.inspektor1 || currentSession?.inspektor2);
 
   return (
     <div className="pb-10">
@@ -182,14 +223,28 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
       <div className="bg-white p-5 rounded-3xl border border-slate-200 mb-6 shadow-sm">
         <div className="flex justify-between items-center mb-3 ml-1">
           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Penyaringan Data</p>
-          {(startDate || endDate || selectedFeeder || filter !== 'ALL') && (
+          <div className="flex gap-4 items-center">
+            {isInspector && (
+              <button 
+                onClick={() => setShowOnlyMyData(!showOnlyMyData)} 
+                className={`text-[8px] font-black uppercase tracking-widest transition-all px-2 py-1 rounded-md ${showOnlyMyData ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}
+              >
+                {showOnlyMyData ? 'Data Saya' : 'Semua Inspektor'}
+              </button>
+            )}
             <button onClick={resetFilters} className="text-[8px] font-black text-red-500 uppercase tracking-widest">Reset</button>
-          )}
+          </div>
         </div>
         
         <div className="grid grid-cols-2 gap-3 mb-3">
-          <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          <div className="space-y-1">
+             <label className="text-[7px] font-black text-slate-300 uppercase ml-1">Tgl Mulai</label>
+             <input type="date" className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+             <label className="text-[7px] font-black text-slate-300 uppercase ml-1">Tgl Akhir</label>
+             <input type="date" className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          </div>
         </div>
 
         <div className="mb-4">
@@ -209,7 +264,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
               key={f} onClick={() => setFilter(f as any)}
               className={`whitespace-nowrap px-4 py-2 text-[10px] font-bold rounded-lg border transition-all uppercase tracking-wide ${filter === f ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-400 border-slate-200'}`}
             >
-              {f === 'ALL' ? 'SEMUA' : f === 'TIDAK DAPAT IZIN' ? 'TDK IZIN' : f === 'KENDALA MATERIAL' ? 'KENDALA MATERIAL' : f}
+              {f === 'ALL' ? 'SEMUA' : f === 'TIDAK DAPAT IZIN' ? 'TDK IZIN' : f === 'KENDALA MATERIAL' ? 'KENDALA' : f}
             </button>
           ))}
         </div>
@@ -223,7 +278,6 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
         ) : (
           sortedAndFilteredData.map((item) => (
             <div key={item.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden hover:border-indigo-200 transition-all flex flex-col">
-              {/* Tanggal di atas */}
               <div className="px-4 pt-3 pb-1 border-b border-slate-50 flex justify-between items-center">
                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                   🗓️ {parseRobustDate(item.tanggal).toLocaleDateString('id-ID')}
@@ -292,6 +346,12 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                     </button>
                   )}
                 </div>
+              </div>
+              
+              <div className="px-4 pb-3 flex gap-2">
+                 <p className="text-[8px] font-bold text-slate-400 uppercase italic">
+                   Input oleh: {item.inspektor1}{item.inspektor2 ? ` & ${item.inspektor2}` : ''}
+                 </p>
               </div>
 
               {onEdit && (
