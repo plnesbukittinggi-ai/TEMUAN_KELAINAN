@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fixed: Using 'ReportService' (uppercase R) to match the root file casing 'services/ReportService.ts'
-import { ReportService } from '../services/ReportService';
+// Fixed: Changed from 'ReportService' to 'reportService' to resolve casing conflict in module resolution.
+import { ReportService } from '../services/reportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
 interface AdminPageProps {
@@ -26,6 +26,30 @@ const MONTHS = [
   { val: 10, label: 'Oktober' }, { val: 11, label: 'November' }, { val: 12, label: 'Desember' }
 ];
 
+// Helper to get default month dates
+const getDefaultRekapDates = () => {
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  
+  const formatDate = (date: Date) => {
+    const d = new Date(date);
+    let month = '' + (d.getMonth() + 1);
+    let day = '' + d.getDate();
+    const year = d.getFullYear();
+
+    if (month.length < 2) month = '0' + month;
+    if (day.length < 2) day = '0' + day;
+
+    return [year, month, day].join('-');
+  };
+
+  return {
+    start: formatDate(firstDay),
+    end: formatDate(lastDay)
+  };
+};
+
 const AdminPage: React.FC<AdminPageProps> = ({ 
   data, ulpList, inspectors, feeders, pekerjaanList, keteranganList, onBack,
   onUpdateInspectors, onUpdateUlp, onUpdateFeeders
@@ -38,8 +62,10 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const [dashFilterUlp, setDashFilterUlp] = useState<string>('');
   const [dashFilterPekerjaan, setDashFilterPekerjaan] = useState<string>('');
 
-  const [rekapStartDate, setRekapStartDate] = useState<string>('');
-  const [rekapEndDate, setRekapEndDate] = useState<string>('');
+  // Set default rekap dates to current month instead of empty strings
+  const initialRekapDates = getDefaultRekapDates();
+  const [rekapStartDate, setRekapStartDate] = useState<string>(initialRekapDates.start);
+  const [rekapEndDate, setRekapEndDate] = useState<string>(initialRekapDates.end);
 
   const [filterUlp, setFilterUlp] = useState<string>('');
   const [filterFeeder, setFilterFeeder] = useState<string>('');
@@ -80,6 +106,12 @@ const AdminPage: React.FC<AdminPageProps> = ({
       }
     } catch (e) { return new Date(0); }
     return new Date(0);
+  };
+
+  const handleReset = () => {
+    const dates = getDefaultRekapDates();
+    setRekapStartDate(dates.start);
+    setRekapEndDate(dates.end);
   };
 
   const dashboardData = useMemo(() => {
@@ -188,8 +220,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
     setIsExporting(true);
     try {
       const sortedForExport = [...filteredAndSortedData].sort((a, b) => parseRobustDate(a.tanggal).getTime() - parseRobustDate(a.tanggal).getTime());
-      
-      // Ambil bulan dan tahun dari data pertama (tetap Bulan & Tahun saja walau difilter tanggal)
       const firstDataDate = parseRobustDate(sortedForExport[0]?.tanggal);
       const monthLabel = MONTHS.find(m => m.val === (firstDataDate.getMonth() + 1))?.label || 'Unknown';
       const yearLabel = firstDataDate.getFullYear();
@@ -416,50 +446,95 @@ const AdminPage: React.FC<AdminPageProps> = ({
       )}
 
       {tab === 'REKAP' && (
-  <div className="space-y-6 animate-fade-in">
-    {/* FILTER */}
-    <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 shadow-sm transition-all duration-300 hover:shadow-md">
-      <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-3 ml-1">Filter Rentang Waktu</p>
-      <div className="grid grid-cols-2 gap-3 mb-2">
-        <input type="date" className="p-3 bg-white border border-emerald-200 rounded-xl text-[11px] font-bold text-emerald-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200" value={rekapStartDate} onChange={(e) => setRekapStartDate(e.target.value)} />
-        <input type="date" className="p-3 bg-white border border-emerald-200 rounded-xl text-[11px] font-bold text-emerald-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200" value={rekapEndDate} onChange={(e) => setRekapEndDate(e.target.value)} />
-      </div>
-    </div>
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 shadow-sm transition-all duration-300 hover:shadow-md">
+            <div className="flex justify-between items-center mb-3 ml-1">
+              <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">
+                Filter Rentang Waktu
+              </p>
+              
+              <button 
+                onClick={handleReset}
+                className="text-[9px] font-black text-white bg-emerald-600 hover:bg-black px-3 py-1.5 rounded-lg transition-all duration-200 uppercase tracking-tighter"
+              >
+                Reset ke Bulan Ini
+              </button>
+            </div>
 
-    {/* TABLE */}
-    <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 shadow-sm transition-all duration-300 hover:shadow-md">
-      <table className="w-full text-left border-collapse">
-        <thead>
-          <tr className="bg-emerald-100 border-b border-emerald-200">
-            <th className="p-4 text-[9px] font-black text-emerald-700 uppercase tracking-widest">Inspektor</th>
-            <th className="p-4 text-[9px] font-black text-emerald-700 uppercase tracking-widest text-center">Total</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-emerald-100">
-          {rekapData.map((r, i) => (
-            <tr key={i} className="hover:bg-emerald-100/60 transition-colors">
-              <td className="p-4">
-                <p className="text-[10px] font-black text-emerald-900 uppercase">{r.inspektor}</p>
-                <p className="text-[8px] text-emerald-600 font-bold uppercase tracking-tight mt-0.5">{r.pekerjaan} • {r.feeder}</p>
-              </td>
-              <td className="p-4 text-center">
-                <span className="inline-block bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black">{r.total}</span>
-              </td>
-            </tr>
-          ))}
-          {rekapData.length > 0 && (
-            <tr className="bg-gradient-to-r from-emerald-200 to-emerald-100 border-t-2 border-emerald-300">
-              <td className="p-4"><p className="text-[10px] font-black text-emerald-900 uppercase tracking-widest">Total Keseluruhan</p></td>
-              <td className="p-4 text-center">
-                <span className="inline-block bg-emerald-600 text-white px-4 py-1.5 rounded-full text-[11px] font-black">{rekapData.reduce((sum, r) => sum + r.total, 0)}</span>
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  </div>
-)}
+            <div className="grid grid-cols-2 gap-3 mb-2">
+              <div className="flex flex-col gap-1">
+                <label className="text-[8px] font-bold text-emerald-600 ml-1 uppercase">Mulai</label>
+                <input 
+                  type="date" 
+                  className="p-3 bg-white border border-emerald-200 rounded-xl text-[11px] font-bold text-black outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200" 
+                  value={rekapStartDate} 
+                  onChange={(e) => setRekapStartDate(e.target.value)} 
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[8px] font-bold text-emerald-600 ml-1 uppercase">Sampai</label>
+                <input 
+                  type="date" 
+                  className="p-3 bg-white border border-emerald-200 rounded-xl text-[11px] font-bold text-black outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200" 
+                  value={rekapEndDate} 
+                  onChange={(e) => setRekapEndDate(e.target.value)} 
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 shadow-sm transition-all duration-300 hover:shadow-md">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-emerald-100 border-b border-emerald-200">
+                  <th className="p-4 text-[9px] font-black text-emerald-700 uppercase tracking-widest">Inspektor</th>
+                  <th className="p-4 text-[9px] font-black text-emerald-700 uppercase tracking-widest text-center">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-emerald-100">
+                {rekapData.length > 0 ? (
+                  rekapData.map((r, i) => (
+                    <tr key={i} className="hover:bg-emerald-100/60 transition-colors">
+                      <td className="p-4">
+                        <p className="text-[10px] font-black text-black uppercase">{r.inspektor}</p>
+                        <p className="text-[8px] text-emerald-600 font-bold uppercase tracking-tight mt-0.5">
+                          {r.pekerjaan} • {r.feeder}
+                        </p>
+                      </td>
+                      <td className="p-4 text-center">
+                        <span className="inline-block bg-emerald-100 text-black px-3 py-1 rounded-full text-[10px] font-black">
+                          {r.total}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={2} className="p-10 text-center text-[10px] font-bold text-emerald-600 uppercase">
+                      Tidak ada data pada periode terpilih
+                    </td>
+                  </tr>
+                )}
+                
+                {rekapData.length > 0 && (
+                  <tr className="bg-gradient-to-r from-emerald-200 to-emerald-100 border-t-2 border-emerald-300">
+                    <td className="p-4">
+                      <p className="text-[10px] font-black text-black uppercase tracking-widest">
+                        Total Keseluruhan
+                      </p>
+                    </td>
+                    <td className="p-4 text-center">
+                      <span className="inline-block bg-black text-white px-4 py-1.5 rounded-full text-[11px] font-black">
+                        {rekapData.reduce((sum, r) => sum + r.total, 0)}
+                      </span>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {tab === 'DATA' && (
         <div className="space-y-6 animate-fade-in">
