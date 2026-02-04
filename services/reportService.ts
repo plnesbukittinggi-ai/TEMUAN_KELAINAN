@@ -52,7 +52,7 @@ worksheet.pageSetup = {
   fitToPage: true,
   fitToWidth: 1,           // Semua kolom muat 1 halaman
   fitToHeight: 0,
-  printTitlesRow: '8:8'    // BARIS HEADER (lihat catatan di bawah)
+  printTitlesRow: '9:9'    // BARIS HEADER
 };
 
 worksheet.pageSetup.margins = {
@@ -209,7 +209,7 @@ worksheet.addRow([]);
     const rowSig2 = worksheet.addRow(['', '', '', '', '', '', '', '', '', 'JAM', ': 07.30 S/D 17.00 WIB']);
     const rowSig3 = worksheet.addRow(['', '', '', '', '', '', '', '', '', 'PETUGAS', `: ${filters.inspektor1 || '-'}`]);
     const rowSig4 = worksheet.addRow(['', '', '', '', '', '', '', '', '', '', `: ${filters.inspektor2 || '-'}`]);
-    const rowSig5 = worksheet.addRow(['', '', '', '', '', '', '', '', '', 'ADMINSPEKSI', `: ENDANG WINARNINGSIH`]);
+    const rowSig5 = worksheet.addRow(['', '', '', '', '', '', '', '', '', 'ADM INSPEKSI', `: ENDANG WINARNINGSIH`]);
 
     // Tambahkan border untuk baris tanda tangan (Kolom J dan K)
     [rowSig1, rowSig2, rowSig3, rowSig4, rowSig5].forEach(row => {
@@ -225,7 +225,9 @@ worksheet.addRow([]);
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Laporan_${filters.pekerjaan || 'PLN'}_${filters.bulan || 'Export'}.xlsx`;
+    const fileNameExcel = `${(filters.pekerjaan || 'LAPORAN')}_${(filters.feeder || 'SEMUA')}_${(filters.bulan || 'TAHUN')}`.toUpperCase();
+
+    a.download = `${fileNameExcel}.xlsx`;
     a.click();
   },
 
