@@ -1,3 +1,4 @@
 
-// Logika pelaporan telah dipindahkan ke services/reportService.ts untuk menghindari konflik casing.
+// File ini dinonaktifkan untuk mencegah konflik build case-sensitivity di Vercel.
+// Gunakan services/reporting.ts sebagai gantinya.
 export {};
