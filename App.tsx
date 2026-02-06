@@ -114,7 +114,8 @@ const App: React.FC = () => {
 
   const startEdit = (data: TemuanData) => {
     setEditingData(data);
-    if (data.status === 'SUDAH EKSEKUSI') {
+    const executionStatuses = ['SUDAH EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN', 'KENDALA MATERIAL'];
+    if (executionStatuses.includes(data.status)) {
       setSession({ ...session!, role: AppRole.EKSEKUSI });
     } else {
       setSession({ ...session!, role: AppRole.INSPEKSI });
