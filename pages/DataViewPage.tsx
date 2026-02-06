@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { TemuanData, LoginSession } from '../types';
 
@@ -185,6 +184,17 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
         </div>
       </div>
 
+      {/* Tampilan Total Data Monitoring */}
+      <div className="bg-slate-900 p-6 rounded-[2rem] shadow-xl border border-slate-800 flex items-center justify-between mb-6 animate-slide-up">
+        <div>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status Filter: {filter}</p>
+          <h3 className="text-white text-2xl font-black leading-none">Terpantau {sortedAndFilteredData.length} Data</h3>
+        </div>
+        <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-2xl border border-white/5">
+          🖥️
+        </div>
+      </div>
+
       {(onAddTemuan || onAddEksekusi) && (
         <div className="grid grid-cols-1 gap-3 mb-6 animate-slide-up">
           {onAddTemuan && (
@@ -222,7 +232,9 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
 
       <div className="bg-white p-5 rounded-3xl border border-slate-200 mb-6 shadow-sm">
         <div className="flex justify-between items-center mb-3 ml-1">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Penyaringan Data</p>
+          <div className="flex items-center gap-2">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Penyaringan Data</p>
+          </div>
           <div className="flex gap-4 items-center">
             {isInspector && (
               <button 
@@ -251,7 +263,6 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
           <select 
             className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none"
             value={selectedFeeder}
-            // Fixed typo: Added parentheses and e object to call the state setter function correctly.
             onChange={(e) => setSelectedFeeder(e.target.value)}
           >
             <option value="">-- Semua Feeder --</option>
