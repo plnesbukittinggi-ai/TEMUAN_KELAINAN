@@ -360,7 +360,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                   className="bg-slate-50 border-t border-slate-100 py-2.5 text-[9px] font-black text-slate-500 uppercase tracking-widest hover:bg-slate-100 transition-all"
                 >
                   {['SUDAH EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN', 'KENDALA MATERIAL'].includes(item.status) 
-                    ? 'PROSES EKSEKUSI' 
+                    ? 'Ubah Data / Edit' 
                     : 'Ubah Data / Edit'}
                 </button>
               )}
