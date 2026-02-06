@@ -1,9 +1,16 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  PieChart, 
+  Pie, 
+  Cell, 
+  ResponsiveContainer, 
+  Tooltip 
+} from 'recharts';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fixed: Using the consistent casing (lowercase 'r') for reportService to resolve duplicate file casing conflict.
-import { ReportService } from '../services/reportService';
+// Fixed casing: Using ReportService (PascalCase) to match consolidated file.
+import { ReportService } from '../services/ReportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
 interface AdminPageProps {
@@ -26,7 +33,6 @@ const MONTHS = [
   { val: 10, label: 'Oktober' }, { val: 11, label: 'November' }, { val: 12, label: 'Desember' }
 ];
 
-// Helper to get default month dates
 const getDefaultRekapDates = () => {
   const now = new Date();
   const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -54,7 +60,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
   data, ulpList, inspectors, feeders, pekerjaanList, keteranganList, onBack,
   onUpdateInspectors, onUpdateUlp, onUpdateFeeders
 }) => {
-  const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP'>('DASHBOARD');
+  const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP' | 'REKAP_JENIS'>('DASHBOARD');
   const [aiInsight, setAiInsight] = useState<string>('Menganalisis performa data...');
   
   const [dashFilterMonth, setDashFilterMonth] = useState<number>(new Date().getMonth() + 1);
@@ -62,10 +68,16 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const [dashFilterUlp, setDashFilterUlp] = useState<string>('');
   const [dashFilterPekerjaan, setDashFilterPekerjaan] = useState<string>('');
 
-  // Set default rekap dates to current month instead of empty strings
   const initialRekapDates = getDefaultRekapDates();
   const [rekapStartDate, setRekapStartDate] = useState<string>(initialRekapDates.start);
   const [rekapEndDate, setRekapEndDate] = useState<string>(initialRekapDates.end);
+
+  // Filters for Rekap Jenis Temuan
+  const [rekapJenisMonth, setRekapJenisMonth] = useState<number>(new Date().getMonth() + 1);
+  const [rekapJenisYear, setRekapJenisYear] = useState<number>(new Date().getFullYear());
+  const [rekapJenisPekerjaan, setRekapJenisPekerjaan] = useState<string>('');
+  const [rekapJenisUlp, setRekapJenisUlp] = useState<string>('');
+  const [rekapJenisFeeder, setRekapJenisFeeder] = useState<string>('');
 
   const [filterUlp, setFilterUlp] = useState<string>('');
   const [filterFeeder, setFilterFeeder] = useState<string>('');
@@ -125,6 +137,31 @@ const AdminPage: React.FC<AdminPageProps> = ({
     });
   }, [data, dashFilterMonth, dashFilterYear, dashFilterUlp, dashFilterPekerjaan]);
 
+  const statusSummary = useMemo(() => {
+    const counts = {
+      'BELUM EKSEKUSI': 0,
+      'SUDAH EKSEKUSI': 0,
+      'BUTUH PADAM': 0,
+      'TIDAK DAPAT IZIN': 0,
+      'KENDALA MATERIAL': 0,
+    };
+    dashboardData.forEach(d => {
+      if (counts[d.status as keyof typeof counts] !== undefined) {
+        counts[d.status as keyof typeof counts]++;
+      }
+    });
+    
+    const chartData = [
+      { name: 'Belum Eksekusi', value: counts['BELUM EKSEKUSI'], color: '#6366f1' },
+      { name: 'Sudah Eksekusi', value: counts['SUDAH EKSEKUSI'], color: '#10b981' },
+      { name: 'Butuh Padam', value: counts['BUTUH PADAM'], color: '#f59e0b' },
+      { name: 'Tidak Izin', value: counts['TIDAK DAPAT IZIN'] || 0, color: '#ea580c' },
+      { name: 'Kendala Material', value: counts['KENDALA MATERIAL'], color: '#ef4444' }
+    ].filter(item => item.value > 0);
+
+    return { chartData, counts, total: dashboardData.length };
+  }, [dashboardData]);
+
   const rekapData = useMemo(() => {
     const counts: Record<string, { inspektor: string, ulp: string, feeder: string, pekerjaan: string, total: number }> = {};
     data.forEach(item => {
@@ -149,6 +186,60 @@ const AdminPage: React.FC<AdminPageProps> = ({
     });
     return Object.values(counts).sort((a, b) => a.inspektor.localeCompare(b.inspektor));
   }, [data, rekapStartDate, rekapEndDate]);
+
+  // Logic for Rekap Jenis Temuan
+  const rekapJenisData = useMemo(() => {
+    const counts: Record<string, { 
+      keterangan: string, 
+      total: number, 
+      belum: number, 
+      sudah: number, 
+      padam: number, 
+      tidakIzin: number, 
+      kendala: number 
+    }> = {};
+
+    data.forEach(item => {
+      const dDate = parseRobustDate(item.tanggal);
+      const matchMonth = dDate.getMonth() + 1 === rekapJenisMonth;
+      const matchYear = dDate.getFullYear() === rekapJenisYear;
+      const matchPekerjaan = !rekapJenisPekerjaan || item.pekerjaan === rekapJenisPekerjaan;
+      const matchUlp = !rekapJenisUlp || item.ulp === rekapJenisUlp;
+      const matchFeeder = !rekapJenisFeeder || item.feeder === rekapJenisFeeder;
+
+      if (matchMonth && matchYear && matchPekerjaan && matchUlp && matchFeeder) {
+        const key = item.keterangan || 'Tanpa Keterangan';
+        if (!counts[key]) {
+          counts[key] = { keterangan: key, total: 0, belum: 0, sudah: 0, padam: 0, tidakIzin: 0, kendala: 0 };
+        }
+        counts[key].total++;
+        if (item.status === 'BELUM EKSEKUSI') counts[key].belum++;
+        else if (item.status === 'SUDAH EKSEKUSI') counts[key].sudah++;
+        else if (item.status === 'BUTUH PADAM') counts[key].padam++;
+        else if (item.status === 'TIDAK DAPAT IZIN') counts[key].tidakIzin++;
+        else if (item.status === 'KENDALA MATERIAL') counts[key].kendala++;
+      }
+    });
+
+    return Object.values(counts).sort((a, b) => b.total - a.total);
+  }, [data, rekapJenisMonth, rekapJenisYear, rekapJenisPekerjaan, rekapJenisUlp, rekapJenisFeeder]);
+
+  // Filter feeders to show only those that have findings in current period for Rekap Jenis filter
+  const feedersWithDataForRekapJenis = useMemo(() => {
+    const unique = new Set<string>();
+    data.forEach(item => {
+      const dDate = parseRobustDate(item.tanggal);
+      const matchMonth = dDate.getMonth() + 1 === rekapJenisMonth;
+      const matchYear = dDate.getFullYear() === rekapJenisYear;
+      const matchPekerjaan = !rekapJenisPekerjaan || item.pekerjaan === rekapJenisPekerjaan;
+      const matchUlp = !rekapJenisUlp || item.ulp === rekapJenisUlp;
+      
+      if (matchMonth && matchYear && matchPekerjaan && matchUlp) {
+        if (item.feeder) unique.add(item.feeder);
+      }
+    });
+    return Array.from(unique).sort();
+  }, [data, rekapJenisMonth, rekapJenisYear, rekapJenisPekerjaan, rekapJenisUlp]);
 
   useEffect(() => {
     if (tab === 'DASHBOARD' && dashboardData.length > 0) {
@@ -351,9 +442,19 @@ const AdminPage: React.FC<AdminPageProps> = ({
       </div>
 
       <div className="flex bg-white border border-slate-200 p-1.5 rounded-2xl mb-8 shadow-sm overflow-x-auto gap-1">
-        {['DASHBOARD', 'REKAP', 'DATA', 'KELOLA'].map(t => (
-          <button key={t} onClick={() => setTab(t as any)} className={`flex-1 py-3 px-2 text-[8px] font-black rounded-xl transition-all tracking-widest uppercase whitespace-nowrap ${tab === t ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}>
-            {t === 'REKAP' ? 'REKAP INSPEKTOR' : t}
+        {[
+          { id: 'DASHBOARD', label: 'DASHBOARD' },
+          { id: 'REKAP', label: 'REKAP INSPEKTOR' },
+          { id: 'REKAP_JENIS', label: 'REKAP JENIS TEMUAN' },
+          { id: 'DATA', label: 'DATA' },
+          { id: 'KELOLA', label: 'KELOLA' }
+        ].map(t => (
+          <button 
+            key={t.id} 
+            onClick={() => setTab(t.id as any)} 
+            className={`flex-1 py-3 px-2 text-[8px] font-black rounded-xl transition-all tracking-widest uppercase whitespace-nowrap ${tab === t.id ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
+          >
+            {t.label}
           </button>
         ))}
       </div>
@@ -410,6 +511,64 @@ const AdminPage: React.FC<AdminPageProps> = ({
             ))}
           </div>
 
+          <div className="bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-xl overflow-hidden animate-slide-up">
+            <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-6 flex items-center gap-2">
+              <span className="w-2 h-6 bg-indigo-600 rounded-full"></span>
+              Distribusi Status Temuan
+            </h3>
+            
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="w-full h-52 md:w-1/2 flex items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={statusSummary.chartData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      dataKey="value"
+                      stroke="#fff"
+                      strokeWidth={2}
+                    >
+                      {statusSummary.chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', fontSize: '10px', fontWeight: 'bold' }}
+                      formatter={(value: number) => [`${value} Data`, 'Status']}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="flex-1 w-full grid grid-cols-1 gap-2.5">
+                <div className="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-slate-900"></div>
+                    <p className="text-[10px] font-black text-slate-900 uppercase tracking-wider">Jumlah Temuan</p>
+                  </div>
+                  <p className="text-xs font-black text-slate-900">{statusSummary.total}</p>
+                </div>
+
+                {statusSummary.chartData.map((item) => (
+                  <div key={item.name} className="flex items-center justify-between bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }}></div>
+                      <div className="flex flex-col">
+                        <p className="text-[9px] font-black text-slate-600 uppercase tracking-wider">{item.name}</p>
+                        <p className="text-[7px] text-slate-400 font-bold uppercase tracking-widest">
+                          {Math.round((item.value / statusSummary.total) * 100)}% dari total
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs font-black text-slate-900">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
           <div className="bg-slate-900 p-6 rounded-[2.5rem] border-2 border-yellow-500 shadow-xl">
              <div className="flex justify-between items-center mb-6">
                 <h3 className="text-sm font-black text-white uppercase tracking-tight">Top 10 Feeder (Berdasarkan Persentase)</h3>
@@ -452,7 +611,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
               <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">
                 Filter Rentang Waktu
               </p>
-              
               <button 
                 onClick={handleReset}
                 className="text-[9px] font-black text-white bg-emerald-600 hover:bg-black px-3 py-1.5 rounded-lg transition-all duration-200 uppercase tracking-tighter"
@@ -460,7 +618,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
                 Reset ke Bulan Ini
               </button>
             </div>
-
             <div className="grid grid-cols-2 gap-3 mb-2">
               <div className="flex flex-col gap-1">
                 <label className="text-[8px] font-bold text-emerald-600 ml-1 uppercase">Mulai</label>
@@ -515,7 +672,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
                     </td>
                   </tr>
                 )}
-                
                 {rekapData.length > 0 && (
                   <tr className="bg-gradient-to-r from-emerald-200 to-emerald-100 border-t-2 border-emerald-300">
                     <td className="p-4">
@@ -532,6 +688,130 @@ const AdminPage: React.FC<AdminPageProps> = ({
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {tab === 'REKAP_JENIS' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-emerald-50 p-6 rounded-[2.5rem] border border-emerald-200 shadow-sm space-y-5">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-1.5 h-4 bg-emerald-600 rounded-full"></div>
+              <p className="text-[11px] font-black text-emerald-800 uppercase tracking-widest">Saring Laporan Jenis Temuan</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <p className="text-[8px] font-black text-emerald-600/60 uppercase tracking-widest ml-1">Periode & Jenis Pekerjaan</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[7px] font-bold text-emerald-700 ml-1 uppercase">Bulan</label>
+                    <select 
+                      className="w-full p-3 bg-white border border-emerald-100 rounded-xl text-[11px] font-bold outline-none text-emerald-900 shadow-sm focus:border-emerald-400 transition-all" 
+                      value={rekapJenisMonth} 
+                      onChange={(e) => setRekapJenisMonth(Number(e.target.value))}
+                    >
+                      {MONTHS.map(m => <option key={m.val} value={m.val}>{m.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[7px] font-bold text-emerald-700 ml-1 uppercase">Tahun</label>
+                    <select 
+                      className="w-full p-3 bg-white border border-emerald-100 rounded-xl text-[11px] font-bold outline-none text-emerald-900 shadow-sm focus:border-emerald-400 transition-all" 
+                      value={rekapJenisYear} 
+                      onChange={(e) => setRekapJenisYear(Number(e.target.value))}
+                    >
+                      {years.map(y => <option key={y} value={y}>{y}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[7px] font-bold text-emerald-700 ml-1 uppercase">Bidang Pekerjaan</label>
+                  <select 
+                    className="w-full p-3 bg-white border border-emerald-100 rounded-xl text-[11px] font-bold outline-none text-emerald-900 shadow-sm focus:border-emerald-400 transition-all" 
+                    value={rekapJenisPekerjaan} 
+                    onChange={(e) => setRekapJenisPekerjaan(e.target.value)}
+                  >
+                    <option value="">Semua Pekerjaan</option>
+                    {pekerjaanList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-[8px] font-black text-emerald-600/60 uppercase tracking-widest ml-1">Unit & Aset Feeder</p>
+                <div className="space-y-1">
+                  <label className="text-[7px] font-bold text-emerald-700 ml-1 uppercase">Unit Pelaksana (ULP)</label>
+                  <select 
+                    className="w-full p-3 bg-white border border-emerald-100 rounded-xl text-[11px] font-bold outline-none text-emerald-900 shadow-sm focus:border-emerald-400 transition-all" 
+                    value={rekapJenisUlp} 
+                    onChange={(e) => { setRekapJenisUlp(e.target.value); setRekapJenisFeeder(''); }}
+                  >
+                    <option value="">Semua ULP</option>
+                    {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[7px] font-bold text-emerald-700 ml-1 uppercase">Penyulang (Feeder)</label>
+                  <select 
+                    className="w-full p-3 bg-white border border-emerald-100 rounded-xl text-[11px] font-bold outline-none text-emerald-900 shadow-sm focus:border-emerald-400 transition-all" 
+                    value={rekapJenisFeeder} 
+                    onChange={(e) => setRekapJenisFeeder(e.target.value)}
+                  >
+                    <option value="">-- Semua Feeder (Berisi Temuan) --</option>
+                    {feedersWithDataForRekapJenis.map(f => <option key={f} value={f}>{f}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[800px]">
+                <thead>
+                  <tr className="bg-emerald-600 text-white">
+                    <th className="p-4 text-[10px] font-black uppercase tracking-wider border-r border-white/10">Keterangan</th>
+                    <th className="p-4 text-[9px] font-black uppercase tracking-wider text-center border-r border-white/10">Jumlah</th>
+                    <th className="p-4 text-[9px] font-black uppercase tracking-wider text-center border-r border-white/10">Belum</th>
+                    <th className="p-4 text-[9px] font-black uppercase tracking-wider text-center border-r border-white/10">Sudah</th>
+                    <th className="p-4 text-[9px] font-black uppercase tracking-wider text-center border-r border-white/10">Padam</th>
+                    <th className="p-4 text-[9px] font-black uppercase tracking-wider text-center border-r border-white/10">Tdk Izin</th>
+                    <th className="p-4 text-[9px] font-black uppercase tracking-wider text-center">Kendala</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {rekapJenisData.length > 0 ? (
+                    rekapJenisData.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-4 text-[10px] font-bold text-slate-800 uppercase tracking-tight leading-tight">{row.keterangan}</td>
+                        <td className="p-4 text-[11px] font-black text-center bg-slate-50/50 border-x border-slate-100">{row.total}</td>
+                        <td className="p-4 text-[10px] font-bold text-center text-indigo-600">{row.belum}</td>
+                        <td className="p-4 text-[10px] font-bold text-center text-emerald-600">{row.sudah}</td>
+                        <td className="p-4 text-[10px] font-bold text-center text-amber-600">{row.padam}</td>
+                        <td className="p-4 text-[10px] font-bold text-center text-orange-600">{row.tidakIzin}</td>
+                        <td className="p-4 text-[10px] font-bold text-center text-red-600">{row.kendala}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="p-20 text-center text-[10px] font-bold text-slate-400 uppercase italic">Tidak ada data untuk filter terpilih</td>
+                    </tr>
+                  )}
+                  {rekapJenisData.length > 0 && (
+                    <tr className="bg-slate-900 text-white font-black">
+                      <td className="p-4 text-[10px] uppercase tracking-widest">Total Keseluruhan</td>
+                      <td className="p-4 text-[11px] text-center border-x border-white/10">{rekapJenisData.reduce((s, r) => s + r.total, 0)}</td>
+                      <td className="p-4 text-[11px] text-center">{rekapJenisData.reduce((s, r) => s + r.belum, 0)}</td>
+                      <td className="p-4 text-[11px] text-center">{rekapJenisData.reduce((s, r) => s + r.sudah, 0)}</td>
+                      <td className="p-4 text-[11px] text-center">{rekapJenisData.reduce((s, r) => s + r.padam, 0)}</td>
+                      <td className="p-4 text-[11px] text-center">{rekapJenisData.reduce((s, r) => s + r.tidakIzin, 0)}</td>
+                      <td className="p-4 text-[11px] text-center">{rekapJenisData.reduce((s, r) => s + r.kendala, 0)}</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
