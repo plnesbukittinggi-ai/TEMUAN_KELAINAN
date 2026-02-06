@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { LoginSession, TemuanData } from '../types';
 import { compressImage } from '../utils/imageUtils';
@@ -192,6 +191,17 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
 
       {!initialData && (
         <div className="space-y-4">
+          {/* Tampilan Total Data Atrean */}
+          <div className="bg-indigo-600 p-6 rounded-[2rem] shadow-xl border border-indigo-500 flex items-center justify-between animate-slide-up">
+            <div>
+              <p className="text-[10px] font-black text-indigo-200 uppercase tracking-widest mb-1">Status Atrean: {subFilter}</p>
+              <h3 className="text-white text-2xl font-black leading-none">Total {filteredQueue.length} Data</h3>
+            </div>
+            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl">
+              📊
+            </div>
+          </div>
+
           <div className="bg-white p-5 rounded-3xl border border-slate-200 mb-2 shadow-sm space-y-4">
             <div>
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Cari No. Tiang</p>
