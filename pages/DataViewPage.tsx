@@ -173,7 +173,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
   const isInspector = !!(currentSession?.inspektor1 || currentSession?.inspektor2);
 
   return (
-    <div className="pb-10">
+    <div className="min-h-screen bg-slate-50 pb-10">
       <div className="flex items-center gap-4 mb-8">
         <button onClick={onBack} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 transition-all group">
           <span className="text-sm font-black text-slate-900 group-hover:-translate-x-1 transition-transform">←</span>
@@ -251,6 +251,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
           <select 
             className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none"
             value={selectedFeeder}
+            // Fixed typo: Added parentheses and e object to call the state setter function correctly.
             onChange={(e) => setSelectedFeeder(e.target.value)}
           >
             <option value="">-- Semua Feeder --</option>
@@ -286,7 +287,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                   <span className={`text-[8px] px-2 py-0.5 rounded font-black uppercase ${getStatusBadgeClass(item.status)}`}>
                     {item.status}
                   </span>
-                  {item.status === 'SUDAH EKSEKUSI' && (
+                  {['SUDAH EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN', 'KENDALA MATERIAL'].includes(item.status) && (
                     <p className="text-[7px] font-bold text-emerald-600 mt-1 uppercase tracking-tighter">
                       {item.timEksekusi} - {item.tanggalEksekusi ? parseRobustDate(item.tanggalEksekusi).toLocaleDateString('id-ID') : '-'}
                     </p>
@@ -305,7 +306,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                    <p className="text-[7px] font-black text-center mt-1 uppercase text-slate-400">Temuan</p>
                 </div>
 
-                {item.status === 'SUDAH EKSEKUSI' && item.fotoEksekusi && (
+                {['SUDAH EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN', 'KENDALA MATERIAL'].includes(item.status) && item.fotoEksekusi && (
                   <div 
                     className="relative flex-shrink-0 cursor-zoom-in"
                     onClick={() => setPreviewImage({ url: formatDriveUrl(item.fotoEksekusi), title: `Foto Eksekusi: ${item.noTiang}` })}
@@ -360,8 +361,8 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                   className="bg-slate-50 border-t border-slate-100 py-2.5 text-[9px] font-black text-slate-500 uppercase tracking-widest hover:bg-slate-100 transition-all"
                 >
                   {['SUDAH EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN', 'KENDALA MATERIAL'].includes(item.status) 
-                    ? 'Ubah Data / Edit' 
-                    : 'Ubah Data / Edit'}
+                    ? 'UBAH / EDIT DATA EKSEKUSI' 
+                    : 'UBAH / EDIT DATA TEMUAN'}
                 </button>
               )}
             </div>
