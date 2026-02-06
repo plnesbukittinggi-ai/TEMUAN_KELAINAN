@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { LoginSession, TemuanData } from '../types';
 import { compressImage } from '../utils/imageUtils';
@@ -10,6 +11,8 @@ interface EksekusiPageProps {
   initialData?: TemuanData;
 }
 
+type EksekusiSubFilter = 'BELUM EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN' | 'KENDALA MATERIAL';
+
 const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSave, initialData }) => {
   const [selectedTemuan, setSelectedTemuan] = useState<TemuanData | null>(initialData || null);
   const [executionPhoto, setExecutionPhoto] = useState<string>(initialData?.fotoEksekusi || '');
@@ -21,6 +24,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const [endDate, setEndDate] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [previewImage, setPreviewImage] = useState<{url: string, title: string} | null>(null);
+  const [subFilter, setSubFilter] = useState<EksekusiSubFilter>('BELUM EKSEKUSI');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const openInMaps = (geotag?: string) => {
@@ -141,6 +145,9 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
 
   const filteredQueue = useMemo(() => {
     const filtered = data.filter(item => {
+      // Apply subFilter first
+      if (item.status !== subFilter) return false;
+
       const noTiangStr = String(item.noTiang || '');
       const matchesSearch = !searchQuery || noTiangStr.toLowerCase().includes(searchQuery.toLowerCase());
       if (!matchesSearch) return false;
@@ -157,7 +164,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       return true;
     });
     return filtered.sort((a, b) => parseRobustDate(b.tanggal).getTime() - parseRobustDate(a.tanggal).getTime());
-  }, [data, startDate, endDate, searchQuery]);
+  }, [data, startDate, endDate, searchQuery, subFilter]);
 
   const renderStars = (count: number) => {
     const priority = Number(count || 1);
@@ -184,39 +191,52 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       </div>
 
       {!initialData && (
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 mb-6 shadow-sm space-y-4">
-          <div>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Cari No. Tiang</p>
-            <div className="relative">
-              <input type="text" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:border-indigo-500 transition-all uppercase" placeholder="Ketik No. Tiang..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none">🔍</span>
+        <div className="space-y-4">
+          <div className="bg-white p-5 rounded-3xl border border-slate-200 mb-2 shadow-sm space-y-4">
+            <div>
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Cari No. Tiang</p>
+              <div className="relative">
+                <input type="text" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold outline-none focus:border-indigo-500 transition-all uppercase" placeholder="Ketik No. Tiang..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none">🔍</span>
+              </div>
+            </div>
+            <div className="pt-2 border-t border-slate-50">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Saring Tanggal Temuan</p>
+              <div className="grid grid-cols-2 gap-3">
+                <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              </div>
             </div>
           </div>
-          <div className="pt-2 border-t border-slate-50">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Saring Tanggal Temuan</p>
-            <div className="grid grid-cols-2 gap-3">
-              <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-              <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-            </div>
+
+          <div className="flex bg-white p-1 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto gap-1 scrollbar-hide no-scrollbar">
+            {(['BELUM EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN', 'KENDALA MATERIAL'] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setSubFilter(f)}
+                className={`whitespace-nowrap px-4 py-2.5 text-[8px] font-black rounded-xl transition-all uppercase tracking-widest flex-1 min-w-max ${subFilter === f ? 'bg-slate-900 text-white shadow-md scale-100' : 'text-slate-400 hover:bg-slate-50'}`}
+              >
+                {f === 'TIDAK DAPAT IZIN' ? 'TIDAK IZIN' : f}
+              </button>
+            ))}
           </div>
         </div>
       )}
 
       {filteredQueue.length === 0 && !initialData ? (
-        <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-slate-200">
-          <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Tidak ada antrean</p>
+        <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-slate-200 mt-6">
+          <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Tidak ada data {subFilter.toLowerCase()}</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4 mt-6">
           {(initialData ? [initialData] : filteredQueue).map((item) => (
-            <div key={item.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col group">
-              {/* Tanggal di atas */}
+            <div key={item.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col group animate-fade-in">
               <div className="px-4 pt-3 pb-1 border-b border-slate-50 flex justify-between items-center">
                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                   🗓️ {parseRobustDate(item.tanggal).toLocaleDateString('id-ID')}
                 </p>
-                <span className={`text-[8px] px-2 py-0.5 rounded font-black uppercase ${item.status === 'BUTUH PADAM' ? 'bg-amber-50 text-amber-700' : 'bg-indigo-50 text-indigo-700'}`}>
-                  {item.status}
+                <span className={`text-[8px] px-2 py-0.5 rounded font-black uppercase ${item.status === 'BUTUH PADAM' ? 'bg-amber-50 text-amber-700' : item.status === 'BELUM EKSEKUSI' ? 'bg-indigo-50 text-indigo-700' : item.status === 'TIDAK DAPAT IZIN' ? 'bg-orange-50 text-orange-700' : 'bg-red-50 text-red-700'}`}>
+                  {item.status === 'TIDAK DAPAT IZIN' ? 'TIDAK IZIN' : item.status}
                 </span>
               </div>
 
@@ -316,12 +336,11 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
               </div>
             </div>
             <div className="p-6 bg-slate-50 border-t border-slate-100 rounded-b-3xl">
-              {/* Fix: Wrap handleAction in an arrow function to pass 'SUDAH EKSEKUSI' status correctly */}
               <button onClick={() => handleAction('SUDAH EKSEKUSI')} disabled={isSaving || isCompressing} className={`w-full py-4 rounded-xl shadow-lg uppercase text-[10px] font-black tracking-[0.2em] ${isSaving || isCompressing ? 'bg-slate-300' : 'bg-emerald-600 text-white'}`}>{isSaving ? '⏳ Menyimpan...' : '✅ Simpan Laporan Selesai'}</button>
               <div className="grid grid-cols-3 gap-2 mt-3">
                 <button onClick={() => handleAction('BUTUH PADAM')} className="py-3 rounded-xl bg-amber-500 text-white text-[8px] font-bold uppercase">⚡ Butuh Padam</button>
-                <button onClick={() => handleAction('TIDAK DAPAT IZIN')} className="py-3 rounded-xl bg-orange-600 text-white text-[8px] font-bold uppercase">🚫 Tidak Dapat Izin</button>
-                <button onClick={() => handleAction('KENDALA MATERIAL')} className="py-3 rounded-xl bg-red-600 text-white text-[8px] font-bold uppercase">📦 Kendala Material</button>
+                <button onClick={() => handleAction('TIDAK DAPAT IZIN')} className="py-3 rounded-xl bg-orange-600 text-white text-[8px] font-bold uppercase">🚫 Tidak Izin</button>
+                <button onClick={() => handleAction('KENDALA MATERIAL')} className="py-3 rounded-xl bg-red-600 text-white text-[8px] font-bold uppercase">📦 Kendala</button>
               </div>
             </div>
           </div>
