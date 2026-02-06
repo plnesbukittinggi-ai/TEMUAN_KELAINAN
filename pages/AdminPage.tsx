@@ -5,12 +5,13 @@ import {
   Pie, 
   Cell, 
   ResponsiveContainer, 
-  Tooltip 
+  Tooltip,
+  Label
 } from 'recharts';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
-// Fixed casing: Using ReportService (PascalCase) to match consolidated file.
-import { ReportService } from '../services/ReportService';
+// Fixed casing: Using reportService (lowercase) to match root file casing and resolve conflict.
+import { ReportService } from '../services/reportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 
 interface AdminPageProps {
@@ -516,7 +517,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
               <span className="w-2 h-6 bg-indigo-600 rounded-full"></span>
               Distribusi Status Temuan
             </h3>
-            
+
             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="w-full h-52 md:w-1/2 flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
@@ -525,17 +526,47 @@ const AdminPage: React.FC<AdminPageProps> = ({
                       data={statusSummary.chartData}
                       cx="50%"
                       cy="50%"
+                      innerRadius={40}
                       outerRadius={80}
+                      paddingAngle={5}
                       dataKey="value"
-                      stroke="#fff"
-                      strokeWidth={2}
+                      stroke="none"
                     >
                       {statusSummary.chartData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
+                      
+                      {/* Penambahan Label di Tengah Donut */}
+                      <Label
+                        value={statusSummary.total}
+                        position="center"
+                        fill="#0f172a"
+                        style={{
+                          fontSize: '24px',
+                          fontWeight: '900',
+                          fontFamily: 'Inter, sans-serif'
+                        }}
+                      />
+                      <Label
+                        value="TOTAL"
+                        position="center"
+                        dy={20}
+                        fill="#64748b"
+                        style={{
+                          fontSize: '10px',
+                          fontWeight: 'bold',
+                          letterSpacing: '0.1em'
+                        }}
+                      />
                     </Pie>
                     <Tooltip 
-                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', fontSize: '10px', fontWeight: 'bold' }}
+                      contentStyle={{ 
+                        borderRadius: '16px', 
+                        border: 'none', 
+                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', 
+                        fontSize: '10px', 
+                        fontWeight: 'bold' 
+                      }}
                       formatter={(value: number) => [`${value} Data`, 'Status']}
                     />
                   </PieChart>
@@ -758,7 +789,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
                     value={rekapJenisFeeder} 
                     onChange={(e) => setRekapJenisFeeder(e.target.value)}
                   >
-                    <option value="">-- Semua Feeder (Berisi Temuan) --</option>
+                    <option value="">-- Semua Feeder --</option>
                     {feedersWithDataForRekapJenis.map(f => <option key={f} value={f}>{f}</option>)}
                   </select>
                 </div>
