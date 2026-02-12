@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { AppRole, TemuanData, LoginSession, Inspector, ULP, Feeder, Pekerjaan, Keterangan } from './types';
 import { INITIAL_INSPECTORS, INITIAL_ULP, INITIAL_FEEDERS, INITIAL_KETERANGAN, INITIAL_PEKERJAAN, APP_VERSION } from './constants';
@@ -114,10 +113,21 @@ const App: React.FC = () => {
   const startEdit = (data: TemuanData) => {
     setEditingData(data);
     const executionStatuses = ['SUDAH EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN', 'KENDALA MATERIAL'];
+    
+    // Temukan ID Pekerjaan dari list master berdasarkan nama di data temuan
+    const activePek = pekerjaanList.find(p => p.name === data.pekerjaan);
+
     if (executionStatuses.includes(data.status)) {
-      setSession({ ...session!, role: AppRole.EKSEKUSI });
+      setSession({ ...session!, role: AppRole.EKSEKUSI, ulp: data.ulp });
     } else {
-      setSession({ ...session!, role: AppRole.INSPEKSI });
+      // Pastikan session mendapatkan idPekerjaan agar dropdown Kategori Kelainan terisi
+      setSession({ 
+        ...session!, 
+        role: AppRole.INSPEKSI, 
+        ulp: data.ulp,
+        pekerjaan: data.pekerjaan,
+        idPekerjaan: activePek ? activePek.id : undefined 
+      });
     }
   };
 
