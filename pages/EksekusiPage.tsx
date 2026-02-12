@@ -350,7 +350,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
               <div className="grid grid-cols-3 gap-2 mt-3">
                 <button onClick={() => handleAction('BUTUH PADAM')} className="py-3 rounded-xl bg-amber-500 text-white text-[8px] font-bold uppercase">⚡ Butuh Padam</button>
                 <button onClick={() => handleAction('TIDAK DAPAT IZIN')} className="py-3 rounded-xl bg-orange-600 text-white text-[8px] font-bold uppercase">🚫 Tidak Izin</button>
-                <button onClick={() => handleAction('KENDALA MATERIAL')} className="py-3 rounded-xl bg-red-600 text-white text-[8px] font-bold uppercase">📦 Kendala</button>
+                <button onClick={() => handleAction('KENDALA MATERIAL')} className="py-3 rounded-xl bg-red-600 text-white text-[8px] font-bold uppercase">📦 Kendala Material</button>
               </div>
             </div>
           </div>
