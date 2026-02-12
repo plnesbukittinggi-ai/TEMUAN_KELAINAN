@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { LoginSession, TemuanData, Feeder, Keterangan } from '../types';
 import { compressImage } from '../utils/imageUtils';
@@ -27,13 +26,27 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
     const targetIdNorm = normalize(session.idPekerjaan);
     const targetNameNorm = normalize(session.pekerjaan);
 
-    return list.filter(k => {
+    const filtered = list.filter(k => {
       const currentKIdNorm = normalize(k.idPekerjaan);
       const matchById = (targetIdNorm !== "" && currentKIdNorm === targetIdNorm);
       const matchByName = (targetNameNorm !== "" && currentKIdNorm === targetNameNorm);
       return matchById || matchByName;
     });
-  }, [keteranganList, session]);
+
+    // Jika sedang dalam mode edit, pastikan nilai keterangan yang ada saat ini
+    // tetap tersedia dalam dropdown meskipun filter id_pekerjaan mungkin tidak cocok
+    if (initialData?.keterangan) {
+      const isAlreadyInList = filtered.some(k => k.text === initialData.keterangan);
+      if (!isAlreadyInList) {
+        const existingKeterangan = list.find(k => k.text === initialData.keterangan);
+        if (existingKeterangan) {
+          filtered.push(existingKeterangan);
+        }
+      }
+    }
+
+    return filtered;
+  }, [keteranganList, session, initialData]);
 
   // Ensure prioritas is a number from the start
   const initialPrioritas = initialData?.prioritas !== undefined ? Number(initialData.prioritas) : 1;
