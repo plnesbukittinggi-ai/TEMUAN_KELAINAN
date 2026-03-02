@@ -302,7 +302,13 @@ const AdminPage: React.FC<AdminPageProps> = ({
       }
       return matchUlp && matchFeeder && matchPekerjaan && matchDate;
     });
-    return filtered.sort((a, b) => parseRobustDate(b.tanggal).getTime() - parseRobustDate(a.tanggal).getTime());
+    
+    // Sort by Date (Oldest First)
+    return filtered.sort((a, b) => {
+      const dateA = parseRobustDate(a.tanggal).getTime();
+      const dateB = parseRobustDate(b.tanggal).getTime();
+      return dateA - dateB;
+    });
   }, [data, filterUlp, filterFeeder, filterPekerjaan, filterStartDate, filterEndDate]);
 
   const handleDownloadExcel = async () => {
@@ -312,7 +318,8 @@ const AdminPage: React.FC<AdminPageProps> = ({
     }
     setIsExporting(true);
     try {
-      const sortedForExport = [...filteredAndSortedData].sort((a, b) => parseRobustDate(a.tanggal).getTime() - parseRobustDate(a.tanggal).getTime());
+      // Use the already sorted data
+      const sortedForExport = [...filteredAndSortedData];
       const firstDataDate = parseRobustDate(sortedForExport[0]?.tanggal);
       const monthLabel = MONTHS.find(m => m.val === (firstDataDate.getMonth() + 1))?.label || 'Unknown';
       const yearLabel = firstDataDate.getFullYear();
