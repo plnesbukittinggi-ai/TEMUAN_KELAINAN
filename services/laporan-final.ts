@@ -55,7 +55,7 @@ export const ReportService = {
     worksheet.getCell('A1').alignment = { horizontal: 'center' };
 
     worksheet.mergeCells('A2:K2');
-    worksheet.getCell('A2').value = `FOTO INSPEKSI TEMUAN KELAINAN KONTRUKSI ${filters.pekerjaan || 'SEMUA'}`;
+    worksheet.getCell('A2').value = `FOTO INSPEKSI TEMUAN KELAINAN KONTRUKSI ${String(filters.pekerjaan || 'SEMUA').replace(/Tier/g, 'TIER')}`;
     worksheet.getCell('A2').font = { bold: true, size: 12 };
     worksheet.getCell('A2').alignment = { horizontal: 'center' };
 
@@ -78,12 +78,8 @@ export const ReportService = {
       cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
     });
 
-    /**
-     * Konversi Piksel ke Unit Lebar Excel:
-     * (Pixels - 5) / 7 ≈ Units.
-     * 128 Pixels ≈ 17.57 Units.
-     */
-    const colWidths = [5, 15, 15, 10, 20, 35, 25, 17.57, 17.57, 25, 45];
+    // Mengembalikan lebar kolom ke versi stabil (22 unit untuk foto)
+    const colWidths = [5, 15, 15, 10, 20, 35, 25, 22, 22, 25, 45];
     colWidths.forEach((w, i) => { 
       worksheet.getColumn(i + 1).width = w; 
     });
@@ -102,12 +98,8 @@ export const ReportService = {
         i + 1, cleanInspeksiDate, item.noTiang, item.noWO, item.feeder, item.lokasi || "-", extractCoordinates(item.geotag || ""), "", "", item.keterangan, statusText
       ]);
       
-      /**
-       * Konversi Piksel ke Poin Tinggi Baris:
-       * 1 Pixel = 0.75 Poin.
-       * 135 Pixels = 101.25 Poin.
-       */
-      row.height = 101.25;
+      // Mengembalikan tinggi baris ke versi stabil (110 poin)
+      row.height = 110;
       
       row.eachCell((cell) => {
         cell.alignment = { vertical: 'middle', wrapText: true };
@@ -119,15 +111,13 @@ export const ReportService = {
           const b64 = await getBase64FromUrl(formatDriveUrl(item.fotoTemuan));
           if (b64) {
             const imgId = workbook.addImage({ base64: b64, extension: 'png' });
-            // Posisi kolom H (indeks 7), ukuran pixel 128x135
+            // Mengembalikan dimensi foto ke versi stabil (155x140)
             worksheet.addImage(imgId, { 
-              tl: { col: 7, row: row.number - 1 }, 
-              ext: { width: 128, height: 135 } 
+              tl: { col: 7.1, row: row.number - 0.9 }, 
+              ext: { width: 155, height: 140 } 
             });
           }
-        } catch (e) {
-          console.error("Gagal memuat foto temuan ke Excel", e);
-        }
+        } catch (e) {}
       }
 
       if (item.fotoEksekusi) {
@@ -135,15 +125,13 @@ export const ReportService = {
           const b64 = await getBase64FromUrl(formatDriveUrl(item.fotoEksekusi));
           if (b64) {
             const imgId = workbook.addImage({ base64: b64, extension: 'png' });
-            // Posisi kolom I (indeks 8), ukuran pixel 128x135
+            // Mengembalikan dimensi foto ke versi stabil (155x140)
             worksheet.addImage(imgId, { 
-              tl: { col: 8, row: row.number - 1 }, 
-              ext: { width: 128, height: 135 } 
+              tl: { col: 8.1, row: row.number - 0.9 }, 
+              ext: { width: 155, height: 140 } 
             });
           }
-        } catch (e) {
-          console.error("Gagal memuat foto eksekusi ke Excel", e);
-        }
+        } catch (e) {}
       }
     }
 
@@ -180,7 +168,7 @@ export const ReportService = {
     doc.setFontSize(14);
     doc.text('LAPORAN BULANAN', 148, 15, { align: 'center' });
     doc.setFontSize(11);
-    doc.text(`FOTO INSPEKSI TEMUAN KELAINAN KONTRUKSI ${filters.pekerjaan || 'SEMUA'}`, 148, 22, { align: 'center' });
+    doc.text(`FOTO INSPEKSI TEMUAN KELAINAN KONTRUKSI ${String(filters.pekerjaan || 'SEMUA').replace(/Tier/g, 'TIER')}`, 148, 22, { align: 'center' });
     doc.text('TIM DIVISI INSPEKSI PLN ELECTRICITY SERVICES UL BUKITTINGGI', 148, 28, { align: 'center' });
     
     const tableBody = data.map((item, i) => {
