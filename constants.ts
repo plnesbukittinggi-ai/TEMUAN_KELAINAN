@@ -6,10 +6,10 @@ export const SPREADSHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfyc
 export const APP_VERSION = '1.0.7';
 
 export const INITIAL_PEKERJAAN: Pekerjaan[] = [
-  { id: 'PEK01', name: 'JTM Tier 1' },
-  { id: 'PEK02', name: 'JTM Tier 1 & 2' },
-  { id: 'PEK03', name: 'GARDU Tier 1' },
-  { id: 'PEK04', name: 'GARDU Tier 1 & 2' }
+  { id: 'PEK01', name: 'JTM TIER 1' },
+  { id: 'PEK02', name: 'JTM TIER 1 & 2' },
+  { id: 'PEK03', name: 'GARDU TIER 1' },
+  { id: 'PEK04', name: 'GARDU TIER 1 & 2' }
 ];
 
 export const INITIAL_INSPECTORS: Inspector[] = [
@@ -29,12 +29,12 @@ export const INITIAL_FEEDERS: Feeder[] = [
 ];
 
 export const INITIAL_KETERANGAN: Keterangan[] = [
-  // JTM Tier 1
+  // JTM TIER 1
   { id: 'K01', text: 'Pohon mendekati jaringan (ROW)', idPekerjaan: 'PEK01' },
   { id: 'K02', text: 'Tiang Miring', idPekerjaan: 'PEK01' },
   { id: 'K03', text: 'Isolator Flash', idPekerjaan: 'PEK01' },
   
-  // GARDU Tier 1
+  // GARDU TIER 1
   { id: 'K08', text: 'Level Oli Rendah', idPekerjaan: 'PEK03' },
   { id: 'K09', text: 'Bushing Kotor', idPekerjaan: 'PEK03' }
 ];
