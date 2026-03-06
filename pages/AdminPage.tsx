@@ -432,10 +432,26 @@ const AdminPage: React.FC<AdminPageProps> = ({
   };
 
   const currentFilteredFeedersInData = useMemo(() => {
-    const relevantData = filterUlp ? data.filter(d => d.ulp === filterUlp) : data;
-    const unique = Array.from(new Set(relevantData.map(d => d.feeder).filter(Boolean))).sort();
+    const filtered = data.filter(item => {
+      const matchUlp = !filterUlp || item.ulp === filterUlp;
+      const matchPekerjaan = !filterPekerjaan || item.pekerjaan === filterPekerjaan;
+      const itemDate = parseRobustDate(item.tanggal);
+      let matchDate = true;
+      if (filterStartDate) {
+        const start = new Date(filterStartDate);
+        start.setHours(0,0,0,0);
+        if (itemDate < start) matchDate = false;
+      }
+      if (filterEndDate) {
+        const end = new Date(filterEndDate);
+        end.setHours(23,59,59,999);
+        if (itemDate > end) matchDate = false;
+      }
+      return matchUlp && matchPekerjaan && matchDate;
+    });
+    const unique = Array.from(new Set(filtered.map(d => d.feeder).filter(Boolean))).sort();
     return unique;
-  }, [data, filterUlp]);
+  }, [data, filterUlp, filterPekerjaan, filterStartDate, filterEndDate]);
 
   return (
     <div className="pb-10">
@@ -833,6 +849,14 @@ const AdminPage: React.FC<AdminPageProps> = ({
             </div>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1"><p className="text-[8px] font-black text-slate-300 uppercase ml-1">Tgl Mulai</p>
+                  <input type="date" className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} />
+                </div>
+                <div className="space-y-1"><p className="text-[8px] font-black text-slate-300 uppercase ml-1">Tgl Akhir</p>
+                  <input type="date" className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterUlp} onChange={(e) => setFilterUlp(e.target.value)}>
                    <option value="">Semua ULP</option>
                    {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
@@ -846,14 +870,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
                  <option value="">Semua Jenis Pekerjaan</option>
                  {pekerjaanList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
               </select>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><p className="text-[8px] font-black text-slate-300 uppercase ml-1">Tgl Mulai</p>
-                  <input type="date" className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} />
-                </div>
-                <div className="space-y-1"><p className="text-[8px] font-black text-slate-300 uppercase ml-1">Tgl Akhir</p>
-                  <input type="date" className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} />
-                </div>
-              </div>
             </div>
             <button onClick={handleDownloadExcel} disabled={isExporting} className={`w-full py-4 rounded-2xl shadow-lg font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-3 ${isExporting ? 'bg-slate-200 text-slate-400' : 'bg-emerald-600 text-white active:scale-95'}`}>{isExporting ? '⏳ MENYIAPKAN FILE...' : '📗 DOWNLOAD LAPORAN EXCEL'}</button>
           </div>
