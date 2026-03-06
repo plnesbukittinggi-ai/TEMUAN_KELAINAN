@@ -1,4 +1,5 @@
 
+// Consolidated implementation in ReportService.ts
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -43,26 +44,25 @@ export const ReportService = {
   async downloadExcel(data: TemuanData[], filters: any) {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Laporan');
-    // ===============================
-// PAGE & PRINT SETUP
-// ===============================
-worksheet.pageSetup = {
-  paperSize: 9,            // A4
-  orientation: 'landscape',
-  fitToPage: true,
-  fitToWidth: 1,           // Semua kolom muat 1 halaman
-  fitToHeight: 0,
-  printTitlesRow: '9:9'    // BARIS HEADER (lihat catatan di bawah)
-};
+    
+    // PAGE & PRINT SETUP
+    worksheet.pageSetup = {
+      paperSize: 9,            // A4
+      orientation: 'landscape',
+      fitToPage: true,
+      fitToWidth: 1,           // Semua kolom muat 1 halaman
+      fitToHeight: 0,
+      printTitlesRow: '9:9'    // BARIS HEADER
+    };
 
-worksheet.pageSetup.margins = {
-  left: 0.3,
-  right: 0.3,
-  top: 0.5,
-  bottom: 0.5,
-  header: 0.3,
-  footer: 0.3
-};
+    worksheet.pageSetup.margins = {
+      left: 0.3,
+      right: 0.3,
+      top: 0.5,
+      bottom: 0.5,
+      header: 0.3,
+      footer: 0.3
+    };
 
     worksheet.mergeCells('A1:K1');
     worksheet.getCell('A1').value = 'LAPORAN BULANAN';
@@ -70,7 +70,7 @@ worksheet.pageSetup.margins = {
     worksheet.getCell('A1').alignment = { horizontal: 'center' };
 
     worksheet.mergeCells('A2:K2');
-    worksheet.getCell('A2').value = `FOTO INSPEKSI TEMUAN KELAINAN KONTRUKSI ${filters.pekerjaan || 'SEMUA'}`;
+    worksheet.getCell('A2').value = `FOTO INSPEKSI TEMUAN KELAINAN KONTRUKSI ${String(filters.pekerjaan || 'SEMUA').replace(/Tier/g, 'TIER')}`;
     worksheet.getCell('A2').font = { bold: true, size: 14 };
     worksheet.getCell('A2').alignment = { horizontal: 'center' };
 
@@ -85,42 +85,24 @@ worksheet.pageSetup.margins = {
     worksheet.getCell('A4').alignment = { horizontal: 'center' };
 
     worksheet.addRow([]);
-    // Pindah ke Kolom ke dua (Kolom B)
-    // Baris Nama Feeder
-const feederRow = worksheet.addRow(['', 'NAMA FEEDER', `: ${(filters.feeder || 'SEMUA').toUpperCase()}`]);
-feederRow.getCell(2).font = { bold: true }; // Menebalkan Label (Kolom B)
-feederRow.getCell(3).font = { bold: true }; // Menebalkan Value (Kolom C)
+    const feederRow = worksheet.addRow(['', 'NAMA FEEDER', `: ${(filters.feeder || 'SEMUA').toUpperCase()}`]);
+    feederRow.getCell(2).font = { bold: true };
+    feederRow.getCell(3).font = { bold: true };
 
-// Baris Bulan
-const bulanRow = worksheet.addRow(['', 'BULAN', `: ${(filters.bulan || '-').toUpperCase()}`]);
-bulanRow.getCell(2).font = { bold: true }; // Menebalkan Label (Kolom B)
-bulanRow.getCell(3).font = { bold: true }; // Menebalkan Value (Kolom C)
+    const bulanRow = worksheet.addRow(['', 'BULAN', `: ${(filters.bulan || '-').toUpperCase()}`]);
+    bulanRow.getCell(2).font = { bold: true };
+    bulanRow.getCell(3).font = { bold: true };
 
-worksheet.addRow([]);
+    worksheet.addRow([]);
 
-    // Headers excluding Priority
     const headerRow = worksheet.addRow([
       'NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEBELUM', 'FOTO SESUDAH', 'KETERANGAN', 'SARAN'
     ]);
     headerRow.eachCell((cell) => {
-    cell.font = { 
-        bold: true, 
-        color: { argb: '000000' }, // Font Hitam
-        name: 'Arial', // Opsional: Menambah kesan profesional
-        size: 11
-    };
-    cell.fill = { 
-        type: 'pattern', 
-        pattern: 'solid', 
-        fgColor: { argb: '87CEEB' } // Warna Biru Langit (Sky Blue)
-    };
-    cell.alignment = { horizontal: 'center', vertical: 'middle' };
-    cell.border = { 
-        top: { style: 'thin' }, 
-        left: { style: 'thin' }, 
-        bottom: { style: 'thin' }, 
-        right: { style: 'thin' } 
-    };
+      cell.font = { bold: true, color: { argb: '000000' }, name: 'Arial', size: 11 };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '87CEEB' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
     });
 
     worksheet.getColumn(1).width = 5;
@@ -130,49 +112,27 @@ worksheet.addRow([]);
     worksheet.getColumn(5).width = 20;
     worksheet.getColumn(6).width = 35;
     worksheet.getColumn(7).width = 25;
-    
-    // Set Column Width to 128 pixels (approx 18.2 in Excel units)
-    worksheet.getColumn(8).width = 18.2; // Foto Sebelum
-    worksheet.getColumn(9).width = 18.2; // Foto Sesudah
-    
-    worksheet.getColumn(10).width = 25; // Keterangan
-    worksheet.getColumn(11).width = 45; // Saran
+    worksheet.getColumn(8).width = 18.2;
+    worksheet.getColumn(9).width = 18.2;
+    worksheet.getColumn(10).width = 25;
+    worksheet.getColumn(11).width = 45;
 
     for (let i = 0; i < data.length; i++) {
       const item = data[i];
-      
-      // Membersihkan tanggal agar hanya menampilkan YYYY-MM-DD (menghapus T... atau spasi...)
       const cleanEksekusiDate = item.tanggalEksekusi ? item.tanggalEksekusi.split(/[ T,]/)[0] : '-';
-      
       let displayStatus: string = item.status;
       if (item.status === 'SUDAH EKSEKUSI') {
         displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${cleanEksekusiDate}`;
       }
-
-      // Format tanggal inspeksi juga dibersihkan
       const cleanInspeksiDate = item.tanggal ? item.tanggal.split(/[ T,]/)[0] : '-';
 
       const row = worksheet.addRow([
-        i + 1,
-        cleanInspeksiDate,
-        item.noTiang,
-        item.noWO,
-        item.feeder,
-        item.lokasi || "-",
-        item.geotag || "-",
-        "", // Foto Sebelum (Placeholder)
-        "", // Foto Sesudah (Placeholder)
-        item.keterangan,
-        displayStatus
+        i + 1, cleanInspeksiDate, item.noTiang, item.noWO, item.feeder, item.lokasi || "-", item.geotag || "-", "", "", item.keterangan, displayStatus
       ]);
-      
       row.height = 101.25;
       
       row.eachCell((cell) => {
-        cell.font = { 
-        color: { argb: '000000' }, 
-        size: 10,
-        name: 'Arial' };
+        cell.font = { color: { argb: '000000' }, size: 10, name: 'Arial' };
         cell.alignment = { vertical: 'middle', wrapText: true };
         cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
       });
@@ -183,7 +143,7 @@ worksheet.addRow([]);
           if (base64) {
             const imgId = workbook.addImage({ base64, extension: 'png' });
             worksheet.addImage(imgId, {
-              tl: { col: 7, row: row.number - 1 }, // Column H (index 7)
+              tl: { col: 7, row: row.number - 1 },
               ext: { width: 128, height: 135 }
             });
           }
@@ -196,7 +156,7 @@ worksheet.addRow([]);
           if (base64) {
             const imgId = workbook.addImage({ base64, extension: 'png' });
             worksheet.addImage(imgId, {
-              tl: { col: 8, row: row.number - 1 }, // Column I (index 8)
+              tl: { col: 8, row: row.number - 1 },
               ext: { width: 128, height: 135 }
             });
           }
@@ -211,7 +171,6 @@ worksheet.addRow([]);
     const rowSig4 = worksheet.addRow(['', '', '', '', '', '', '', '', '', '', `: ${filters.inspektor2 || '-'}`]);
     const rowSig5 = worksheet.addRow(['', '', '', '', '', '', '', '', '', 'ADM INSPEKSI', `: ENDANG WINARNINGSIH`]);
 
-    // Tambahkan border untuk baris tanda tangan (Kolom J dan K)
     [rowSig1, rowSig2, rowSig3, rowSig4, rowSig5].forEach(row => {
       const cellJ = row.getCell(10);
       const cellK = row.getCell(11);
@@ -226,21 +185,18 @@ worksheet.addRow([]);
     const a = document.createElement('a');
     a.href = url;
     const fileNameExcel = `${(filters.pekerjaan || 'LAPORAN')}_${(filters.feeder || 'SEMUA')}_${(filters.bulan || 'TAHUN')}`.toUpperCase();
-
     a.download = `${fileNameExcel}.xlsx`;
     a.click();
   },
 
   async downloadPDF(data: TemuanData[], filters: any) {
     const doc = new jsPDF('l', 'mm', 'a4');
-    
     doc.setFontSize(14);
     doc.text('LAPORAN BULANAN', 148, 15, { align: 'center' });
     doc.setFontSize(12);
-    doc.text(`FOTO INSPEKSI TEMUAN KELAINAN KONTRUKSI ${filters.pekerjaan || 'SEMUA'}`, 148, 22, { align: 'center' });
+    doc.text(`FOTO INSPEKSI TEMUAN KELAINAN KONTRUKSI ${String(filters.pekerjaan || 'SEMUA').replace(/Tier/g, 'TIER')}`, 148, 22, { align: 'center' });
     doc.setFontSize(10);
     doc.text('TIM DIVISI INSPEKSI PLN ELECTRICITY SERVICES UL BUKITTINGGI', 148, 28, { align: 'center' });
-
     doc.text(`NAMA FEEDER : ${filters.feeder || 'SEMUA'}`, 15, 38);
     doc.text(`BULAN       : ${filters.bulan || '-'}`, 15, 43);
 
@@ -252,17 +208,7 @@ worksheet.addRow([]);
       }
       const cleanInspeksiDate = item.tanggal ? item.tanggal.split(/[ T,]/)[0] : '-';
       return [
-        i + 1,
-        cleanInspeksiDate,
-        item.noTiang,
-        item.noWO,
-        item.feeder,
-        item.lokasi || "-",
-        item.prioritas ? `${item.prioritas} Bintang` : "-",
-        '',
-        '',
-        item.keterangan,
-        displayStatus
+        i + 1, cleanInspeksiDate, item.noTiang, item.noWO, item.feeder, item.lokasi || "-", item.prioritas ? `${item.prioritas} Bintang` : "-", '', '', item.keterangan, displayStatus
       ];
     });
 
@@ -273,13 +219,7 @@ worksheet.addRow([]);
       theme: 'grid',
       headStyles: { fillColor: [40, 40, 40], fontSize: 7, halign: 'center' },
       styles: { fontSize: 6, cellPadding: 1.5, minCellHeight: 25, valign: 'middle' },
-      columnStyles: {
-        5: { cellWidth: 30 },
-        6: { cellWidth: 15 },
-        7: { cellWidth: 20 },
-        8: { cellWidth: 20 },
-        9: { cellWidth: 40 }, 
-      }
+      columnStyles: { 5: { cellWidth: 30 }, 6: { cellWidth: 15 }, 7: { cellWidth: 20 }, 8: { cellWidth: 20 }, 9: { cellWidth: 40 } }
     });
 
     const finalY = (doc as any).lastAutoTable?.finalY || 150;
@@ -288,7 +228,6 @@ worksheet.addRow([]);
     doc.text(`PETUGAS      : ${filters.inspektor1 || '-'}`, 220, finalY + 20);
     doc.text(`               ${filters.inspektor2 || '-'}`, 220, finalY + 25);
     doc.text(`ADMINSPEKSI  : ENDANG WINARNINGSIH`, 220, finalY + 30);
-
     doc.save(`Laporan_${filters.pekerjaan || 'PLN'}.pdf`);
   }
 };
