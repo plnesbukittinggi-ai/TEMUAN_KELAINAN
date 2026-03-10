@@ -61,6 +61,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
   onUpdateInspectors, onUpdateUlp, onUpdateFeeders
 }) => {
   const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP' | 'REKAP_JENIS'>('DASHBOARD');
+  const [dataSubTab, setDataSubTab] = useState<'PLN_ES' | 'PLN'>('PLN_ES');
   const [aiInsight, setAiInsight] = useState<string>('Menganalisis performa data...');
   
   const [dashFilterMonth, setDashFilterMonth] = useState<number>(new Date().getMonth() + 1);
@@ -285,6 +286,10 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
   const filteredAndSortedData = useMemo(() => {
     const filtered = data.filter(item => {
+      // Sub-tab filter: DATA PLN ES is non-PLN inspector, DATA PLN is PLN inspector
+      if (dataSubTab === 'PLN_ES' && item.inspektor1 === 'PLN') return false;
+      if (dataSubTab === 'PLN' && item.inspektor1 !== 'PLN') return false;
+
       const matchUlp = !filterUlp || item.ulp === filterUlp;
       const matchFeeder = !filterFeeder || item.feeder === filterFeeder;
       const matchPekerjaan = !filterPekerjaan || item.pekerjaan === filterPekerjaan;
@@ -309,7 +314,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
       const dateB = parseRobustDate(b.tanggal).getTime();
       return dateA - dateB;
     });
-  }, [data, filterUlp, filterFeeder, filterPekerjaan, filterStartDate, filterEndDate]);
+  }, [data, filterUlp, filterFeeder, filterPekerjaan, filterStartDate, filterEndDate, dataSubTab]);
 
   const handleDownloadExcel = async () => {
     if (filteredAndSortedData.length === 0) {
@@ -433,6 +438,9 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
   const currentFilteredFeedersInData = useMemo(() => {
     const filtered = data.filter(item => {
+      if (dataSubTab === 'PLN_ES' && item.inspektor1 === 'PLN') return false;
+      if (dataSubTab === 'PLN' && item.inspektor1 !== 'PLN') return false;
+
       const matchUlp = !filterUlp || item.ulp === filterUlp;
       const matchPekerjaan = !filterPekerjaan || item.pekerjaan === filterPekerjaan;
       const itemDate = parseRobustDate(item.tanggal);
@@ -451,7 +459,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
     });
     const unique = Array.from(new Set(filtered.map(d => d.feeder).filter(Boolean))).sort();
     return unique;
-  }, [data, filterUlp, filterPekerjaan, filterStartDate, filterEndDate]);
+  }, [data, filterUlp, filterPekerjaan, filterStartDate, filterEndDate, dataSubTab]);
 
   return (
     <div className="pb-10">
@@ -561,7 +569,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
                     </Pie>
                     <Tooltip 
                       contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', fontSize: '10px', fontWeight: 'bold' }}
-                      formatter={(value: number | undefined) => [`${value ?? 0} Data`, 'Status']}
+                      formatter={(value: any) => [`${value ?? 0} Data`, 'Status']}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -843,6 +851,21 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
       {tab === 'DATA' && (
         <div className="space-y-6 animate-fade-in">
+          <div className="flex bg-slate-100 p-1 rounded-2xl gap-1 mb-2">
+            <button 
+              onClick={() => setDataSubTab('PLN_ES')}
+              className={`flex-1 py-3 text-[10px] font-black rounded-xl transition-all tracking-widest uppercase ${dataSubTab === 'PLN_ES' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              DATA PLN ES
+            </button>
+            <button 
+              onClick={() => setDataSubTab('PLN')}
+              className={`flex-1 py-3 text-[10px] font-black rounded-xl transition-all tracking-widest uppercase ${dataSubTab === 'PLN' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              DATA PLN
+            </button>
+          </div>
+
           <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
             <div className="flex justify-between items-center mb-1"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Saring Data Laporan</p>
               {(filterUlp || filterFeeder || filterPekerjaan || filterStartDate || filterEndDate) && (<button onClick={resetDataFilters} className="text-[9px] font-black text-red-500 uppercase tracking-widest">Reset</button>)}
