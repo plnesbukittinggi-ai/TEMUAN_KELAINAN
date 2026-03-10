@@ -110,7 +110,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
           <div className="inline-block mb-6 p-3 bg-white rounded-[2rem] shadow-xl border border-slate-100">
             <img src={LOGO_URL} alt="Logo" className="w-20 h-20 object-contain" />
           </div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Aplikasi Temuan</h2>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Sistem Informasi Temuan Kelainan</h2>
           <p className="text-slate-500 text-[10px] mt-1 font-bold uppercase tracking-[0.2em] opacity-70">PLN ES BUKITTINGGI</p>
         </div>
 
