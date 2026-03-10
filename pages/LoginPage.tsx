@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { AppRole, LoginSession, Inspector, ULP, Pekerjaan } from '../types';
 import { ADMIN_PASSWORD } from '../constants';
@@ -52,6 +51,24 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
     }
 
     if (selectedRole === AppRole.INSPEKSI) {
+      const isPLN = formData.inspektor1 === 'PLN';
+      if (isPLN) {
+        // If PLN, we bypass Inspektur 2 and Jenis Pekerjaan
+        if (!formData.inspektor1 || !formData.ulp) {
+          alert('⚠️ Mohon lengkapi Unit Pelaksana!');
+          return;
+        }
+        // Set defaults for the session
+        const sessionData = {
+          ...formData,
+          inspektor2: '-',
+          idPekerjaan: 'PLN',
+          pekerjaan: 'PLN'
+        };
+        onLogin({ role: selectedRole!, ...sessionData } as LoginSession);
+        return;
+      }
+
       if (!formData.inspektor1 || !formData.inspektor2 || !formData.ulp || !formData.idPekerjaan) {
         alert('⚠️ Mohon lengkapi seluruh detail inspeksi dan Jenis Pekerjaan!');
         return;
@@ -67,6 +84,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
         alert('⚠️ Mohon lengkapi detail unit!');
         return;
       }
+      // Memberikan penanda 'team' agar tombol Antrean Eksekusi muncul di Monitoring
       formData.team = 'EKSEKUTOR';
     }
 
@@ -87,30 +105,30 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
 
   if (view === 'MENU') {
     return (
-      <div className="py-6 sm:py-12 animate-fade-in max-w-4xl mx-auto">
-        <div className="text-center mb-10 sm:mb-16">
-          <div className="inline-block mb-6 p-3 sm:p-5 bg-white rounded-[2rem] sm:rounded-[3rem] shadow-xl border border-slate-100">
-            <img src={LOGO_URL} alt="Logo" className="w-20 h-20 sm:w-28 sm:h-28 object-contain" />
+      <div className="py-6 animate-fade-in">
+        <div className="text-center mb-10">
+          <div className="inline-block mb-6 p-3 bg-white rounded-[2rem] shadow-xl border border-slate-100">
+            <img src={LOGO_URL} alt="Logo" className="w-20 h-20 object-contain" />
           </div>
-          <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">Sistem Temuan Terpadu</h2>
-          <p className="text-slate-500 text-[10px] sm:text-xs mt-2 font-bold uppercase tracking-[0.2em] opacity-70">UNIT LAYANAN BUKITTINGGI - PLN ES</p>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Aplikasi Temuan</h2>
+          <p className="text-slate-500 text-[10px] mt-1 font-bold uppercase tracking-[0.2em] opacity-70">PLN ES BUKITTINGGI</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 px-4">
+        <div className="grid grid-cols-1 gap-4">
           {menuItems.map((item) => (
             <button 
               key={item.role}
               onClick={() => handleSelectRole(item.role)}
-              className="group flex items-center p-5 sm:p-8 rounded-[2rem] bg-white border border-slate-200 hover:border-indigo-500 hover:shadow-2xl transition-all duration-300 active:scale-95 text-left"
+              className="group flex items-center p-5 rounded-[2rem] bg-white border border-slate-200 hover:border-indigo-500 hover:shadow-2xl transition-all duration-300 active:scale-95"
             >
-              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-2xl sm:text-3xl mr-4 sm:mr-6 shadow-inner group-hover:bg-indigo-50 transition-colors">
+              <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-2xl mr-4 shadow-inner group-hover:bg-indigo-50 transition-colors">
                 {item.icon}
               </div>
-              <div className="flex-1">
-                <p className="font-bold text-slate-900 text-sm sm:text-base tracking-tight">{item.title}</p>
-                <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5 font-medium">{item.desc}</p>
+              <div className="text-left flex-1">
+                <p className="font-bold text-slate-900 text-sm tracking-tight">{item.title}</p>
+                <p className="text-[11px] text-slate-400 mt-0.5 font-medium">{item.desc}</p>
               </div>
-              <div className="text-slate-300 group-hover:text-indigo-500 transition-colors text-xl">→</div>
+              <div className="text-slate-300 group-hover:text-indigo-500 transition-colors">→</div>
             </button>
           ))}
         </div>
@@ -119,7 +137,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
   }
 
   return (
-    <div className="py-4 sm:py-8 animate-slide-up max-w-2xl mx-auto">
+    <div className="py-4 animate-slide-up">
       <button 
         onClick={handleBack} 
         className="flex items-center gap-3 px-5 py-3 bg-white border border-slate-200 rounded-2xl shadow-sm hover:bg-slate-50 active:scale-95 transition-all mb-8 group"
@@ -128,30 +146,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
         <span className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">Kembali</span>
       </button>
 
-      <div className="bg-white p-8 sm:p-12 rounded-[3rem] border border-slate-200 shadow-2xl space-y-6">
-        <div className="text-center mb-6">
-          <p className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.3em] mb-1">Konfigurasi Akses</p>
-          <h3 className="text-xl sm:text-2xl font-black text-slate-900 uppercase">{selectedRole?.replace('_', ' ')}</h3>
+      <div className="bg-white p-8 rounded-[3rem] border border-slate-200 shadow-2xl space-y-6">
+        <div className="text-center mb-4">
+          <p className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.3em] mb-1">Konfigurasi Akses {isLoading && '(Syncing...)'}</p>
+          <h3 className="text-xl font-black text-slate-900 uppercase">{selectedRole?.replace('_', ' ')}</h3>
         </div>
 
         {selectedRole === AppRole.INSPEKSI && (
-          <div className="space-y-5">
-            <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">
-                Jenis Pekerjaan *
-              </label>
-              <select 
-                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-100"
-                value={formData.idPekerjaan || ''}
-                onChange={handlePekerjaanChange}
-              >
-                <option value="">-- Pilih Pekerjaan --</option>
-                {pekerjaanList.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </div>
-
+          <div className="space-y-4">
             <div>
               <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Unit Pelaksana (ULP) *</label>
               <select 
@@ -164,15 +166,23 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
               </select>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Inspektur 1</label>
                 <select 
-                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] font-bold outline-none" 
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-[10px] font-bold outline-none" 
                   value={formData.inspektor1 || ''}
-                  onChange={(e) => setFormData({ ...formData, inspektor1: e.target.value })}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'PLN') {
+                      setFormData({ ...formData, inspektor1: val, inspektor2: '', idPekerjaan: '', pekerjaan: '' });
+                    } else {
+                      setFormData({ ...formData, inspektor1: val });
+                    }
+                  }}
                 >
-                  <option value="">Pilih Nama</option>
+                  <option value="">Nama</option>
+                  <option value="PLN">PLN</option>
                   {inspectors
                     .filter(i => i.name !== formData.inspektor2)
                     .map(i => <option key={i.id} value={i.name}>{i.name}</option>)}
@@ -181,23 +191,40 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
               <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Inspektur 2</label>
                 <select 
-                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] font-bold outline-none" 
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-[10px] font-bold outline-none disabled:opacity-50 disabled:bg-slate-200" 
                   value={formData.inspektor2 || ''}
+                  disabled={formData.inspektor1 === 'PLN'}
                   onChange={(e) => setFormData({ ...formData, inspektor2: e.target.value })}
                 >
-                  <option value="">Pilih Nama</option>
+                  <option value="">Nama</option>
                   {inspectors
                     .filter(i => i.name !== formData.inspektor1)
                     .map(i => <option key={i.id} value={i.name}>{i.name}</option>)}
                 </select>
               </div>
             </div>
+
+            <div>
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">
+                Jenis Pekerjaan * {pekerjaanList.length === 0 && <span className="text-red-500 italic">(Memuat data...)</span>}
+              </label>
+              <select 
+                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-100 disabled:opacity-50 disabled:bg-slate-200"
+                value={formData.idPekerjaan || ''}
+                disabled={formData.inspektor1 === 'PLN'}
+                onChange={handlePekerjaanChange}
+              >
+                <option value="">-- Pilih Pekerjaan --</option>
+                {pekerjaanList.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
         )}
 
         {selectedRole === AppRole.EKSEKUSI && (
           <div className="space-y-4">
-            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1">Unit Pelaksana (ULP)</label>
             <select 
               className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" 
               value={formData.ulp || ''}
@@ -210,38 +237,32 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
         )}
 
         {selectedRole === AppRole.ADMIN && (
-          <div className="space-y-4">
-            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1">Password Administrator</label>
-            <input 
-              type="password" 
-              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-indigo-500"
-              placeholder="Masukkan Kode Keamanan"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
+          <input 
+            type="password" 
+            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-indigo-500"
+            placeholder="Masukkan Kode Admin"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
         )}
 
         {selectedRole === AppRole.VIEWER && (
-          <div className="space-y-4">
-            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1">Unit Pelaksana (ULP)</label>
-            <select 
-              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" 
-              value={formData.ulp || ''}
-              onChange={(e) => setFormData({ ...formData, ulp: e.target.value })}
-            >
-              <option value="">Pilih Unit (ULP)</option>
-              {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
-            </select>
-          </div>
+          <select 
+            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" 
+            value={formData.ulp || ''}
+            onChange={(e) => setFormData({ ...formData, ulp: e.target.value })}
+          >
+            <option value="">Pilih Unit (ULP)</option>
+            {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+          </select>
         )}
 
         <button 
           onClick={handleFinalLogin}
           disabled={isLoading && pekerjaanList.length === 0}
-          className={`w-full ${isLoading && pekerjaanList.length === 0 ? 'bg-slate-400' : 'bg-slate-900'} text-white font-black py-5 rounded-2xl shadow-2xl active:scale-95 transition-all text-xs sm:text-sm uppercase tracking-[0.3em] mt-6`}
+          className={`w-full ${isLoading && pekerjaanList.length === 0 ? 'bg-slate-400' : 'bg-slate-900'} text-white font-black py-5 rounded-2xl shadow-2xl active:scale-95 transition-all text-xs uppercase tracking-[0.3em] mt-4`}
         >
-          {isLoading && pekerjaanList.length === 0 ? 'Menghubungkan Database...' : 'Masuk Ke Sistem →'}
+          {isLoading && pekerjaanList.length === 0 ? 'Mohon Tunggu...' : 'Masuk Sistem →'}
         </button>
       </div>
     </div>
