@@ -235,7 +235,7 @@ const App: React.FC = () => {
               <img src={LOGO_URL} alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
             </div>
             <div>
-              <h1 className="font-bold text-xs sm:text-sm tracking-tight uppercase">Manajemen Temuan & Eksekusi</h1>
+              <h1 className="font-bold text-xs sm:text-sm tracking-tight uppercase">Sistem Informasi Temuan Kelainan</h1>
               <p className="text-[9px] sm:text-[10px] text-slate-400 font-medium">PLN ES Bukittinggi</p>
             </div>
           </div>
@@ -263,8 +263,8 @@ const App: React.FC = () => {
             </p>
           </div>
           
-          <p className="text-[7px] font-bold text-slate-300 uppercase tracking-widest hidden sm:block">
-            Sistem Informasi Distribusi v{APP_VERSION}
+          <p className="text-[7px] font-black text-slate-700 uppercase tracking-widest hidden sm:block">
+            Sistem Informasi Temuan Kelainan V{APP_VERSION}
           </p>
 
           <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">
