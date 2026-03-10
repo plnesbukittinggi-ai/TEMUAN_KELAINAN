@@ -27,6 +27,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
     const targetNameNorm = normalize(session.pekerjaan);
 
     const filtered = list.filter(k => {
+      if (targetIdNorm === 'pln') return true; // Show all if PLN mode
       const currentKIdNorm = normalize(k.idPekerjaan);
       const matchById = (targetIdNorm !== "" && currentKIdNorm === targetIdNorm);
       const matchByName = (targetNameNorm !== "" && currentKIdNorm === targetNameNorm);
