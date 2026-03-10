@@ -38,6 +38,7 @@ const getDefaultMonthDates = () => {
 
 const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTemuan, onAddEksekusi, onEdit, currentSession }) => {
   const initialDates = getDefaultMonthDates();
+  const [activeTab, setActiveTab] = useState<'MONITORING' | 'PLN'>('MONITORING');
   const [filter, setFilter] = useState<'ALL' | 'BELUM EKSEKUSI' | 'SUDAH EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN' | 'KENDALA MATERIAL'>('ALL');
   const [selectedFeeder, setSelectedFeeder] = useState<string>('');
   const [startDate, setStartDate] = useState<string>(initialDates.start);
@@ -96,12 +97,22 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
   };
 
   const uniqueFeeders = useMemo(() => {
-    const feeders = data.map(item => item.feeder).filter(Boolean);
+    const tabData = data.filter(item => {
+      if (activeTab === 'MONITORING') return item.inspektor1 !== 'PLN';
+      return item.inspektor1 === 'PLN';
+    });
+    const feeders = tabData.map(item => item.feeder).filter(Boolean);
     return Array.from(new Set(feeders)).sort();
-  }, [data]);
+  }, [data, activeTab]);
 
   const sortedAndFilteredData = useMemo(() => {
-    const filtered = data.filter(item => {
+    // First filter by tab
+    const tabData = data.filter(item => {
+      if (activeTab === 'MONITORING') return item.inspektor1 !== 'PLN';
+      return item.inspektor1 === 'PLN';
+    });
+
+    const filtered = tabData.filter(item => {
       const dDate = parseRobustDate(item.tanggal);
       const dDateNoTime = new Date(dDate.getFullYear(), dDate.getMonth(), dDate.getDate());
 
@@ -138,7 +149,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
       const pB = Number(b.prioritas || 3);
       return pA - pB;
     });
-  }, [data, filter, selectedFeeder, startDate, endDate, showOnlyMyData, currentSession]);
+  }, [data, filter, selectedFeeder, startDate, endDate, showOnlyMyData, currentSession, activeTab]);
 
   const resetFilters = () => {
     const dates = getDefaultMonthDates();
@@ -183,6 +194,21 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
           <h2 className="text-lg font-bold text-slate-900 tracking-tight">Monitoring Data</h2>
           <p className="text-[11px] text-indigo-600 font-bold uppercase tracking-wider">{ulp}</p>
         </div>
+      </div>
+
+      <div className="flex bg-white border border-slate-200 p-1.5 rounded-2xl mb-6 shadow-sm gap-1">
+        <button 
+          onClick={() => setActiveTab('MONITORING')}
+          className={`flex-1 py-3 text-[10px] font-black rounded-xl transition-all tracking-widest uppercase ${activeTab === 'MONITORING' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
+        >
+          HALAMAN PLN ES
+        </button>
+        <button 
+          onClick={() => setActiveTab('PLN')}
+          className={`flex-1 py-3 text-[10px] font-black rounded-xl transition-all tracking-widest uppercase ${activeTab === 'PLN' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
+        >
+          Halaman PLN
+        </button>
       </div>
 
       {(onAddTemuan || onAddEksekusi) && (
