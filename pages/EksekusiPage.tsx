@@ -1,6 +1,7 @@
+
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { LoginSession, TemuanData } from '../types';
-import { compressImage } from '../utils/imageUtils';
+import { LoginSession, TemuanData, Feeder } from '../types';
+import { compressImage, getDisplayImageUrl } from '../utils/imageUtils';
 
 interface EksekusiPageProps {
   session: LoginSession;
@@ -22,6 +23,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedFeeder, setSelectedFeeder] = useState<string>('');
   const [previewImage, setPreviewImage] = useState<{url: string, title: string} | null>(null);
   const [subFilter, setSubFilter] = useState<EksekusiSubFilter>('BELUM EKSEKUSI');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -142,6 +144,11 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
     finally { setIsSaving(false); }
   };
 
+  const availableFeeders = useMemo(() => {
+    const uniqueFeeders = Array.from(new Set(data.map(item => item.feeder).filter(Boolean)));
+    return uniqueFeeders.sort();
+  }, [data]);
+
   const filteredQueue = useMemo(() => {
     const filtered = data.filter(item => {
       // Apply subFilter first
@@ -150,6 +157,10 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       const noTiangStr = String(item.noTiang || '');
       const matchesSearch = !searchQuery || noTiangStr.toLowerCase().includes(searchQuery.toLowerCase());
       if (!matchesSearch) return false;
+
+      const matchesFeeder = !selectedFeeder || item.feeder === selectedFeeder;
+      if (!matchesFeeder) return false;
+
       const itemDate = parseRobustDate(item.tanggal);
       const itemDateOnly = new Date(itemDate.getFullYear(), itemDate.getMonth(), itemDate.getDate());
       if (startDate) {
@@ -163,7 +174,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       return true;
     });
     return filtered.sort((a, b) => parseRobustDate(b.tanggal).getTime() - parseRobustDate(a.tanggal).getTime());
-  }, [data, startDate, endDate, searchQuery, subFilter]);
+  }, [data, startDate, endDate, searchQuery, subFilter, selectedFeeder]);
 
   const renderStars = (count: number) => {
     const priority = Number(count || 1);
@@ -191,17 +202,6 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
 
       {!initialData && (
         <div className="space-y-4">
-          {/* Tampilan Total Data Atrean */}
-          <div className="bg-indigo-600 p-6 rounded-[2rem] shadow-xl border border-indigo-500 flex items-center justify-between animate-slide-up">
-            <div>
-              <p className="text-[10px] font-black text-indigo-200 uppercase tracking-widest mb-1">Status Atrean: {subFilter}</p>
-              <h3 className="text-white text-2xl font-black leading-none">Total {filteredQueue.length} Data</h3>
-            </div>
-            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl">
-              📊
-            </div>
-          </div>
-
           <div className="bg-white p-5 rounded-3xl border border-slate-200 mb-2 shadow-sm space-y-4">
             <div>
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Cari No. Tiang</p>
@@ -211,10 +211,22 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
               </div>
             </div>
             <div className="pt-2 border-t border-slate-50">
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Saring Tanggal Temuan</p>
-              <div className="grid grid-cols-2 gap-3">
-                <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Saring Feeder & Tanggal</p>
+              <div className="space-y-3">
+                <select 
+                  className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500 transition-all"
+                  value={selectedFeeder}
+                  onChange={(e) => setSelectedFeeder(e.target.value)}
+                >
+                  <option value="">SEMUA FEEDER</option>
+                  {availableFeeders.map(feederName => (
+                    <option key={feederName} value={feederName}>{feederName}</option>
+                  ))}
+                </select>
+                <div className="grid grid-cols-2 gap-3">
+                  <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                  <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                </div>
               </div>
             </div>
           </div>
@@ -229,6 +241,10 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                 {f === 'TIDAK DAPAT IZIN' ? 'TIDAK IZIN' : f}
               </button>
             ))}
+          </div>
+
+          <div className="flex justify-between items-center px-1 mt-1">
+             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Atrean: <span className="text-indigo-600">{filteredQueue.length}</span> Data</p>
           </div>
         </div>
       )}
@@ -327,7 +343,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                     <div className="animate-spin h-6 w-6 border-4 border-emerald-500 border-t-transparent rounded-full"></div>
                   ) : executionPhoto ? (
                     <div className="relative w-full">
-                      <img src={executionPhoto} alt="Preview" className="w-full h-56 object-cover rounded-xl" />
+                      <img src={getDisplayImageUrl(executionPhoto)} alt="Preview" className="w-full h-56 object-cover rounded-xl" />
                       <button onClick={() => setExecutionPhoto('')} className="absolute top-2 right-2 bg-slate-900/80 text-white w-8 h-8 rounded-lg flex items-center justify-center">✕</button>
                     </div>
                   ) : (
@@ -350,7 +366,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
               <div className="grid grid-cols-3 gap-2 mt-3">
                 <button onClick={() => handleAction('BUTUH PADAM')} className="py-3 rounded-xl bg-amber-500 text-white text-[8px] font-bold uppercase">⚡ Butuh Padam</button>
                 <button onClick={() => handleAction('TIDAK DAPAT IZIN')} className="py-3 rounded-xl bg-orange-600 text-white text-[8px] font-bold uppercase">🚫 Tidak Izin</button>
-                <button onClick={() => handleAction('KENDALA MATERIAL')} className="py-3 rounded-xl bg-red-600 text-white text-[8px] font-bold uppercase">📦 Kendala Material</button>
+                <button onClick={() => handleAction('KENDALA MATERIAL')} className="py-3 rounded-xl bg-red-600 text-white text-[8px] font-bold uppercase">📦 Kendala</button>
               </div>
             </div>
           </div>
