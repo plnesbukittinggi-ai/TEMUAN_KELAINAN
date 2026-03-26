@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { LoginSession, TemuanData, Feeder, Keterangan } from '../types';
-import { compressImage } from '../utils/imageUtils';
+import { compressImage } from '../utils/image-utils';
+
+import { getDisplayImageUrl } from '../utils/image-utils';
 
 interface InspeksiPageProps {
   session: LoginSession;
@@ -242,7 +244,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
              <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full"></div>
           ) : formData.fotoTemuan ? (
             <div className="w-full h-full relative">
-              <img src={formData.fotoTemuan} className="w-full h-64 object-cover rounded-2xl" alt="Preview" />
+              <img src={getDisplayImageUrl(formData.fotoTemuan)} className="w-full h-64 object-cover rounded-2xl" alt="Preview" />
               <button type="button" onClick={() => setFormData({ ...formData, fotoTemuan: '' })} className="absolute top-2 right-2 bg-slate-900/80 text-white w-8 h-8 rounded-lg flex items-center justify-center">✕</button>
             </div>
           ) : (
