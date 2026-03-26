@@ -143,10 +143,20 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
     finally { setIsSaving(false); }
   };
 
+  // Reset filter when tab changes
+  useEffect(() => {
+    setSelectedFeeder('');
+  }, [subFilter]);
+
   const availableFeeders = useMemo(() => {
-    const uniqueFeeders = Array.from(new Set(data.map(item => item.feeder).filter(Boolean)));
+    const uniqueFeeders = Array.from(new Set(
+      data
+        .filter(item => item.status === subFilter)
+        .map(item => item.feeder)
+        .filter(Boolean)
+    ));
     return uniqueFeeders.sort();
-  }, [data]);
+  }, [data, subFilter]);
 
   const filteredQueue = useMemo(() => {
     const filtered = data.filter(item => {
