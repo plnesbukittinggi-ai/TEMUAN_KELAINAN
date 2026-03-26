@@ -1,6 +1,5 @@
-
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { LoginSession, TemuanData, Feeder } from '../types';
+import { LoginSession, TemuanData } from '../types';
 import { compressImage, getDisplayImageUrl } from '../utils/imageUtils';
 
 interface EksekusiPageProps {
