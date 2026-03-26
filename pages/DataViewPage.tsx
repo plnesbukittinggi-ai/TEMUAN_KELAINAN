@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { TemuanData, LoginSession } from '../types';
+import { getDisplayImageUrl } from '../utils/image-utils';
 
 interface DataViewPageProps {
   ulp: string;
@@ -47,16 +48,6 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
   
   // State for toggling "Only My Data" filter
   const [showOnlyMyData, setShowOnlyMyData] = useState<boolean>(!!(currentSession?.inspektor1 || currentSession?.inspektor2));
-
-  const formatDriveUrl = (url?: string) => {
-    if (!url) return '';
-    if (url.indexOf('data:image') === 0) return url;
-    if (url.includes('drive.google.com/file/d/')) {
-      const id = url.split('/d/')[1]?.split('/')[0];
-      if (id) return `https://lh3.googleusercontent.com/d/${id}`;
-    }
-    return url;
-  };
 
   const openInMaps = (geotag?: string) => {
     if (!geotag) return;
@@ -182,6 +173,9 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
   };
 
   const isInspector = !!(currentSession?.inspektor1 || currentSession?.inspektor2);
+
+  const isError = (url?: string) => url?.includes('Error Drive');
+  const getErrorMsg = (url?: string) => url?.split('Error Drive: ')[1] || 'Error Drive';
 
   return (
     <div className="min-h-screen bg-slate-50 pb-10">
@@ -326,23 +320,27 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
               <div className="flex p-4 gap-4 pb-2">
                 <div 
                   className="relative flex-shrink-0 cursor-zoom-in"
-                  onClick={() => setPreviewImage({ url: formatDriveUrl(item.fotoTemuan), title: `Foto Temuan: ${item.noTiang}` })}
+                  onClick={() => setPreviewImage({ url: getDisplayImageUrl(item.fotoTemuan), title: `Foto Temuan: ${item.noTiang}` })}
                 >
                    <div className="w-20 h-20 bg-slate-100 rounded-xl overflow-hidden border border-slate-100">
-                     <img src={formatDriveUrl(item.fotoTemuan)} alt="Temuan" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                     <img src={getDisplayImageUrl(item.fotoTemuan)} alt="Temuan" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                    </div>
-                   <p className="text-[7px] font-black text-center mt-1 uppercase text-slate-400">Temuan</p>
+                   <p className={`text-[7px] font-black text-center mt-1 uppercase ${isError(item.fotoTemuan) ? 'text-red-500' : 'text-slate-400'}`}>
+                     {isError(item.fotoTemuan) ? 'Error' : 'Temuan'}
+                   </p>
                 </div>
 
                 {['SUDAH EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN', 'KENDALA MATERIAL'].includes(item.status) && item.fotoEksekusi && (
                   <div 
                     className="relative flex-shrink-0 cursor-zoom-in"
-                    onClick={() => setPreviewImage({ url: formatDriveUrl(item.fotoEksekusi), title: `Foto Eksekusi: ${item.noTiang}` })}
+                    onClick={() => setPreviewImage({ url: getDisplayImageUrl(item.fotoEksekusi), title: `Foto Eksekusi: ${item.noTiang}` })}
                   >
                     <div className="w-20 h-20 bg-emerald-50 rounded-xl overflow-hidden border border-emerald-100">
-                      <img src={formatDriveUrl(item.fotoEksekusi)} alt="Eksekusi" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      <img src={getDisplayImageUrl(item.fotoEksekusi)} alt="Eksekusi" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     </div>
-                    <p className="text-[7px] font-black text-center mt-1 uppercase text-emerald-500">Eksekusi</p>
+                    <p className={`text-[7px] font-black text-center mt-1 uppercase ${isError(item.fotoEksekusi) ? 'text-red-500' : 'text-emerald-500'}`}>
+                      {isError(item.fotoEksekusi) ? 'Error' : 'Eksekusi'}
+                    </p>
                   </div>
                 )}
 
@@ -357,6 +355,14 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                     {item.noTiang}
                   </h3>
                   <p className="text-xs font-bold text-red-600 line-clamp-1">{item.keterangan}</p>
+                  {(isError(item.fotoTemuan) || isError(item.fotoEksekusi)) && (
+                    <div className="mt-2 p-2 bg-red-50 border border-red-100 rounded-lg">
+                      <p className="text-[8px] font-black text-red-600 uppercase tracking-tighter">⚠️ Masalah Drive:</p>
+                      <p className="text-[8px] font-bold text-red-500 leading-tight">
+                        {isError(item.fotoTemuan) ? getErrorMsg(item.fotoTemuan) : getErrorMsg(item.fotoEksekusi)}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
