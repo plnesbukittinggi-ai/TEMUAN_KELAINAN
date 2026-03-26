@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { LoginSession, TemuanData } from '../types';
-import { compressImage, getDisplayImageUrl } from '../utils/imageUtils';
+import { compressImage, getDisplayImageUrl } from '../utils/image-utils';
 
 interface EksekusiPageProps {
   session: LoginSession;
