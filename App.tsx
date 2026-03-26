@@ -235,8 +235,8 @@ const App: React.FC = () => {
               <img src={LOGO_URL} alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
             </div>
             <div>
-              <h1 className="font-bold text-xs sm:text-sm tracking-tight uppercase">Sistem Informasi Temuan Kelainan</h1>
-              <p className="text-[9px] sm:text-[10px] text-slate-400 font-medium">PLN ES Bukittinggi</p>
+              <h1 className="font-black text-sm sm:text-base tracking-tight uppercase text-white">Sistem Informasi Temuan Kelainan</h1>
+              <p className="text-[10px] sm:text-[11px] text-slate-400 font-bold">PLN ES Bukittinggi</p>
             </div>
           </div>
           {session && (
@@ -263,7 +263,7 @@ const App: React.FC = () => {
             </p>
           </div>
           
-          <p className="text-[7px] font-black text-slate-700 uppercase tracking-widest hidden sm:block">
+          <p className="text-[9px] font-black text-slate-900 uppercase tracking-widest hidden sm:block">
             Sistem Informasi Temuan Kelainan V{APP_VERSION}
           </p>
 
