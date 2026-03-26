@@ -12,6 +12,7 @@ import { getDashboardInsights } from '../services/geminiService';
 // Fixed casing: Using ReportService (PascalCase) to match consolidated file.
 import { ReportService } from '../services/ReportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
+import { getDisplayImageUrl } from '../utils/image-utils';
 
 interface AdminPageProps {
   data: TemuanData[];
@@ -906,14 +907,14 @@ const AdminPage: React.FC<AdminPageProps> = ({
                 <div key={item.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex gap-4">
                    <div className="flex flex-col items-center flex-shrink-0">
                       <div className="w-14 h-14 bg-slate-50 rounded-xl overflow-hidden border border-slate-100">
-                        <img src={item.fotoTemuan ? (item.fotoTemuan.includes('drive.google.com') ? `https://lh3.googleusercontent.com/d/${item.fotoTemuan.split('/d/')[1]?.split('/')[0]}` : item.fotoTemuan) : ''} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                        <img src={getDisplayImageUrl(item.fotoTemuan)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
                       </div>
                       <p className="text-[7px] font-black uppercase text-slate-400 mt-1">Temuan</p>
                    </div>
                    {item.status === 'SUDAH EKSEKUSI' && item.fotoEksekusi && (
                       <div className="flex flex-col items-center flex-shrink-0">
                         <div className="w-14 h-14 bg-emerald-50 rounded-xl overflow-hidden border border-emerald-100">
-                           <img src={item.fotoEksekusi.includes('drive.google.com') ? `https://lh3.googleusercontent.com/d/${item.fotoEksekusi.split('/d/')[1]?.split('/')[0]}` : item.fotoEksekusi} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                           <img src={getDisplayImageUrl(item.fotoEksekusi)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
                         </div>
                         <p className="text-[7px] font-black uppercase text-emerald-500 mt-1">Eksekusi</p>
                       </div>
