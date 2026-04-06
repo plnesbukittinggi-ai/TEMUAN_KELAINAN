@@ -265,7 +265,7 @@ const App: React.FC = () => {
             </p>
           </div>
           
-          <p className="text-[9px] font-black text-slate-900 uppercase tracking-widest hidden sm:block">
+          <p className="text-[9px] font-black text-slate-900 uppercase tracking-widest">
             Sistem Informasi Temuan Kelainan V{APP_VERSION}
           </p>
 
