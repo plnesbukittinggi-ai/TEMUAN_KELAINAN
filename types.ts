@@ -53,6 +53,8 @@ export interface TemuanData {
   tanggalEksekusi?: string;
   fotoEksekusi?: string;
   timEksekusi?: string;
+  namaYandal1?: string;
+  namaYandal2?: string;
 }
 
 export interface LoginSession {
