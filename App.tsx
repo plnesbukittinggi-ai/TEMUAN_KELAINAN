@@ -43,6 +43,8 @@ const App: React.FC = () => {
             if (key === 'fotoeksekusi') mappedKey = 'fotoEksekusi';
             if (key === 'timeksekusi') mappedKey = 'timEksekusi';
             if (key === 'tanggaleksekusi') mappedKey = 'tanggalEksekusi';
+            if (key === 'namayandal1') mappedKey = 'namaYandal1';
+            if (key === 'namayandal2') mappedKey = 'namaYandal2';
             newItem[mappedKey] = item[key];
           }
           return newItem;
