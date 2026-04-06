@@ -17,6 +17,8 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const [executionPhoto, setExecutionPhoto] = useState<string>(initialData?.fotoEksekusi || '');
   const [executionDate, setExecutionDate] = useState<string>('');
   const [selectedTeam, setSelectedTeam] = useState<string>(initialData?.timEksekusi || '');
+  const [namaYandal1, setNamaYandal1] = useState<string>(initialData?.namaYandal1 || '');
+  const [namaYandal2, setNamaYandal2] = useState<string>(initialData?.namaYandal2 || '');
   const [isSaving, setIsSaving] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   const [startDate, setStartDate] = useState<string>('');
@@ -74,6 +76,8 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
     }
     if (initialData?.fotoEksekusi) setExecutionPhoto(initialData.fotoEksekusi);
     if (initialData?.timEksekusi) setSelectedTeam(initialData.timEksekusi);
+    if (initialData?.namaYandal1) setNamaYandal1(initialData.namaYandal1);
+    if (initialData?.namaYandal2) setNamaYandal2(initialData.namaYandal2);
   }, [initialData]);
 
   const formatDriveUrl = (url?: string) => {
@@ -114,6 +118,10 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const handleAction = async (newStatus: 'SUDAH EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN' | 'KENDALA MATERIAL') => {
     if (!selectedTemuan) return;
     if (!selectedTeam) { alert('⚠️ Tim Kerja wajib dipilih!'); return; }
+    if (selectedTeam === 'Team Yandal' && (!namaYandal1 || !namaYandal2)) {
+      alert('⚠️ Nama Yandal 1 dan Nama Yandal 2 wajib diisi untuk Team Yandal!');
+      return;
+    }
     if (!executionPhoto) { alert('⚠️ Foto bukti perbaikan wajib dilampirkan!'); return; }
     
     setIsSaving(true);
@@ -128,7 +136,9 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       status: newStatus, 
       tanggalEksekusi: finalDateString,
       fotoEksekusi: executionPhoto,
-      timEksekusi: selectedTeam
+      timEksekusi: selectedTeam,
+      namaYandal1: selectedTeam === 'Team Yandal' ? namaYandal1 : '',
+      namaYandal2: selectedTeam === 'Team Yandal' ? namaYandal2 : ''
     };
     
     try {
@@ -138,6 +148,8 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
         setExecutionPhoto('');
         setExecutionDate('');
         setSelectedTeam('');
+        setNamaYandal1('');
+        setNamaYandal2('');
       }
     } catch (err) { alert("❌ Gagal menyimpan data eksekusi."); }
     finally { setIsSaving(false); }
@@ -338,6 +350,31 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                   <option value="Team Pemeliharaan">Team PLN</option>
                 </select>
               </div>
+
+              {selectedTeam === 'Team Yandal' && (
+                <div className="grid grid-cols-2 gap-4 animate-slide-down">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest ml-1">Nama Yandal 1 *</label>
+                    <input 
+                      type="text" 
+                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-indigo-100 transition-all uppercase" 
+                      placeholder="Nama 1..."
+                      value={namaYandal1} 
+                      onChange={(e) => setNamaYandal1(e.target.value)} 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest ml-1">Nama Yandal 2 *</label>
+                    <input 
+                      type="text" 
+                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-indigo-100 transition-all uppercase" 
+                      placeholder="Nama 2..."
+                      value={namaYandal2} 
+                      onChange={(e) => setNamaYandal2(e.target.value)} 
+                    />
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest ml-1">Tanggal Eksekusi</label>
