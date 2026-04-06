@@ -515,10 +515,6 @@ const AdminPage: React.FC<AdminPageProps> = ({
                 {pekerjaanList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
               </select>
             </div>
-            <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4">
-              <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-2">💡 AI Insights</p>
-              <p className="text-xs text-slate-700 leading-relaxed font-medium">{aiInsight}</p>
-            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -925,7 +921,14 @@ const AdminPage: React.FC<AdminPageProps> = ({
                          <span className={`text-[7px] px-1.5 py-0.5 rounded font-black uppercase ${item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>{item.status.split(' ')[0]}</span>
                       </div>
                       <p className="text-[9px] font-bold text-red-500 mt-0.5 truncate uppercase">{item.keterangan}</p>
-                      <p className="text-[8px] text-slate-400 mt-1 font-bold uppercase tracking-widest">{itemDate.toLocaleDateString('id-ID')} | {item.ulp}</p>
+                      <p className="text-[8px] text-slate-400 mt-1 font-bold uppercase tracking-widest">
+                        {itemDate.toLocaleDateString('id-ID')} | {item.ulp}
+                        {item.status === 'SUDAH EKSEKUSI' && item.timEksekusi === 'Team Yandal' && (item.namaYandal1 || item.namaYandal2) && (
+                          <span className="text-emerald-600 ml-2">
+                             👤 {item.namaYandal1} - {item.namaYandal2}
+                          </span>
+                        )}
+                      </p>
                    </div>
                 </div>
               )})}
