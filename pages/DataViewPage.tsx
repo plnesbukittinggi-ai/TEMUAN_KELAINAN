@@ -310,9 +310,16 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                     {item.status}
                   </span>
                   {['SUDAH EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN', 'KENDALA MATERIAL'].includes(item.status) && (
-                    <p className="text-[7px] font-bold text-emerald-600 mt-1 uppercase tracking-tighter">
-                      {item.timEksekusi} - {item.tanggalEksekusi ? parseRobustDate(item.tanggalEksekusi).toLocaleDateString('id-ID') : '-'}
-                    </p>
+                    <div className="flex flex-col items-end">
+                      <p className="text-[7px] font-bold text-emerald-600 mt-1 uppercase tracking-tighter">
+                        {item.timEksekusi} - {item.tanggalEksekusi ? parseRobustDate(item.tanggalEksekusi).toLocaleDateString('id-ID') : '-'}
+                      </p>
+                      {item.timEksekusi === 'Team Yandal' && (item.namaYandal1 || item.namaYandal2) && (
+                        <p className="text-[6px] font-black text-slate-400 uppercase tracking-tighter mt-0.5">
+                          👤 {item.namaYandal1} & {item.namaYandal2}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -383,10 +390,15 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                 </div>
               </div>
               
-              <div className="px-4 pb-3 flex gap-2">
+              <div className="px-4 pb-3 flex flex-col gap-1">
                  <p className="text-[8px] font-bold text-slate-400 uppercase italic">
                    Input oleh: {item.inspektor1}{item.inspektor2 ? ` & ${item.inspektor2}` : ''}
                  </p>
+                 {item.status === 'SUDAH EKSEKUSI' && item.timEksekusi === 'Team Yandal' && (item.namaYandal1 || item.namaYandal2) && (
+                   <p className="text-[8px] font-bold text-emerald-600 uppercase italic">
+                     Petugas Yandal Eksekusi : {item.namaYandal1} - {item.namaYandal2}
+                   </p>
+                 )}
               </div>
 
               {onEdit && (
