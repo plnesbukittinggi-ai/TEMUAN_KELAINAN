@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { LoginSession, TemuanData } from '../types';
+import { LoginSession, TemuanData, Yandal, ULP } from '../types';
 import { compressImage, getDisplayImageUrl } from '../utils/image-utils';
 
 interface EksekusiPageProps {
@@ -8,11 +8,13 @@ interface EksekusiPageProps {
   onBack: () => void;
   onSave: (data: TemuanData) => Promise<void> | void;
   initialData?: TemuanData;
+  yandalList: Yandal[];
+  ulpList: ULP[];
 }
 
 type EksekusiSubFilter = 'BELUM EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN' | 'KENDALA MATERIAL';
 
-const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSave, initialData }) => {
+const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSave, initialData, yandalList, ulpList }) => {
   const [selectedTemuan, setSelectedTemuan] = useState<TemuanData | null>(initialData || null);
   const [executionPhoto, setExecutionPhoto] = useState<string>(initialData?.fotoEksekusi || '');
   const [executionDate, setExecutionDate] = useState<string>('');
@@ -115,13 +117,41 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
     }
   };
 
+  const availableYandal = useMemo(() => {
+    if (!session.ulp) return [];
+    
+    // Find current ULP by name or ID
+    const currentUlp = ulpList.find(u => 
+      (u.name && u.name.trim().toLowerCase() === session.ulp?.trim().toLowerCase()) ||
+      (u.id && u.id.trim().toLowerCase() === session.ulp?.trim().toLowerCase())
+    );
+    
+    if (!currentUlp) {
+      console.warn("ULP not found in list:", session.ulp, "Available ULPs:", ulpList.map(u => `${u.id}:${u.name}`));
+      return [];
+    }
+    
+    // Filter Yandal by ulpId (which could be the ULP's ID or Name in the spreadsheet)
+    const filtered = yandalList.filter(y => {
+      if (!y.ulpId) return false;
+      const yUlpId = String(y.ulpId).trim().toLowerCase();
+      const targetId = String(currentUlp.id).trim().toLowerCase();
+      const targetName = String(currentUlp.name).trim().toLowerCase();
+      
+      // Also check if yUlpId matches the session.ulp directly as a fallback
+      const sessionUlp = session.ulp?.trim().toLowerCase();
+      
+      return yUlpId === targetId || yUlpId === targetName || yUlpId === sessionUlp;
+    });
+
+    console.log(`Filtering Yandal for ${session.ulp} (ID: ${currentUlp.id}). Found: ${filtered.length} of ${yandalList.length}`);
+    return filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [yandalList, ulpList, session.ulp]);
+
   const handleAction = async (newStatus: 'SUDAH EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN' | 'KENDALA MATERIAL') => {
     if (!selectedTemuan) return;
     if (!selectedTeam) { alert('⚠️ Tim Kerja wajib dipilih!'); return; }
-    if (selectedTeam === 'Team Yandal' && (!namaYandal1 || !namaYandal2)) {
-      alert('⚠️ Nama Yandal 1 dan Nama Yandal 2 wajib diisi untuk Team Yandal!');
-      return;
-    }
+    
     if (!executionPhoto) { alert('⚠️ Foto bukti perbaikan wajib dilampirkan!'); return; }
     
     setIsSaving(true);
@@ -354,24 +384,30 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
               {selectedTeam === 'Team Yandal' && (
                 <div className="grid grid-cols-2 gap-4 animate-slide-down">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest ml-1">Nama Yandal 1 *</label>
-                    <input 
-                      type="text" 
-                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-indigo-100 transition-all uppercase" 
-                      placeholder="Nama 1..."
+                    <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest ml-1">Nama Yandal 1</label>
+                    <select 
+                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
                       value={namaYandal1} 
-                      onChange={(e) => setNamaYandal1(e.target.value)} 
-                    />
+                      onChange={(e) => setNamaYandal1(e.target.value)}
+                    >
+                      <option value="">{availableYandal.length === 0 ? '-- Data Yandal Kosong --' : '-- Pilih Nama 1 --'}</option>
+                      {availableYandal.map(y => (
+                        <option key={y.id} value={y.name}>{y.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest ml-1">Nama Yandal 2 *</label>
-                    <input 
-                      type="text" 
-                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-indigo-100 transition-all uppercase" 
-                      placeholder="Nama 2..."
+                    <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest ml-1">Nama Yandal 2</label>
+                    <select 
+                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
                       value={namaYandal2} 
-                      onChange={(e) => setNamaYandal2(e.target.value)} 
-                    />
+                      onChange={(e) => setNamaYandal2(e.target.value)}
+                    >
+                      <option value="">{availableYandal.length === 0 ? '-- Data Yandal Kosong --' : '-- Pilih Nama 2 --'}</option>
+                      {availableYandal.map(y => (
+                        <option key={y.id} value={y.name}>{y.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               )}
