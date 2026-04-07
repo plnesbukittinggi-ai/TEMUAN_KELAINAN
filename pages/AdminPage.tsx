@@ -7,7 +7,7 @@ import {
   ResponsiveContainer, 
   Tooltip 
 } from 'recharts';
-import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan } from '../types';
+import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan, Yandal } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
 // Fixed casing: Using ReportService (PascalCase) to match consolidated file.
 import { ReportService } from '../services/ReportService';
@@ -19,12 +19,14 @@ interface AdminPageProps {
   ulpList: ULP[];
   inspectors: Inspector[];
   feeders: Feeder[];
+  yandalList: Yandal[];
   pekerjaanList: Pekerjaan[];
   keteranganList: Keterangan[];
   onBack: () => void;
   onUpdateInspectors: (data: Inspector[]) => void;
   onUpdateUlp: (data: ULP[]) => void;
   onUpdateFeeders: (data: Feeder[]) => void;
+  onUpdateYandal: (data: Yandal[]) => void;
 }
 
 const MONTHS = [
@@ -58,8 +60,8 @@ const getDefaultRekapDates = () => {
 };
 
 const AdminPage: React.FC<AdminPageProps> = ({ 
-  data, ulpList, inspectors, feeders, pekerjaanList, keteranganList, onBack,
-  onUpdateInspectors, onUpdateUlp, onUpdateFeeders
+  data, ulpList, inspectors, feeders, yandalList, pekerjaanList, keteranganList, onBack,
+  onUpdateInspectors, onUpdateUlp, onUpdateFeeders, onUpdateYandal
 }) => {
   const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP' | 'REKAP_JENIS'>('DASHBOARD');
   const [dataSubTab, setDataSubTab] = useState<'PLN_ES' | 'PLN'>('PLN_ES');
@@ -88,7 +90,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const [filterEndDate, setFilterEndDate] = useState<string>('');
   const [isExporting, setIsExporting] = useState(false);
 
-  const [subTab, setSubTab] = useState<'INSPEKTOR' | 'ULP' | 'FEEDER'>('INSPEKTOR');
+  const [subTab, setSubTab] = useState<'INSPEKTOR' | 'ULP' | 'FEEDER' | 'YANDAL'>('INSPEKTOR');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'ADD' | 'EDIT'>('ADD');
   const [editingItem, setEditingItem] = useState<any>(null);
@@ -374,23 +376,27 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const handleDelete = async (item: any) => {
     if (!window.confirm(`Yakin ingin menghapus "${item.name}"?`)) return;
     let updatedList: any[] = [];
-    let sheetName: 'Inspectors' | 'ULP' | 'Feeders';
+    let sheetName: 'Inspectors' | 'ULP' | 'Feeders' | 'Yandal';
     if (subTab === 'INSPEKTOR') {
       updatedList = inspectors.filter(i => i.id !== item.id);
       sheetName = 'Inspectors';
     } else if (subTab === 'ULP') {
       updatedList = ulpList.filter(u => u.id !== item.id);
       sheetName = 'ULP';
-    } else {
+    } else if (subTab === 'FEEDER') {
       updatedList = feeders.filter(f => f.id !== item.id);
       sheetName = 'Feeders';
+    } else {
+      updatedList = yandalList.filter(y => y.id !== item.id);
+      sheetName = 'Yandal';
     }
     setIsSaving(true);
     try {
       await SpreadsheetService.updateMasterData(sheetName, updatedList);
       if (subTab === 'INSPEKTOR') onUpdateInspectors(updatedList);
       else if (subTab === 'ULP') onUpdateUlp(updatedList);
-      else onUpdateFeeders(updatedList);
+      else if (subTab === 'FEEDER') onUpdateFeeders(updatedList);
+      else onUpdateYandal(updatedList);
       alert('Data berhasil dihapus.');
     } catch (e) { alert('Gagal menghapus data di server.'); }
     finally { setIsSaving(false); }
@@ -398,11 +404,11 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
   const handleSaveMaster = async () => {
     if (!formData.name.trim()) return alert('Nama wajib diisi!');
-    if (subTab === 'FEEDER' && !formData.ulpId) return alert('Pilih ULP untuk feeder!');
+    if ((subTab === 'FEEDER' || subTab === 'YANDAL') && !formData.ulpId) return alert('Pilih ULP!');
     setIsSaving(true);
     try {
       let updatedList: any[] = [];
-      let sheetName: 'Inspectors' | 'ULP' | 'Feeders';
+      let sheetName: 'Inspectors' | 'ULP' | 'Feeders' | 'Yandal';
       if (subTab === 'INSPEKTOR') {
         sheetName = 'Inspectors';
         if (modalMode === 'ADD') {
@@ -417,19 +423,27 @@ const AdminPage: React.FC<AdminPageProps> = ({
         } else {
           updatedList = ulpList.map(u => u.id === editingItem.id ? { ...u, name: formData.name } : u);
         }
-      } else {
+      } else if (subTab === 'FEEDER') {
         sheetName = 'Feeders';
         if (modalMode === 'ADD') {
           updatedList = [...feeders, { id: `F-${Date.now()}`, name: formData.name, ulpId: formData.ulpId }];
         } else {
           updatedList = feeders.map(f => f.id === editingItem.id ? { ...f, name: formData.name, ulpId: formData.ulpId } : f);
         }
+      } else {
+        sheetName = 'Yandal';
+        if (modalMode === 'ADD') {
+          updatedList = [...yandalList, { id: `Y-${Date.now()}`, name: formData.name, ulpId: formData.ulpId }];
+        } else {
+          updatedList = yandalList.map(y => y.id === editingItem.id ? { ...y, name: formData.name, ulpId: formData.ulpId } : y);
+        }
       }
       const res = await SpreadsheetService.updateMasterData(sheetName, updatedList);
       if (res.success) {
         if (subTab === 'INSPEKTOR') onUpdateInspectors(updatedList);
         else if (subTab === 'ULP') onUpdateUlp(updatedList);
-        else onUpdateFeeders(updatedList);
+        else if (subTab === 'FEEDER') onUpdateFeeders(updatedList);
+        else onUpdateYandal(updatedList);
         setIsModalOpen(false);
         alert(`Berhasil ${modalMode === 'ADD' ? 'menambah' : 'mengubah'} data di Spreadsheet.`);
       } else { alert('Gagal menyimpan ke Spreadsheet.'); }
@@ -938,14 +952,15 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
       {tab === 'KELOLA' && (
         <div className="space-y-6 animate-fade-in">
-          <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
-             {(['INSPEKTOR', 'ULP', 'FEEDER'] as const).map(s => (<button key={s} onClick={() => setSubTab(s)} className={`flex-1 py-2.5 text-[10px] font-black rounded-lg transition-all uppercase tracking-widest ${subTab === s ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>{s}</button>))}
+          <div className="flex bg-slate-100 p-1 rounded-xl gap-1 overflow-x-auto no-scrollbar">
+             {(['INSPEKTOR', 'ULP', 'FEEDER', 'YANDAL'] as const).map(s => (<button key={s} onClick={() => setSubTab(s)} className={`flex-1 py-2.5 text-[10px] font-black rounded-lg transition-all uppercase tracking-widest min-w-[100px] ${subTab === s ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>{s}</button>))}
           </div>
           <div className="flex justify-between items-center px-1"><h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Daftar {subTab}</h3><button onClick={handleOpenAdd} disabled={isSaving} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50">{isSaving ? '⏳' : '+ Tambah'}</button></div>
           <div className="grid grid-cols-1 gap-3">
              {subTab === 'INSPEKTOR' && inspectors.map(i => (<div key={i.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all"><div><p className="text-[11px] font-black text-slate-900 uppercase">{i.name}</p><p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">ID: {i.id}</p></div><div className="flex gap-2"><button onClick={() => handleOpenEdit(i)} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">✏️</button><button onClick={() => handleDelete(i)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button></div></div>))}
              {subTab === 'ULP' && ulpList.map(u => (<div key={u.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all"><div><p className="text-[11px] font-black text-slate-900 uppercase">{u.name}</p><p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Unit Pelaksana</p></div><div className="flex gap-2"><button onClick={() => handleOpenEdit(u)} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">✏️</button><button onClick={() => handleDelete(u)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button></div></div>))}
              {subTab === 'FEEDER' && feeders.map(f => (<div key={f.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all"><div><p className="text-[11px] font-black text-slate-900 uppercase">{f.name}</p><p className="text-[8px] text-indigo-600 font-bold uppercase tracking-widest mt-0.5">{ulpList.find(u => u.id === f.ulpId)?.name || 'Unit Unknown'}</p></div><div className="flex gap-2"><button onClick={() => handleOpenEdit(f)} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">✏️</button><button onClick={() => handleDelete(f)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button></div></div>))}
+             {subTab === 'YANDAL' && yandalList.map(y => (<div key={y.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all"><div><p className="text-[11px] font-black text-slate-900 uppercase">{y.name}</p><p className="text-[8px] text-emerald-600 font-bold uppercase tracking-widest mt-0.5">{ulpList.find(u => u.id === y.ulpId)?.name || 'Unit Unknown'}</p></div><div className="flex gap-2"><button onClick={() => handleOpenEdit(y)} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">✏️</button><button onClick={() => handleDelete(y)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button></div></div>))}
           </div>
         </div>
       )}
@@ -954,7 +969,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
            <div className="bg-white w-full max-sm rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up"><div className="p-8"><div className="flex justify-between items-center mb-6"><h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">{modalMode === 'ADD' ? 'Tambah' : 'Edit'} {subTab}</h3><button onClick={() => setIsModalOpen(false)} className="text-slate-400 p-2 hover:text-slate-600">✕</button></div>
                  <div className="space-y-4"><div><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Nama {subTab} *</label><input type="text" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-indigo-500 transition-all uppercase" placeholder={`Masukkan nama ${subTab.toLowerCase()}`} value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} /></div>
-                    {subTab === 'FEEDER' && (<div><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Tautkan ke ULP *</label><select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" value={formData.ulpId} onChange={(e) => setFormData({ ...formData, ulpId: e.target.value })}><option value="">Pilih Unit</option>{ulpList.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></div>)}
+                    {(subTab === 'FEEDER' || subTab === 'YANDAL') && (<div><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Tautkan ke ULP *</label><select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" value={formData.ulpId} onChange={(e) => setFormData({ ...formData, ulpId: e.target.value })}><option value="">Pilih Unit</option>{ulpList.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></div>)}
                  </div>
                  <div className="mt-8 flex gap-3"><button onClick={() => setIsModalOpen(false)} className="flex-1 py-4 bg-slate-100 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Batal</button><button onClick={handleSaveMaster} disabled={isSaving} className="flex-2 py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50 px-8">{isSaving ? '⏳' : 'Simpan'}</button></div>
               </div></div>
