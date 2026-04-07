@@ -63,7 +63,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
   data, ulpList, inspectors, feeders, yandalList, pekerjaanList, keteranganList, onBack,
   onUpdateInspectors, onUpdateUlp, onUpdateFeeders, onUpdateYandal
 }) => {
-  const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP' | 'REKAP_JENIS'>('DASHBOARD');
+  const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP' | 'REKAP_JENIS' | 'REKAP_YANDAL'>('DASHBOARD');
   const [dataSubTab, setDataSubTab] = useState<'PLN_ES' | 'PLN'>('PLN_ES');
   const [aiInsight, setAiInsight] = useState<string>('Menganalisis performa data...');
   
@@ -82,6 +82,11 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const [rekapJenisPekerjaan, setRekapJenisPekerjaan] = useState<string>('');
   const [rekapJenisUlp, setRekapJenisUlp] = useState<string>('');
   const [rekapJenisFeeder, setRekapJenisFeeder] = useState<string>('');
+  
+  // Filters for Rekap Yandal
+  const [rekapYandalUlp, setRekapYandalUlp] = useState<string>('');
+  const [rekapYandalStartDate, setRekapYandalStartDate] = useState<string>(initialRekapDates.start);
+  const [rekapYandalEndDate, setRekapYandalEndDate] = useState<string>(initialRekapDates.end);
 
   const [filterUlp, setFilterUlp] = useState<string>('');
   const [filterFeeder, setFilterFeeder] = useState<string>('');
@@ -190,6 +195,45 @@ const AdminPage: React.FC<AdminPageProps> = ({
     });
     return Object.values(counts).sort((a, b) => a.inspektor.localeCompare(b.inspektor));
   }, [data, rekapStartDate, rekapEndDate]);
+
+  const rekapYandalData = useMemo(() => {
+    const counts: Record<string, { name: string, ulp: string, total: number, period: string }> = {};
+    
+    data.forEach(item => {
+      if (item.status !== 'SUDAH EKSEKUSI') return;
+      
+      const dDate = parseRobustDate(item.tanggalEksekusi || item.tanggal);
+      
+      if (rekapYandalStartDate) {
+        const start = new Date(rekapYandalStartDate);
+        start.setHours(0,0,0,0);
+        if (dDate < start) return;
+      }
+      if (rekapYandalEndDate) {
+        const end = new Date(rekapYandalEndDate);
+        end.setHours(23,59,59,999);
+        if (dDate > end) return;
+      }
+      
+      if (rekapYandalUlp && item.ulp !== rekapYandalUlp) return;
+
+      const monthName = MONTHS[dDate.getMonth()].label;
+      const year = dDate.getFullYear();
+      const period = `${monthName} ${year}`;
+
+      const yandals = [item.namaYandal1, item.namaYandal2].filter(Boolean) as string[];
+      
+      yandals.forEach(name => {
+        const key = `${name}|${item.ulp}|${period}`;
+        if (!counts[key]) {
+          counts[key] = { name, ulp: item.ulp || '-', total: 0, period };
+        }
+        counts[key].total++;
+      });
+    });
+
+    return Object.values(counts).sort((a, b) => b.total - a.total);
+  }, [data, rekapYandalStartDate, rekapYandalEndDate, rekapYandalUlp]);
 
   // Logic for Rekap Jenis Temuan
   const rekapJenisData = useMemo(() => {
@@ -494,6 +538,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
           { id: 'DASHBOARD', label: 'DASHBOARD' },
           { id: 'REKAP', label: 'REKAP INSPEKTOR' },
           { id: 'REKAP_JENIS', label: 'REKAP JENIS TEMUAN' },
+          { id: 'REKAP_YANDAL', label: 'REKAP YANDAL' },
           { id: 'DATA', label: 'DATA' },
           { id: 'KELOLA', label: 'KELOLA' }
         ].map(t => (
@@ -506,6 +551,116 @@ const AdminPage: React.FC<AdminPageProps> = ({
           </button>
         ))}
       </div>
+
+      {tab === 'REKAP_YANDAL' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 ml-1">Filter Rekap Yandal</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Mulai Tanggal</label>
+                <input type="date" value={rekapYandalStartDate} onChange={(e) => setRekapYandalStartDate(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500/20 transition-all" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Sampai Tanggal</label>
+                <input type="date" value={rekapYandalEndDate} onChange={(e) => setRekapYandalEndDate(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500/20 transition-all" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Filter ULP</label>
+                <select value={rekapYandalUlp} onChange={(e) => setRekapYandalUlp(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500/20 transition-all">
+                  <option value="">Semua ULP</option>
+                  {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button onClick={() => {
+                const dates = getDefaultRekapDates();
+                setRekapYandalStartDate(dates.start);
+                setRekapYandalEndDate(dates.end);
+                setRekapYandalUlp('');
+              }} className="px-6 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Reset Filter</button>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 tracking-tight flex items-center gap-2 uppercase">
+                  <span className="w-1.5 h-4 bg-blue-600 rounded-full"></span>
+                  Rekap Eksekusi Yandal
+                </h3>
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Leaderboard Performa Petugas</p>
+              </div>
+              <div className="px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-full">
+                <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{rekapYandalData.length} Petugas</span>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-slate-50/50">
+                    <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">No. Urut</th>
+                    <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Bulan / Periode</th>
+                    <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Nama Petugas Yandal</th>
+                    <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">ULP</th>
+                    <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Total Eksekusi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {rekapYandalData.length > 0 ? rekapYandalData.map((item, idx) => {
+                    const rank = idx + 1;
+                    let medal = null;
+                    if (rank === 1) medal = "🥇";
+                    else if (rank === 2) medal = "🥈";
+                    else if (rank === 3) medal = "🥉";
+                    else if (rank <= 6) medal = "🏅";
+
+                    return (
+                      <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            {medal ? (
+                              <span className="text-2xl drop-shadow-sm animate-bounce-subtle">{medal}</span>
+                            ) : (
+                              <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-[11px] font-black text-slate-400">
+                                {rank}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">{item.period}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-xs font-black text-slate-900 uppercase tracking-tight group-hover:text-blue-600 transition-colors">{item.name}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="px-2 py-1 bg-slate-100 text-slate-500 rounded-md text-[9px] font-black uppercase tracking-widest">{item.ulp}</span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <div className="inline-flex items-center justify-center min-w-[40px] h-8 px-3 rounded-full bg-blue-600 text-white text-[11px] font-black shadow-lg shadow-blue-200">
+                            {item.total}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }) : (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-20 text-center">
+                        <div className="flex flex-col items-center gap-3 opacity-20">
+                          <span className="text-4xl">📊</span>
+                          <p className="text-[10px] font-black uppercase tracking-widest">Belum ada data eksekusi</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {tab === 'DASHBOARD' && (
         <div className="space-y-6 animate-fade-in">
