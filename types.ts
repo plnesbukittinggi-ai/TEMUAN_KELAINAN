@@ -27,6 +27,12 @@ export interface Feeder {
   ulpId: string;
 }
 
+export interface Yandal {
+  id: string;
+  name: string;
+  ulpId: string;
+}
+
 export interface Keterangan {
   id: string;
   text: string; // Diambil dari kolom 'name' di sheet
