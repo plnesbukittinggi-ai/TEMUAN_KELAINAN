@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { AppRole, TemuanData, LoginSession, Inspector, ULP, Feeder, Pekerjaan, Keterangan } from './types';
-import { INITIAL_INSPECTORS, INITIAL_ULP, INITIAL_FEEDERS, INITIAL_KETERANGAN, INITIAL_PEKERJAAN, APP_VERSION } from './constants';
+import { AppRole, TemuanData, LoginSession, Inspector, ULP, Feeder, Pekerjaan, Keterangan, Yandal } from './types';
+import { INITIAL_INSPECTORS, INITIAL_ULP, INITIAL_FEEDERS, INITIAL_KETERANGAN, INITIAL_PEKERJAAN, INITIAL_YANDAL, APP_VERSION } from './constants';
 import { SpreadsheetService } from './services/spreadsheetService';
 import LoginPage from './pages/LoginPage';
 import InspeksiPage from './pages/InspeksiPage';
@@ -14,6 +14,7 @@ const App: React.FC = () => {
   const [inspectors, setInspectors] = useState<Inspector[]>(INITIAL_INSPECTORS);
   const [ulpList, setUlpList] = useState<ULP[]>(INITIAL_ULP);
   const [feeders, setFeeders] = useState<Feeder[]>(INITIAL_FEEDERS);
+  const [yandalList, setYandalList] = useState<Yandal[]>(INITIAL_YANDAL);
   const [pekerjaanList, setPekerjaanList] = useState<Pekerjaan[]>(INITIAL_PEKERJAAN);
   const [keteranganList, setKeteranganList] = useState<Keterangan[]>(INITIAL_KETERANGAN);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,34 +30,122 @@ const App: React.FC = () => {
     try {
       const config = await SpreadsheetService.fetchAllData() as any;
       
-      const normalize = (arr: any[]) => {
-        if (!arr || !Array.isArray(arr)) return [];
-        return arr.map(item => {
+      const normalize = (input: any, label: string) => {
+        if (!input) return [];
+        
+        let arr: any[] = [];
+        
+        // Handle { headers, values } format
+        if (input.headers && Array.isArray(input.values)) {
+          const headers = input.headers.map((h: string) => h.toLowerCase().replace(/_/g, '').replace(/\s/g, ''));
+          arr = input.values.map((row: any[]) => {
+            const obj: any = {};
+            row.forEach((cell, i) => {
+              const header = headers[i];
+              let mappedKey = input.headers[i];
+              if (header === 'ulpid' || header === 'idulp') mappedKey = 'ulpId';
+              else if (header === 'idpekerjaan') mappedKey = 'idPekerjaan';
+              else if (header === 'notiang') mappedKey = 'noTiang';
+              else if (header === 'nowo') mappedKey = 'noWO';
+              else if (header === 'fototemuan') mappedKey = 'fotoTemuan';
+              else if (header === 'fotoeksekusi') mappedKey = 'fotoEksekusi';
+              else if (header === 'timeksekusi') mappedKey = 'timEksekusi';
+              else if (header === 'tanggaleksekusi') mappedKey = 'tanggalEksekusi';
+              else if (header === 'namayandal1') mappedKey = 'namaYandal1';
+              else if (header === 'namayandal2') mappedKey = 'namaYandal2';
+              else if (header === 'nama' || header === 'name') mappedKey = 'name';
+              obj[mappedKey] = cell;
+            });
+            return obj;
+          });
+        } else if (Array.isArray(input)) {
+          arr = input;
+        } else if (input.data && Array.isArray(input.data)) {
+          arr = input.data;
+        } else {
+          console.warn(`Data for ${label} is not in a recognized format:`, input);
+          return [];
+        }
+
+        const normalized = arr.map((item, index) => {
           const newItem: any = {};
+          newItem.id = item.id || item.ID || `item-${index}`;
+          
           for (const key in item) {
+            const val = item[key];
+            const lowerKey = key.toLowerCase().replace(/_/g, '').replace(/\s/g, '');
+            
             let mappedKey = key;
-            if (key === 'ulpid') mappedKey = 'ulpId';
-            if (key === 'idpekerjaan') mappedKey = 'idPekerjaan';
-            if (key === 'notiang') mappedKey = 'noTiang';
-            if (key === 'nowo') mappedKey = 'noWO';
-            if (key === 'fototemuan') mappedKey = 'fotoTemuan';
-            if (key === 'fotoeksekusi') mappedKey = 'fotoEksekusi';
-            if (key === 'timeksekusi') mappedKey = 'timEksekusi';
-            if (key === 'tanggaleksekusi') mappedKey = 'tanggalEksekusi';
-            if (key === 'namayandal1') mappedKey = 'namaYandal1';
-            if (key === 'namayandal2') mappedKey = 'namaYandal2';
-            newItem[mappedKey] = item[key];
+            if (lowerKey === 'ulpid' || lowerKey === 'idulp') mappedKey = 'ulpId';
+            else if (lowerKey === 'idpekerjaan') mappedKey = 'idPekerjaan';
+            else if (lowerKey === 'notiang') mappedKey = 'noTiang';
+            else if (lowerKey === 'nowo') mappedKey = 'noWO';
+            else if (lowerKey === 'fototemuan') mappedKey = 'fotoTemuan';
+            else if (lowerKey === 'fotoeksekusi') mappedKey = 'fotoEksekusi';
+            else if (lowerKey === 'timeksekusi') mappedKey = 'timEksekusi';
+            else if (lowerKey === 'tanggaleksekusi') mappedKey = 'tanggalEksekusi';
+            else if (lowerKey === 'namayandal1') mappedKey = 'namaYandal1';
+            else if (lowerKey === 'namayandal2') mappedKey = 'namaYandal2';
+            else if (lowerKey === 'nama' || lowerKey === 'name') mappedKey = 'name';
+            
+            newItem[mappedKey] = val;
           }
           return newItem;
         });
+        console.log(`Normalized ${label}:`, normalized.length, "items.");
+        return normalized;
       };
 
-      if (config.inspectors) setInspectors(normalize(config.inspectors));
-      if (config.ulpList) setUlpList(normalize(config.ulpList));
-      if (config.feeders) setFeeders(normalize(config.feeders));
-      if (config.pekerjaanList) setPekerjaanList(normalize(config.pekerjaanList));
-      if (config.keteranganList) setKeteranganList(normalize(config.keteranganList));
-      if (config.allData) setAllData(normalize(config.allData));
+      // Extremely aggressive key finding
+      const findDataInConfig = (obj: any, targetKey: string): any => {
+        if (!obj || typeof obj !== 'object') return undefined;
+        
+        const lowerTarget = targetKey.toLowerCase().replace(/list$/, '');
+        
+        // 1. Try direct match (case insensitive, ignoring 'List' suffix)
+        const keys = Object.keys(obj);
+        let foundKey = keys.find(k => {
+          const kLower = k.toLowerCase().replace(/list$/, '');
+          return kLower === lowerTarget;
+        });
+        
+        if (foundKey) return obj[foundKey];
+        
+        // 2. Try partial match
+        foundKey = keys.find(k => k.toLowerCase().includes(lowerTarget));
+        if (foundKey) return obj[foundKey];
+        
+        // 3. Deep search (one level)
+        for (const k of keys) {
+          if (obj[k] && typeof obj[k] === 'object' && !Array.isArray(obj[k])) {
+            const deepResult: any = findDataInConfig(obj[k], targetKey);
+            if (deepResult) return deepResult;
+          }
+        }
+        
+        return undefined;
+      };
+
+      const inspectorsData = findDataInConfig(config, 'inspectors');
+      if (inspectorsData) setInspectors(normalize(inspectorsData, 'Inspectors'));
+      
+      const ulpData = findDataInConfig(config, 'ulpList');
+      if (ulpData) setUlpList(normalize(ulpData, 'ULP'));
+      
+      const feedersData = findDataInConfig(config, 'feeders');
+      if (feedersData) setFeeders(normalize(feedersData, 'Feeders'));
+      
+      const yandalData = findDataInConfig(config, 'yandalList');
+      if (yandalData) setYandalList(normalize(yandalData, 'Yandal'));
+      
+      const pekerjaanData = findDataInConfig(config, 'pekerjaanList');
+      if (pekerjaanData) setPekerjaanList(normalize(pekerjaanData, 'Pekerjaan'));
+      
+      const keteranganData = findDataInConfig(config, 'keteranganList');
+      if (keteranganData) setKeteranganList(normalize(keteranganData, 'Keterangan'));
+      
+      const allDataItems = findDataInConfig(config, 'allData');
+      if (allDataItems) setAllData(normalize(allDataItems, 'AllData'));
       
     } catch (err) {
       console.error("Connection failed:", err);
@@ -193,6 +282,8 @@ const App: React.FC = () => {
               onBack={() => editingData ? setSession({...session, role: AppRole.VIEWER}) : handleLogout()}
               onSave={handleUpdateTemuan}
               initialData={editingData || undefined}
+              yandalList={yandalList}
+              ulpList={ulpList}
             />
           </div>
         );
@@ -203,12 +294,14 @@ const App: React.FC = () => {
             ulpList={ulpList} 
             inspectors={inspectors}
             feeders={feeders}
+            yandalList={yandalList}
             pekerjaanList={pekerjaanList}
             keteranganList={keteranganList}
             onBack={handleLogout}
             onUpdateInspectors={setInspectors}
             onUpdateUlp={setUlpList}
             onUpdateFeeders={setFeeders}
+            onUpdateYandal={setYandalList}
           />
         );
       case AppRole.VIEWER:
@@ -265,7 +358,7 @@ const App: React.FC = () => {
             </p>
           </div>
           
-          <p className="text-[7px] font-black text-slate-900 uppercase tracking-widest">
+          <p className="text-[9px] font-black text-slate-900 uppercase tracking-widest hidden sm:block">
             Sistem Informasi Temuan Kelainan V{APP_VERSION}
           </p>
 
