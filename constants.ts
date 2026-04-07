@@ -1,9 +1,16 @@
 
-import { Inspector, ULP, Feeder, Keterangan, Pekerjaan } from './types';
+import { Inspector, ULP, Feeder, Keterangan, Pekerjaan, Yandal } from './types';
 
 export const SPREADSHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbw_8wCUk4EZcTVwxG3oryedtEEOc24glOKgpug5zPY3S3E7QuDXuzohnMpp_W_jajIN/exec';
 
-export const APP_VERSION = '2.0.1';
+export const APP_VERSION = '2.0.0';
+
+export const INITIAL_YANDAL: Yandal[] = [
+  { id: 'y1', name: 'ALDI', ulpId: 'u6' },
+  { id: 'y3', name: 'ANDRI', ulpId: 'u6' },
+  { id: 'y7', name: 'ARIF', ulpId: 'u6' },
+  { id: 'y11', name: 'DEDI', ulpId: 'u6' },
+];
 
 export const INITIAL_PEKERJAAN: Pekerjaan[] = [
   { id: 'PEK01', name: 'JTM TIER 1' },
