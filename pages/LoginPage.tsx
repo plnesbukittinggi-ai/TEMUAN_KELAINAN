@@ -69,13 +69,18 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
         return;
       }
 
-      if (!formData.inspektor1 || !formData.inspektor2 || !formData.ulp || !formData.idPekerjaan) {
-        alert('⚠️ Mohon lengkapi seluruh detail inspeksi dan Jenis Pekerjaan!');
+      if (!formData.inspektor1 || !formData.ulp || !formData.idPekerjaan) {
+        alert('⚠️ Mohon lengkapi Unit Pelaksana, Inspektur 1, dan Jenis Pekerjaan!');
         return;
       }
-      if (formData.inspektor1 === formData.inspektor2) {
+      if (formData.inspektor2 && formData.inspektor1 === formData.inspektor2) {
         alert('⚠️ Nama Inspektur 1 dan Inspektur 2 tidak boleh sama!');
         return;
+      }
+      
+      // Set default '-' if Inspektur 2 is empty
+      if (!formData.inspektor2) {
+        formData.inspektor2 = '-';
       }
     }
 
