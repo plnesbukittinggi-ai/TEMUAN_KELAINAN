@@ -102,6 +102,13 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const [formData, setFormData] = useState<any>({ name: '', ulpId: '' });
   const [isSaving, setIsSaving] = useState(false);
 
+  // State for Rekap Jenis Detail Popup
+  const [detailPopup, setDetailPopup] = useState<{
+    keterangan: string;
+    status: string;
+    data: TemuanData[];
+  } | null>(null);
+
   const parseRobustDate = (dateStr: any): Date => {
     if (!dateStr) return new Date(0);
     if (dateStr instanceof Date) return dateStr;
@@ -133,6 +140,31 @@ const AdminPage: React.FC<AdminPageProps> = ({
     const dates = getDefaultRekapDates();
     setRekapStartDate(dates.start);
     setRekapEndDate(dates.end);
+  };
+
+  const handleShowDetail = (keterangan: string, status: string | 'ALL') => {
+    const filtered = data.filter(item => {
+      const dDate = parseRobustDate(item.tanggal);
+      const matchMonth = dDate.getMonth() + 1 === rekapJenisMonth;
+      const matchYear = dDate.getFullYear() === rekapJenisYear;
+      const matchPekerjaan = !rekapJenisPekerjaan || item.pekerjaan === rekapJenisPekerjaan;
+      const matchUlp = !rekapJenisUlp || item.ulp === rekapJenisUlp;
+      const matchFeeder = !rekapJenisFeeder || item.feeder === rekapJenisFeeder;
+      
+      const matchKeterangan = (item.keterangan || 'Tanpa Keterangan') === keterangan;
+      
+      let matchStatus = false;
+      if (status === 'ALL') matchStatus = true;
+      else if (status === 'BELUM EKSEKUSI') matchStatus = item.status === 'BELUM EKSEKUSI';
+      else if (status === 'SUDAH EKSEKUSI') matchStatus = item.status === 'SUDAH EKSEKUSI';
+      else if (status === 'BUTUH PADAM') matchStatus = item.status === 'BUTUH PADAM';
+      else if (status === 'TIDAK DAPAT IZIN') matchStatus = item.status === 'TIDAK DAPAT IZIN';
+      else if (status === 'KENDALA MATERIAL') matchStatus = item.status === 'KENDALA MATERIAL';
+      
+      return matchMonth && matchYear && matchPekerjaan && matchUlp && matchFeeder && matchKeterangan && matchStatus;
+    });
+    
+    setDetailPopup({ keterangan, status, data: filtered });
   };
 
   const dashboardData = useMemo(() => {
@@ -984,12 +1016,42 @@ const AdminPage: React.FC<AdminPageProps> = ({
                     rekapJenisData.map((row, idx) => (
                       <tr key={idx} className="hover:bg-slate-50 transition-colors">
                         <td className="p-4 text-[10px] font-bold text-slate-800 uppercase tracking-tight leading-tight">{row.keterangan}</td>
-                        <td className="p-4 text-[11px] font-black text-center bg-slate-50/50 border-x border-slate-100">{row.total}</td>
-                        <td className="p-4 text-[10px] font-bold text-center text-indigo-600">{row.belum}</td>
-                        <td className="p-4 text-[10px] font-bold text-center text-emerald-600">{row.sudah}</td>
-                        <td className="p-4 text-[10px] font-bold text-center text-amber-600">{row.padam}</td>
-                        <td className="p-4 text-[10px] font-bold text-center text-orange-600">{row.tidakIzin}</td>
-                        <td className="p-4 text-[10px] font-bold text-center text-red-600">{row.kendala}</td>
+                        <td 
+                          className="p-4 text-[11px] font-black text-center bg-slate-50/50 border-x border-slate-100 cursor-pointer hover:bg-indigo-50 hover:text-indigo-600 transition-all"
+                          onClick={() => handleShowDetail(row.keterangan, 'ALL')}
+                        >
+                          {row.total}
+                        </td>
+                        <td 
+                          className="p-4 text-[10px] font-bold text-center text-indigo-600 cursor-pointer hover:bg-indigo-50 transition-all"
+                          onClick={() => handleShowDetail(row.keterangan, 'BELUM EKSEKUSI')}
+                        >
+                          {row.belum}
+                        </td>
+                        <td 
+                          className="p-4 text-[10px] font-bold text-center text-emerald-600 cursor-pointer hover:bg-emerald-50 transition-all"
+                          onClick={() => handleShowDetail(row.keterangan, 'SUDAH EKSEKUSI')}
+                        >
+                          {row.sudah}
+                        </td>
+                        <td 
+                          className="p-4 text-[10px] font-bold text-center text-amber-600 cursor-pointer hover:bg-amber-50 transition-all"
+                          onClick={() => handleShowDetail(row.keterangan, 'BUTUH PADAM')}
+                        >
+                          {row.padam}
+                        </td>
+                        <td 
+                          className="p-4 text-[10px] font-bold text-center text-orange-600 cursor-pointer hover:bg-orange-50 transition-all"
+                          onClick={() => handleShowDetail(row.keterangan, 'TIDAK DAPAT IZIN')}
+                        >
+                          {row.tidakIzin}
+                        </td>
+                        <td 
+                          className="p-4 text-[10px] font-bold text-center text-red-600 cursor-pointer hover:bg-red-50 transition-all"
+                          onClick={() => handleShowDetail(row.keterangan, 'KENDALA MATERIAL')}
+                        >
+                          {row.kendala}
+                        </td>
                       </tr>
                     ))
                   ) : (
@@ -1128,6 +1190,118 @@ const AdminPage: React.FC<AdminPageProps> = ({
                  </div>
                  <div className="mt-8 flex gap-3"><button onClick={() => setIsModalOpen(false)} className="flex-1 py-4 bg-slate-100 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Batal</button><button onClick={handleSaveMaster} disabled={isSaving} className="flex-2 py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50 px-8">{isSaving ? '⏳' : 'Simpan'}</button></div>
               </div></div>
+        </div>
+      )}
+
+      {/* Detail Popup for Rekap Jenis */}
+      {detailPopup && (
+        <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-md z-[200] flex items-center justify-center p-4 animate-fade-in" onClick={() => setDetailPopup(null)}>
+          <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-[2.5rem] shadow-2xl flex flex-col animate-slide-up overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                  <span className="w-1.5 h-4 bg-indigo-600 rounded-full"></span>
+                  Detail Data: {detailPopup.keterangan}
+                </h3>
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                  Status: <span className="text-indigo-600">{detailPopup.status === 'ALL' ? 'SEMUA STATUS' : detailPopup.status}</span> • {detailPopup.data.length} Data Ditemukan
+                </p>
+              </div>
+              <button onClick={() => setDetailPopup(null)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-red-500 transition-all shadow-sm">✕</button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-4">
+                {detailPopup.data.length > 0 ? detailPopup.data.map((item, idx) => {
+                  const itemDate = parseRobustDate(item.tanggal);
+                  return (
+                    <div key={idx} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex gap-4 hover:border-indigo-200 transition-all group">
+                      <div className="flex flex-col items-center flex-shrink-0">
+                        <div className="w-16 h-16 bg-white rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                          <img src={getDisplayImageUrl(item.fotoTemuan)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                        </div>
+                        <p className="text-[7px] font-black uppercase text-slate-400 mt-1">Temuan</p>
+                      </div>
+                      
+                      {item.status === 'SUDAH EKSEKUSI' && item.fotoEksekusi && (
+                        <div className="flex flex-col items-center flex-shrink-0">
+                          <div className="w-16 h-16 bg-emerald-50 rounded-xl overflow-hidden border border-emerald-100 shadow-sm">
+                            <img src={getDisplayImageUrl(item.fotoEksekusi)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                          </div>
+                          <p className="text-[7px] font-black uppercase text-emerald-500 mt-1">Eksekusi</p>
+                        </div>
+                      )}
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start mb-1">
+                          <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight group-hover:text-indigo-600 transition-colors">
+                            {item.noTiang} • {item.feeder}
+                          </p>
+                          <span className={`text-[8px] px-2 py-0.5 rounded-full font-black uppercase ${
+                            item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-100 text-emerald-700' : 
+                            item.status === 'BELUM EKSEKUSI' ? 'bg-indigo-100 text-indigo-700' :
+                            'bg-amber-100 text-amber-700'
+                          }`}>
+                            {item.status}
+                          </span>
+                        </div>
+                        
+                        <p className="text-[10px] font-bold text-slate-600 uppercase tracking-tight line-clamp-1 mb-2">
+                          {item.alamat || item.lokasi || 'Alamat tidak tersedia'}
+                        </p>
+                        
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                          <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
+                            📅 {itemDate.toLocaleDateString('id-ID')}
+                          </p>
+                          <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
+                            🏢 {item.ulp}
+                          </p>
+                          <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
+                            👤 {item.inspektor1} {item.inspektor2 ? `& ${item.inspektor2}` : ''}
+                          </p>
+                        </div>
+
+                        {item.status === 'SUDAH EKSEKUSI' && (
+                          <div className="mt-3 pt-3 border-t border-slate-200/60 flex flex-col gap-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded uppercase tracking-wider">Eksekusi</span>
+                              <p className="text-[9px] font-black text-slate-700 uppercase">
+                                {item.tanggalEksekusi ? parseRobustDate(item.tanggalEksekusi).toLocaleDateString('id-ID') : '-'}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">Team:</span>
+                                <p className="text-[9px] font-black text-slate-700 uppercase">{item.timEksekusi || '-'}</p>
+                              </div>
+                              {(item.namaYandal1 || item.namaYandal2) && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">Petugas:</span>
+                                  <p className="text-[9px] font-black text-emerald-600 uppercase">
+                                    {[item.namaYandal1, item.namaYandal2].filter(Boolean).join(' & ')}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <div className="text-center py-20 opacity-20">
+                    <span className="text-6xl">📂</span>
+                    <p className="text-xs font-black uppercase tracking-widest mt-4">Data tidak ditemukan</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end">
+              <button onClick={() => setDetailPopup(null)} className="px-8 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all">Tutup Detail</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
