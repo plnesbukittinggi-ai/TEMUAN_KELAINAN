@@ -77,8 +77,8 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const [rekapEndDate, setRekapEndDate] = useState<string>(initialRekapDates.end);
 
   // Filters for Rekap Jenis Temuan
-  const [rekapJenisMonth, setRekapJenisMonth] = useState<number>(new Date().getMonth() + 1);
-  const [rekapJenisYear, setRekapJenisYear] = useState<number>(new Date().getFullYear());
+  const [rekapJenisStartDate, setRekapJenisStartDate] = useState<string>(initialRekapDates.start);
+  const [rekapJenisEndDate, setRekapJenisEndDate] = useState<string>(initialRekapDates.end);
   const [rekapJenisPekerjaan, setRekapJenisPekerjaan] = useState<string>('');
   const [rekapJenisUlp, setRekapJenisUlp] = useState<string>('');
   const [rekapJenisFeeder, setRekapJenisFeeder] = useState<string>('');
@@ -145,8 +145,19 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const handleShowDetail = (keterangan: string, status: string | 'ALL') => {
     const filtered = data.filter(item => {
       const dDate = parseRobustDate(item.tanggal);
-      const matchMonth = dDate.getMonth() + 1 === rekapJenisMonth;
-      const matchYear = dDate.getFullYear() === rekapJenisYear;
+      
+      let matchDate = true;
+      if (rekapJenisStartDate) {
+        const start = new Date(rekapJenisStartDate);
+        start.setHours(0,0,0,0);
+        if (dDate < start) matchDate = false;
+      }
+      if (rekapJenisEndDate) {
+        const end = new Date(rekapJenisEndDate);
+        end.setHours(23,59,59,999);
+        if (dDate > end) matchDate = false;
+      }
+
       const matchPekerjaan = !rekapJenisPekerjaan || item.pekerjaan === rekapJenisPekerjaan;
       const matchUlp = !rekapJenisUlp || item.ulp === rekapJenisUlp;
       const matchFeeder = !rekapJenisFeeder || item.feeder === rekapJenisFeeder;
@@ -161,7 +172,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
       else if (status === 'TIDAK DAPAT IZIN') matchStatus = item.status === 'TIDAK DAPAT IZIN';
       else if (status === 'KENDALA MATERIAL') matchStatus = item.status === 'KENDALA MATERIAL';
       
-      return matchMonth && matchYear && matchPekerjaan && matchUlp && matchFeeder && matchKeterangan && matchStatus;
+      return matchDate && matchPekerjaan && matchUlp && matchFeeder && matchKeterangan && matchStatus;
     });
     
     setDetailPopup({ keterangan, status, data: filtered });
@@ -281,13 +292,24 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
     data.forEach(item => {
       const dDate = parseRobustDate(item.tanggal);
-      const matchMonth = dDate.getMonth() + 1 === rekapJenisMonth;
-      const matchYear = dDate.getFullYear() === rekapJenisYear;
+      
+      let matchDate = true;
+      if (rekapJenisStartDate) {
+        const start = new Date(rekapJenisStartDate);
+        start.setHours(0,0,0,0);
+        if (dDate < start) matchDate = false;
+      }
+      if (rekapJenisEndDate) {
+        const end = new Date(rekapJenisEndDate);
+        end.setHours(23,59,59,999);
+        if (dDate > end) matchDate = false;
+      }
+
       const matchPekerjaan = !rekapJenisPekerjaan || item.pekerjaan === rekapJenisPekerjaan;
       const matchUlp = !rekapJenisUlp || item.ulp === rekapJenisUlp;
       const matchFeeder = !rekapJenisFeeder || item.feeder === rekapJenisFeeder;
 
-      if (matchMonth && matchYear && matchPekerjaan && matchUlp && matchFeeder) {
+      if (matchDate && matchPekerjaan && matchUlp && matchFeeder) {
         const key = item.keterangan || 'Tanpa Keterangan';
         if (!counts[key]) {
           counts[key] = { keterangan: key, total: 0, belum: 0, sudah: 0, padam: 0, tidakIzin: 0, kendala: 0 };
@@ -302,24 +324,35 @@ const AdminPage: React.FC<AdminPageProps> = ({
     });
 
     return Object.values(counts).sort((a, b) => b.total - a.total);
-  }, [data, rekapJenisMonth, rekapJenisYear, rekapJenisPekerjaan, rekapJenisUlp, rekapJenisFeeder]);
+  }, [data, rekapJenisStartDate, rekapJenisEndDate, rekapJenisPekerjaan, rekapJenisUlp, rekapJenisFeeder]);
 
   // Filter feeders to show only those that have findings in current period for Rekap Jenis filter
   const feedersWithDataForRekapJenis = useMemo(() => {
     const unique = new Set<string>();
     data.forEach(item => {
       const dDate = parseRobustDate(item.tanggal);
-      const matchMonth = dDate.getMonth() + 1 === rekapJenisMonth;
-      const matchYear = dDate.getFullYear() === rekapJenisYear;
+      
+      let matchDate = true;
+      if (rekapJenisStartDate) {
+        const start = new Date(rekapJenisStartDate);
+        start.setHours(0,0,0,0);
+        if (dDate < start) matchDate = false;
+      }
+      if (rekapJenisEndDate) {
+        const end = new Date(rekapJenisEndDate);
+        end.setHours(23,59,59,999);
+        if (dDate > end) matchDate = false;
+      }
+
       const matchPekerjaan = !rekapJenisPekerjaan || item.pekerjaan === rekapJenisPekerjaan;
       const matchUlp = !rekapJenisUlp || item.ulp === rekapJenisUlp;
       
-      if (matchMonth && matchYear && matchPekerjaan && matchUlp) {
+      if (matchDate && matchPekerjaan && matchUlp) {
         if (item.feeder) unique.add(item.feeder);
       }
     });
     return Array.from(unique).sort();
-  }, [data, rekapJenisMonth, rekapJenisYear, rekapJenisPekerjaan, rekapJenisUlp]);
+  }, [data, rekapJenisStartDate, rekapJenisEndDate, rekapJenisPekerjaan, rekapJenisUlp]);
 
   useEffect(() => {
     if (tab === 'DASHBOARD' && dashboardData.length > 0) {
@@ -936,24 +969,22 @@ const AdminPage: React.FC<AdminPageProps> = ({
                 <p className="text-[8px] font-black text-emerald-600/60 uppercase tracking-widest ml-1">Periode & Jenis Pekerjaan</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-[7px] font-bold text-emerald-700 ml-1 uppercase">Bulan</label>
-                    <select 
+                    <label className="text-[7px] font-bold text-emerald-700 ml-1 uppercase">Tgl Mulai</label>
+                    <input 
+                      type="date" 
                       className="w-full p-3 bg-white border border-emerald-100 rounded-xl text-[11px] font-bold outline-none text-emerald-900 shadow-sm focus:border-emerald-400 transition-all" 
-                      value={rekapJenisMonth} 
-                      onChange={(e) => setRekapJenisMonth(Number(e.target.value))}
-                    >
-                      {MONTHS.map(m => <option key={m.val} value={m.val}>{m.label}</option>)}
-                    </select>
+                      value={rekapJenisStartDate} 
+                      onChange={(e) => setRekapJenisStartDate(e.target.value)} 
+                    />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[7px] font-bold text-emerald-700 ml-1 uppercase">Tahun</label>
-                    <select 
+                    <label className="text-[7px] font-bold text-emerald-700 ml-1 uppercase">Tgl Akhir</label>
+                    <input 
+                      type="date" 
                       className="w-full p-3 bg-white border border-emerald-100 rounded-xl text-[11px] font-bold outline-none text-emerald-900 shadow-sm focus:border-emerald-400 transition-all" 
-                      value={rekapJenisYear} 
-                      onChange={(e) => setRekapJenisYear(Number(e.target.value))}
-                    >
-                      {years.map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>
+                      value={rekapJenisEndDate} 
+                      onChange={(e) => setRekapJenisEndDate(e.target.value)} 
+                    />
                   </div>
                 </div>
                 <div className="space-y-1">
