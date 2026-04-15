@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { LoginSession, TemuanData, Yandal, ULP } from '../types';
 import { compressImage, getDisplayImageUrl } from '../utils/image-utils';
+import ImageEditor from '../src/components/ImageEditor';
 
 interface EksekusiPageProps {
   session: LoginSession;
@@ -23,6 +24,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const [namaYandal2, setNamaYandal2] = useState<string>(initialData?.namaYandal2 || '');
   const [isSaving, setIsSaving] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
+  const [editingImage, setEditingImage] = useState<string | null>(null);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -95,15 +97,9 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setIsCompressing(true);
       const reader = new FileReader();
-      reader.onloadend = async () => {
-        try {
-          const base64 = reader.result as string;
-          const compressed = await compressImage(base64);
-          setExecutionPhoto(compressed);
-        } catch (err) { alert('Gagal memproses gambar perbaikan.'); }
-        finally { setIsCompressing(false); }
+      reader.onloadend = () => {
+        setEditingImage(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -469,6 +465,25 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
           <img src={previewImage.url} alt="Preview" className="w-full max-w-md aspect-square object-contain bg-slate-100 rounded-3xl" referrerPolicy="no-referrer" />
           <p className="text-white/50 text-[10px] mt-6 font-bold uppercase tracking-[0.2em]">Sentuh di mana saja untuk menutup</p>
         </div>
+      )}
+
+      {editingImage && (
+        <ImageEditor 
+          imageUrl={editingImage}
+          onSave={async (edited) => {
+            setIsCompressing(true);
+            setEditingImage(null);
+            try {
+              const compressed = await compressImage(edited);
+              setExecutionPhoto(compressed);
+            } catch (err) {
+              alert('Gagal memproses gambar perbaikan.');
+            } finally {
+              setIsCompressing(false);
+            }
+          }}
+          onCancel={() => setEditingImage(null)}
+        />
       )}
     </div>
   );
