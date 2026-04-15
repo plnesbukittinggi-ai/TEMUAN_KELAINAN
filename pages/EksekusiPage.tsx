@@ -332,6 +332,11 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                     {item.noTiang}
                   </h3>
                   <p className="text-xs font-bold text-red-600 line-clamp-1">{item.keterangan}</p>
+                  {item.catatan && (
+                    <p className="text-[9px] text-slate-500 font-bold italic mt-1 line-clamp-2">
+                      📝 {item.catatan}
+                    </p>
+                  )}
                 </div>
               </div>
               
@@ -368,7 +373,12 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
             <div className="p-6 space-y-6">
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                 <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Aset Target</p>
-                <p className="font-bold text-slate-900 text-sm uppercase">{selectedTemuan.noTiang} • {selectedTemuan.feeder}</p>
+                <p className="font-bold text-slate-900 text-sm uppercase mb-1">{selectedTemuan.noTiang} • {selectedTemuan.feeder}</p>
+                {selectedTemuan.catatan && (
+                  <p className="text-[10px] text-slate-500 font-bold italic border-t border-slate-200 mt-2 pt-2">
+                    📝 Catatan: {selectedTemuan.catatan}
+                  </p>
+                )}
               </div>
 
               <div>
