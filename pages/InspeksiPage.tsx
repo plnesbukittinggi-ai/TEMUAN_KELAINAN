@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { LoginSession, TemuanData, Feeder, Keterangan } from '../types';
-import { compressImage } from '../utils/image-utils';
-
-import { getDisplayImageUrl } from '../utils/image-utils';
+import { compressImage, getDisplayImageUrl } from '../utils/image-utils';
+import ImageEditor from '../src/components/ImageEditor';
 
 interface InspeksiPageProps {
   session: LoginSession;
@@ -19,6 +18,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
   const [isLocating, setIsLocating] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   const [isManualGeotag, setIsManualGeotag] = useState(false);
+  const [editingImage, setEditingImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const normalize = (s: any) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -98,18 +98,9 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setIsCompressing(true);
       const reader = new FileReader();
-      reader.onloadend = async () => {
-        try {
-          const base64 = reader.result as string;
-          const compressed = await compressImage(base64);
-          setFormData(p => ({ ...p, fotoTemuan: compressed }));
-        } catch (err) {
-          alert('Gagal memproses gambar.');
-        } finally {
-          setIsCompressing(false);
-        }
+      reader.onloadend = () => {
+        setEditingImage(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -319,6 +310,25 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
           {isSubmitting ? '⏳ Menyimpan...' : initialData ? 'Update Laporan Temuan' : 'Simpan Laporan Temuan'}
         </button>
       </form>
+
+      {editingImage && (
+        <ImageEditor 
+          imageUrl={editingImage}
+          onSave={async (edited) => {
+            setIsCompressing(true);
+            setEditingImage(null);
+            try {
+              const compressed = await compressImage(edited);
+              setFormData(p => ({ ...p, fotoTemuan: compressed }));
+            } catch (err) {
+              alert('Gagal memproses gambar.');
+            } finally {
+              setIsCompressing(false);
+            }
+          }}
+          onCancel={() => setEditingImage(null)}
+        />
+      )}
     </div>
   );
 };
