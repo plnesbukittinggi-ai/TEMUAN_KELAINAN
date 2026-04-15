@@ -1191,6 +1191,11 @@ const AdminPage: React.FC<AdminPageProps> = ({
                           </span>
                         )}
                       </p>
+                      {item.catatan && (
+                        <p className="text-[8px] text-slate-500 mt-1 font-bold italic line-clamp-1">
+                          📝 {item.catatan}
+                        </p>
+                      )}
                    </div>
                 </div>
               )})}
@@ -1315,6 +1320,12 @@ const AdminPage: React.FC<AdminPageProps> = ({
                                 </div>
                               )}
                             </div>
+                          </div>
+                        )}
+                        {item.catatan && (
+                          <div className="mt-3 pt-3 border-t border-slate-200/60">
+                            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">📝 Catatan:</p>
+                            <p className="text-[10px] text-slate-700 font-bold leading-relaxed">{item.catatan}</p>
                           </div>
                         )}
                       </div>
