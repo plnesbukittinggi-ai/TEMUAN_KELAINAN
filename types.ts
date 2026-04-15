@@ -56,6 +56,7 @@ export interface TemuanData {
   keterangan: string;
   status: 'BELUM EKSEKUSI' | 'SUDAH EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN' | 'KENDALA MATERIAL';
   prioritas: number; // 1, 2, or 3 stars
+  catatan?: string;
   tanggalEksekusi?: string;
   fotoEksekusi?: string;
   timEksekusi?: string;
