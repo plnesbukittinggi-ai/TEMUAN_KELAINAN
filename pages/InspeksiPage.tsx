@@ -70,7 +70,8 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
     fotoTemuan: initialData?.fotoTemuan || '',
     keterangan: initialData?.keterangan || '',
     status: initialData?.status || 'BELUM EKSEKUSI',
-    prioritas: initialPrioritas
+    prioritas: initialPrioritas,
+    catatan: initialData?.catatan || ''
   });
 
   const fetchLocation = () => {
@@ -300,6 +301,17 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
             <p className="text-center text-[8px] text-slate-400 font-bold uppercase mt-4 tracking-widest italic">
               * Bintang 1 adalah prioritas tertinggi (Segera Eksekusi)
             </p>
+          </div>
+
+          <div className="pt-4 border-t border-slate-100">
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1 mb-2">Catatan (Opsional)</label>
+            <textarea 
+              rows={3} 
+              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-500 resize-none" 
+              placeholder="Tambahkan catatan tambahan jika diperlukan..." 
+              value={formData.catatan} 
+              onChange={e => setFormData({ ...formData, catatan: e.target.value })} 
+            />
           </div>
         </div>
 
