@@ -399,6 +399,12 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                      Petugas Yandal Eksekusi : {item.namaYandal1} - {item.namaYandal2}
                    </p>
                  )}
+                 {item.catatan && (
+                   <div className="mt-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                     <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">📝 Catatan:</p>
+                     <p className="text-[10px] text-slate-700 font-bold leading-relaxed">{item.catatan}</p>
+                   </div>
+                 )}
               </div>
 
               {onEdit && (
