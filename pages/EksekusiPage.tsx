@@ -303,19 +303,24 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       ) : (
         <div className="space-y-4 mt-6">
           {(initialData ? [initialData] : filteredQueue).map((item) => (
-            <div key={item.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col group animate-fade-in">
+            <div key={item.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:border-indigo-200 transition-all flex flex-col group animate-fade-in">
               <div className="px-4 pt-3 pb-1 border-b border-slate-50 flex justify-between items-center">
                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                   🗓️ {parseRobustDate(item.tanggal).toLocaleDateString('id-ID')}
                 </p>
-                <span className={`text-[8px] px-2 py-0.5 rounded font-black uppercase ${item.status === 'BUTUH PADAM' ? 'bg-amber-50 text-amber-700' : item.status === 'BELUM EKSEKUSI' ? 'bg-indigo-50 text-indigo-700' : item.status === 'TIDAK DAPAT IZIN' ? 'bg-orange-50 text-orange-700' : 'bg-red-50 text-red-700'}`}>
-                  {item.status === 'TIDAK DAPAT IZIN' ? 'TIDAK IZIN' : item.status}
-                </span>
+                <div className="flex flex-col items-end">
+                  <span className={`text-[8px] px-2 py-0.5 rounded font-black uppercase ${item.status === 'BUTUH PADAM' ? 'bg-amber-50 text-amber-700' : item.status === 'BELUM EKSEKUSI' ? 'bg-indigo-50 text-indigo-700' : item.status === 'TIDAK DAPAT IZIN' ? 'bg-orange-50 text-orange-700' : 'bg-red-50 text-red-700'}`}>
+                    {item.status}
+                  </span>
+                </div>
               </div>
 
-              <div className="flex p-4 gap-4 pb-0">
+              <div className="flex p-4 gap-4 pb-2">
                 <div className="relative flex-shrink-0 cursor-zoom-in" onClick={() => setPreviewImage({ url: formatDriveUrl(item.fotoTemuan), title: `Foto Temuan: ${item.noTiang}` })}>
-                  <img src={formatDriveUrl(item.fotoTemuan)} alt="Temuan" className="w-24 h-24 object-cover rounded-xl border border-slate-100" referrerPolicy="no-referrer" />
+                  <div className="w-20 h-20 bg-slate-100 rounded-xl overflow-hidden border border-slate-100">
+                    <img src={formatDriveUrl(item.fotoTemuan)} alt="Temuan" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  </div>
+                  <p className="text-[7px] font-black text-center mt-1 uppercase text-slate-400">Temuan</p>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="mb-1">
@@ -328,15 +333,10 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                     {item.noTiang}
                   </h3>
                   <p className="text-xs font-bold text-red-600 line-clamp-1">{item.keterangan}</p>
-                  {item.catatan && (
-                    <p className="text-[9px] text-slate-500 font-bold italic mt-1 line-clamp-2">
-                      📝 {item.catatan}
-                    </p>
-                  )}
                 </div>
               </div>
               
-              <div className="px-4 pb-4 mt-2">
+              <div className="px-4 pb-3">
                 <div className="flex items-center justify-between gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
                   <p className="text-[10px] text-slate-600 font-bold italic flex-1 leading-tight">
                     📍 {item.alamat || item.lokasi || 'Alamat tidak tersedia'}
@@ -347,13 +347,25 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                       className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 rounded-lg active:scale-90 transition-all hover:bg-white shadow-sm"
                     >
                       <span className="text-[11px]">🗺️</span>
-                      <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Navigasi</span>
+                      <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Maps</span>
                     </button>
                   )}
                 </div>
               </div>
 
-              <button onClick={() => setSelectedTemuan(item)} className="w-full bg-slate-900 text-white font-bold py-4 text-xs uppercase tracking-[0.2em] active:bg-slate-800 transition-colors">{initialData ? 'EDIT DETAIL EKSEKUSI' : 'PROSES EKSEKUSI'}</button>
+              <div className="px-4 pb-4 flex flex-col gap-1">
+                 <p className="text-[8px] font-bold text-slate-400 uppercase italic">
+                   Input oleh: {item.inspektor1}{item.inspektor2 ? ` & ${item.inspektor2}` : ''}
+                 </p>
+                 {item.catatan && (
+                   <div className="mt-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                     <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">📝 Catatan:</p>
+                     <p className="text-[10px] text-slate-700 font-bold leading-relaxed">{item.catatan}</p>
+                   </div>
+                 )}
+              </div>
+
+              <button onClick={() => setSelectedTemuan(item)} className="w-full bg-slate-900 text-white font-bold py-4 text-xs uppercase tracking-[0.2em] active:bg-slate-800 transition-colors shadow-inner">{initialData ? 'EDIT DETAIL EKSEKUSI' : 'PROSES EKSEKUSI'}</button>
             </div>
           ))}
         </div>
