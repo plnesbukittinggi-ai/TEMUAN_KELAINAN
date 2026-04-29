@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AppRole, TemuanData, LoginSession, Inspector, ULP, Feeder, Pekerjaan, Keterangan, Yandal } from './types';
+import { AppRole, TemuanData, LoginSession, Inspector, ULP, Feeder, Pekerjaan, Keterangan, Yandal, MarqueeMessage } from './types';
 import { INITIAL_INSPECTORS, INITIAL_ULP, INITIAL_FEEDERS, INITIAL_KETERANGAN, INITIAL_PEKERJAAN, INITIAL_YANDAL, APP_VERSION } from './constants';
 import { SpreadsheetService } from './services/spreadsheetService';
 import LoginPage from './pages/LoginPage';
@@ -17,6 +17,7 @@ const App: React.FC = () => {
   const [yandalList, setYandalList] = useState<Yandal[]>(INITIAL_YANDAL);
   const [pekerjaanList, setPekerjaanList] = useState<Pekerjaan[]>(INITIAL_PEKERJAAN);
   const [keteranganList, setKeteranganList] = useState<Keterangan[]>(INITIAL_KETERANGAN);
+  const [marqueeMessages, setMarqueeMessages] = useState<MarqueeMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [connectionError, setConnectionError] = useState<boolean>(false);
   
@@ -143,6 +144,9 @@ const App: React.FC = () => {
       
       const keteranganData = findDataInConfig(config, 'keteranganList');
       if (keteranganData) setKeteranganList(normalize(keteranganData, 'Keterangan'));
+      
+      const marqueeData = findDataInConfig(config, 'marqueeMessages');
+      if (marqueeData) setMarqueeMessages(normalize(marqueeData, 'MarqueeMessages'));
       
       const allDataItems = findDataInConfig(config, 'allData');
       if (allDataItems) setAllData(normalize(allDataItems, 'AllData'));
@@ -297,11 +301,13 @@ const App: React.FC = () => {
             yandalList={yandalList}
             pekerjaanList={pekerjaanList}
             keteranganList={keteranganList}
+            marqueeMessages={marqueeMessages}
             onBack={handleLogout}
             onUpdateInspectors={setInspectors}
             onUpdateUlp={setUlpList}
             onUpdateFeeders={setFeeders}
             onUpdateYandal={setYandalList}
+            onUpdateMessages={setMarqueeMessages}
           />
         );
       case AppRole.VIEWER:
@@ -344,6 +350,31 @@ const App: React.FC = () => {
           )}
         </div>
       </header>
+
+      <div className="bg-amber-50 border-b border-amber-100 overflow-hidden py-2 shadow-sm">
+        <div className="relative">
+          <div className="animate-marquee whitespace-nowrap flex items-center pr-10">
+            <span className="text-[10px] sm:text-[11px] font-black text-amber-800 uppercase tracking-[0.1em] flex items-center gap-2">
+              {marqueeMessages.filter(m => m.isActive).length > 0 ? (
+                marqueeMessages.filter(m => m.isActive).map((m, idx) => (
+                  <React.Fragment key={m.id}>
+                    <span className="text-sm">🛡️</span>
+                    {m.text}
+                    <span className="text-sm">🛡️</span>
+                    {idx < marqueeMessages.filter(m => m.isActive).length - 1 && <span className="mx-8">|</span>}
+                  </React.Fragment>
+                ))
+              ) : (
+                <>
+                  <span className="text-sm">🛡️</span>
+                  Tetap selalu Jaga Keselamatan dan selalu bekerja dengan Integritas
+                  <span className="text-sm">🛡️</span>
+                </>
+              )}
+            </span>
+          </div>
+        </div>
+      </div>
       
       <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto animate-fade-in">
         {renderContent()}
