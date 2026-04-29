@@ -42,6 +42,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
   const [activeTab, setActiveTab] = useState<'MONITORING' | 'PLN'>('MONITORING');
   const [filter, setFilter] = useState<'ALL' | 'BELUM EKSEKUSI' | 'SUDAH EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN' | 'KENDALA MATERIAL'>('ALL');
   const [selectedFeeder, setSelectedFeeder] = useState<string>('');
+  const [selectedPriority, setSelectedPriority] = useState<string>('');
   const [startDate, setStartDate] = useState<string>(initialDates.start);
   const [endDate, setEndDate] = useState<string>(initialDates.end);
   const [previewImage, setPreviewImage] = useState<{url: string, title: string} | null>(null);
@@ -121,6 +122,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
 
       const matchStatus = filter === 'ALL' ? true : item.status === filter;
       const matchFeeder = !selectedFeeder || item.feeder === selectedFeeder;
+      const matchPriority = !selectedPriority || String(item.prioritas) === selectedPriority;
       
       // Inspector Filter Logic
       let matchInspector = true;
@@ -129,7 +131,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
         matchInspector = myNames.includes(item.inspektor1) || myNames.includes(item.inspektor2);
       }
       
-      return matchDate && matchStatus && matchFeeder && matchInspector;
+      return matchDate && matchStatus && matchFeeder && matchPriority && matchInspector;
     });
 
     return filtered.sort((a, b) => {
@@ -147,6 +149,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
     setStartDate(dates.start);
     setEndDate(dates.end);
     setSelectedFeeder('');
+    setSelectedPriority('');
     setFilter('ALL');
     setShowOnlyMyData(!!(currentSession?.inspektor1 || currentSession?.inspektor2));
   };
@@ -270,7 +273,7 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
           </div>
         </div>
 
-        <div className="mb-4">
+        <div className="grid grid-cols-2 gap-3 mb-4">
           <select 
             className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none"
             value={selectedFeeder}
@@ -278,6 +281,16 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
           >
             <option value="">-- Semua Feeder --</option>
             {uniqueFeeders.map(f => <option key={f} value={f}>{f}</option>)}
+          </select>
+          <select 
+            className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none uppercase"
+            value={selectedPriority}
+            onChange={(e) => setSelectedPriority(e.target.value)}
+          >
+            <option value="">-- Prioritas --</option>
+            <option value="1">⭐ 1 (Urgent)</option>
+            <option value="2">⭐⭐ 2 (Waspada)</option>
+            <option value="3">⭐⭐⭐ 3 (Normal)</option>
           </select>
         </div>
 
