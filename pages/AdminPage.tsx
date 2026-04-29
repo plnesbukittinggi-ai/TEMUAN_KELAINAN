@@ -22,11 +22,13 @@ interface AdminPageProps {
   yandalList: Yandal[];
   pekerjaanList: Pekerjaan[];
   keteranganList: Keterangan[];
+  marqueeMessages: MarqueeMessage[];
   onBack: () => void;
   onUpdateInspectors: (data: Inspector[]) => void;
   onUpdateUlp: (data: ULP[]) => void;
   onUpdateFeeders: (data: Feeder[]) => void;
   onUpdateYandal: (data: Yandal[]) => void;
+  onUpdateMessages: (data: MarqueeMessage[]) => void;
 }
 
 const MONTHS = [
@@ -60,8 +62,8 @@ const getDefaultRekapDates = () => {
 };
 
 const AdminPage: React.FC<AdminPageProps> = ({ 
-  data, ulpList, inspectors, feeders, yandalList, pekerjaanList, keteranganList, onBack,
-  onUpdateInspectors, onUpdateUlp, onUpdateFeeders, onUpdateYandal
+  data, ulpList, inspectors, feeders, yandalList, pekerjaanList, keteranganList, marqueeMessages, onBack,
+  onUpdateInspectors, onUpdateUlp, onUpdateFeeders, onUpdateYandal, onUpdateMessages
 }) => {
   const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP' | 'REKAP_JENIS' | 'REKAP_YANDAL'>('DASHBOARD');
   const [dataSubTab, setDataSubTab] = useState<'PLN_ES' | 'PLN'>('PLN_ES');
@@ -91,15 +93,18 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const [filterUlp, setFilterUlp] = useState<string>('');
   const [filterFeeder, setFilterFeeder] = useState<string>('');
   const [filterPekerjaan, setFilterPekerjaan] = useState<string>('');
+  const [filterKeterangan, setFilterKeterangan] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [filterPriority, setFilterPriority] = useState<string>('');
   const [filterStartDate, setFilterStartDate] = useState<string>('');
   const [filterEndDate, setFilterEndDate] = useState<string>('');
   const [isExporting, setIsExporting] = useState(false);
 
-  const [subTab, setSubTab] = useState<'INSPEKTOR' | 'ULP' | 'FEEDER' | 'YANDAL'>('INSPEKTOR');
+  const [subTab, setSubTab] = useState<'INSPEKTOR' | 'ULP' | 'FEEDER' | 'YANDAL' | 'MESSAGE'>('INSPEKTOR');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'ADD' | 'EDIT'>('ADD');
   const [editingItem, setEditingItem] = useState<any>(null);
-  const [formData, setFormData] = useState<any>({ name: '', ulpId: '' });
+  const [formData, setFormData] = useState<any>({ name: '', ulpId: '', isActive: true });
   const [isSaving, setIsSaving] = useState(false);
 
   // State for Rekap Jenis Detail Popup
@@ -405,6 +410,9 @@ const AdminPage: React.FC<AdminPageProps> = ({
       const matchUlp = !filterUlp || item.ulp === filterUlp;
       const matchFeeder = !filterFeeder || item.feeder === filterFeeder;
       const matchPekerjaan = !filterPekerjaan || item.pekerjaan === filterPekerjaan;
+      const matchKeterangan = !filterKeterangan || item.keterangan === filterKeterangan;
+      const matchStatus = !filterStatus || item.status === filterStatus;
+      const matchPriority = !filterPriority || String(item.prioritas) === filterPriority;
       const itemDate = parseRobustDate(item.tanggal);
       let matchDate = true;
       if (filterStartDate) {
@@ -417,7 +425,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
         end.setHours(23,59,59,999);
         if (itemDate > end) matchDate = false;
       }
-      return matchUlp && matchFeeder && matchPekerjaan && matchDate;
+      return matchUlp && matchFeeder && matchPekerjaan && matchKeterangan && matchStatus && matchPriority && matchDate;
     });
     
     // Sort by Date (Oldest First)
@@ -426,7 +434,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
       const dateB = parseRobustDate(b.tanggal).getTime();
       return dateA - dateB;
     });
-  }, [data, filterUlp, filterFeeder, filterPekerjaan, filterStartDate, filterEndDate, dataSubTab]);
+  }, [data, filterUlp, filterFeeder, filterPekerjaan, filterKeterangan, filterStatus, filterPriority, filterStartDate, filterEndDate, dataSubTab]);
 
   const handleDownloadExcel = async () => {
     if (filteredAndSortedData.length === 0) {
@@ -464,28 +472,39 @@ const AdminPage: React.FC<AdminPageProps> = ({
     setFilterUlp('');
     setFilterFeeder('');
     setFilterPekerjaan('');
+    setFilterKeterangan('');
+    setFilterStatus('');
+    setFilterPriority('');
     setFilterStartDate('');
     setFilterEndDate('');
   };
 
+  useEffect(() => {
+    setFilterKeterangan('');
+  }, [filterPekerjaan]);
+
   const handleOpenAdd = () => {
     setModalMode('ADD');
     setEditingItem(null);
-    setFormData({ name: '', ulpId: ulpList[0]?.id || '' });
+    setFormData({ name: '', ulpId: ulpList[0]?.id || '', isActive: true });
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (item: any) => {
     setModalMode('EDIT');
     setEditingItem(item);
-    setFormData({ name: item.name, ulpId: item.ulpId || '' });
+    setFormData({ 
+      name: item.name || item.text, 
+      ulpId: item.ulpId || '',
+      isActive: item.isActive !== undefined ? item.isActive === true || item.isActive === 'TRUE' : true
+    });
     setIsModalOpen(true);
   };
 
   const handleDelete = async (item: any) => {
-    if (!window.confirm(`Yakin ingin menghapus "${item.name}"?`)) return;
+    if (!window.confirm(`Yakin ingin menghapus "${item.name || item.text}"?`)) return;
     let updatedList: any[] = [];
-    let sheetName: 'Inspectors' | 'ULP' | 'Feeders' | 'Yandal';
+    let sheetName: 'Inspectors' | 'ULP' | 'Feeders' | 'Yandal' | 'Messages';
     if (subTab === 'INSPEKTOR') {
       updatedList = inspectors.filter(i => i.id !== item.id);
       sheetName = 'Inspectors';
@@ -495,6 +514,9 @@ const AdminPage: React.FC<AdminPageProps> = ({
     } else if (subTab === 'FEEDER') {
       updatedList = feeders.filter(f => f.id !== item.id);
       sheetName = 'Feeders';
+    } else if (subTab === 'MESSAGE') {
+      updatedList = marqueeMessages.filter(m => m.id !== item.id);
+      sheetName = 'Messages';
     } else {
       updatedList = yandalList.filter(y => y.id !== item.id);
       sheetName = 'Yandal';
@@ -505,6 +527,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
       if (subTab === 'INSPEKTOR') onUpdateInspectors(updatedList);
       else if (subTab === 'ULP') onUpdateUlp(updatedList);
       else if (subTab === 'FEEDER') onUpdateFeeders(updatedList);
+      else if (subTab === 'MESSAGE') onUpdateMessages(updatedList);
       else onUpdateYandal(updatedList);
       alert('Data berhasil dihapus.');
     } catch (e) { alert('Gagal menghapus data di server.'); }
@@ -512,12 +535,12 @@ const AdminPage: React.FC<AdminPageProps> = ({
   };
 
   const handleSaveMaster = async () => {
-    if (!formData.name.trim()) return alert('Nama wajib diisi!');
+    if (!formData.name.trim()) return alert('Input wajib diisi!');
     if ((subTab === 'FEEDER' || subTab === 'YANDAL') && !formData.ulpId) return alert('Pilih ULP!');
     setIsSaving(true);
     try {
       let updatedList: any[] = [];
-      let sheetName: 'Inspectors' | 'ULP' | 'Feeders' | 'Yandal';
+      let sheetName: 'Inspectors' | 'ULP' | 'Feeders' | 'Yandal' | 'Messages';
       if (subTab === 'INSPEKTOR') {
         sheetName = 'Inspectors';
         if (modalMode === 'ADD') {
@@ -539,6 +562,13 @@ const AdminPage: React.FC<AdminPageProps> = ({
         } else {
           updatedList = feeders.map(f => f.id === editingItem.id ? { ...f, name: formData.name, ulpId: formData.ulpId } : f);
         }
+      } else if (subTab === 'MESSAGE') {
+        sheetName = 'Messages';
+        if (modalMode === 'ADD') {
+          updatedList = [...marqueeMessages, { id: `M-${Date.now()}`, text: formData.name, isActive: formData.isActive }];
+        } else {
+          updatedList = marqueeMessages.map(m => m.id === editingItem.id ? { ...m, text: formData.name, isActive: formData.isActive } : m);
+        }
       } else {
         sheetName = 'Yandal';
         if (modalMode === 'ADD') {
@@ -552,6 +582,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
         if (subTab === 'INSPEKTOR') onUpdateInspectors(updatedList);
         else if (subTab === 'ULP') onUpdateUlp(updatedList);
         else if (subTab === 'FEEDER') onUpdateFeeders(updatedList);
+        else if (subTab === 'MESSAGE') onUpdateMessages(updatedList);
         else onUpdateYandal(updatedList);
         setIsModalOpen(false);
         alert(`Berhasil ${modalMode === 'ADD' ? 'menambah' : 'mengubah'} data di Spreadsheet.`);
@@ -584,6 +615,13 @@ const AdminPage: React.FC<AdminPageProps> = ({
     const unique = Array.from(new Set(filtered.map(d => d.feeder).filter(Boolean))).sort();
     return unique;
   }, [data, filterUlp, filterPekerjaan, filterStartDate, filterEndDate, dataSubTab]);
+
+  const currentFilteredKeteranganInData = useMemo(() => {
+    if (!filterPekerjaan) return keteranganList;
+    const selectedPekId = pekerjaanList.find(p => p.name === filterPekerjaan)?.id;
+    if (!selectedPekId) return keteranganList;
+    return keteranganList.filter(k => k.idPekerjaan === selectedPekId);
+  }, [filterPekerjaan, pekerjaanList, keteranganList]);
 
   return (
     <div className="pb-10">
@@ -1148,10 +1186,32 @@ const AdminPage: React.FC<AdminPageProps> = ({
                    {currentFilteredFeedersInData.map(name => <option key={name} value={name}>{name}</option>)}
                 </select>
               </div>
-              <select className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterPekerjaan} onChange={(e) => setFilterPekerjaan(e.target.value)}>
-                 <option value="">Semua Jenis Pekerjaan</option>
-                 {pekerjaanList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-              </select>
+              <div className="grid grid-cols-2 gap-3">
+                <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterPekerjaan} onChange={(e) => setFilterPekerjaan(e.target.value)}>
+                   <option value="">Semua Jenis Pekerjaan</option>
+                   {pekerjaanList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                </select>
+                <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none uppercase" value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
+                   <option value="">Semua Prioritas</option>
+                   <option value="1">⭐ 1 (Urgent)</option>
+                   <option value="2">⭐⭐ 2 (Waspada)</option>
+                   <option value="3">⭐⭐⭐ 3 (Normal)</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <select className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                   <option value="">Semua Status</option>
+                   <option value="BELUM EKSEKUSI">BELUM EKSEKUSI</option>
+                   <option value="SUDAH EKSEKUSI">SUDAH EKSEKUSI</option>
+                   <option value="BUTUH PADAM">BUTUH PADAM</option>
+                   <option value="TIDAK DAPAT IZIN">TIDAK DAPAT IZIN</option>
+                   <option value="KENDALA MATERIAL">KENDALA MATERIAL</option>
+                </select>
+                <select className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterKeterangan} onChange={(e) => setFilterKeterangan(e.target.value)}>
+                   <option value="">Semua Keterangan</option>
+                   {currentFilteredKeteranganInData.map(k => <option key={k.id} value={k.text}>{k.text}</option>)}
+                </select>
+              </div>
             </div>
             <button onClick={handleDownloadExcel} disabled={isExporting} className={`w-full py-4 rounded-2xl shadow-lg font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-3 ${isExporting ? 'bg-slate-200 text-slate-400' : 'bg-emerald-600 text-white active:scale-95'}`}>{isExporting ? '⏳ MENYIAPKAN FILE...' : '📗 DOWNLOAD LAPORAN EXCEL'}</button>
           </div>
@@ -1206,24 +1266,67 @@ const AdminPage: React.FC<AdminPageProps> = ({
       {tab === 'KELOLA' && (
         <div className="space-y-6 animate-fade-in">
           <div className="flex bg-slate-100 p-1 rounded-xl gap-1 overflow-x-auto no-scrollbar">
-             {(['INSPEKTOR', 'ULP', 'FEEDER', 'YANDAL'] as const).map(s => (<button key={s} onClick={() => setSubTab(s)} className={`flex-1 py-2.5 text-[10px] font-black rounded-lg transition-all uppercase tracking-widest min-w-[100px] ${subTab === s ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>{s}</button>))}
+             {(['INSPEKTOR', 'ULP', 'FEEDER', 'YANDAL', 'MESSAGE'] as const).map(s => (<button key={s} onClick={() => setSubTab(s)} className={`flex-1 py-2.5 text-[10px] font-black rounded-lg transition-all uppercase tracking-widest min-w-[100px] ${subTab === s ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>{s === 'MESSAGE' ? 'MARQUEE' : s}</button>))}
           </div>
-          <div className="flex justify-between items-center px-1"><h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Daftar {subTab}</h3><button onClick={handleOpenAdd} disabled={isSaving} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50">{isSaving ? '⏳' : '+ Tambah'}</button></div>
+          <div className="flex justify-between items-center px-1"><h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Daftar {subTab === 'MESSAGE' ? 'Pesan Marquee' : subTab}</h3><button onClick={handleOpenAdd} disabled={isSaving} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50">{isSaving ? '⏳' : '+ Tambah'}</button></div>
           <div className="grid grid-cols-1 gap-3">
              {subTab === 'INSPEKTOR' && inspectors.map(i => (<div key={i.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all"><div><p className="text-[11px] font-black text-slate-900 uppercase">{i.name}</p><p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">ID: {i.id}</p></div><div className="flex gap-2"><button onClick={() => handleOpenEdit(i)} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">✏️</button><button onClick={() => handleDelete(i)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button></div></div>))}
              {subTab === 'ULP' && ulpList.map(u => (<div key={u.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all"><div><p className="text-[11px] font-black text-slate-900 uppercase">{u.name}</p><p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Unit Pelaksana</p></div><div className="flex gap-2"><button onClick={() => handleOpenEdit(u)} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">✏️</button><button onClick={() => handleDelete(u)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button></div></div>))}
              {subTab === 'FEEDER' && feeders.map(f => (<div key={f.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all"><div><p className="text-[11px] font-black text-slate-900 uppercase">{f.name}</p><p className="text-[8px] text-indigo-600 font-bold uppercase tracking-widest mt-0.5">{ulpList.find(u => u.id === f.ulpId)?.name || 'Unit Unknown'}</p></div><div className="flex gap-2"><button onClick={() => handleOpenEdit(f)} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">✏️</button><button onClick={() => handleDelete(f)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button></div></div>))}
              {subTab === 'YANDAL' && yandalList.map(y => (<div key={y.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all"><div><p className="text-[11px] font-black text-slate-900 uppercase">{y.name}</p><p className="text-[8px] text-emerald-600 font-bold uppercase tracking-widest mt-0.5">{ulpList.find(u => u.id === y.ulpId)?.name || 'Unit Unknown'}</p></div><div className="flex gap-2"><button onClick={() => handleOpenEdit(y)} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">✏️</button><button onClick={() => handleDelete(y)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button></div></div>))}
+             {subTab === 'MESSAGE' && marqueeMessages.map(m => (<div key={m.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all"><div><p className="text-[11px] font-black text-slate-900 uppercase">{m.text}</p><div className="flex items-center gap-2 mt-1"><span className={`w-1.5 h-1.5 rounded-full ${m.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></span><p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">{m.isActive ? 'Aktif' : 'Non-aktif'}</p></div></div><div className="flex gap-2"><button onClick={() => handleOpenEdit(m)} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">✏️</button><button onClick={() => handleDelete(m)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button></div></div>))}
           </div>
         </div>
       )}
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
-           <div className="bg-white w-full max-sm rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up"><div className="p-8"><div className="flex justify-between items-center mb-6"><h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">{modalMode === 'ADD' ? 'Tambah' : 'Edit'} {subTab}</h3><button onClick={() => setIsModalOpen(false)} className="text-slate-400 p-2 hover:text-slate-600">✕</button></div>
-                 <div className="space-y-4"><div><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Nama {subTab} *</label><input type="text" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-indigo-500 transition-all uppercase" placeholder={`Masukkan nama ${subTab.toLowerCase()}`} value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} /></div>
-                    {(subTab === 'FEEDER' || subTab === 'YANDAL') && (<div><label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Tautkan ke ULP *</label><select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" value={formData.ulpId} onChange={(e) => setFormData({ ...formData, ulpId: e.target.value })}><option value="">Pilih Unit</option>{ulpList.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></div>)}
-                 </div>
+           <div className="bg-white w-full max-sm rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up"><div className="p-8"><div className="flex justify-between items-center mb-6"><h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">{modalMode === 'ADD' ? 'Tambah' : 'Edit'} {subTab === 'MESSAGE' ? 'Pesan Marquee' : subTab}</h3><button onClick={() => setIsModalOpen(false)} className="text-slate-400 p-2 hover:text-slate-600">✕</button></div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">
+                       {subTab === 'MESSAGE' ? 'Isi Pesan' : `Nama ${subTab}`} *
+                    </label>
+                    {subTab === 'MESSAGE' ? (
+                      <textarea 
+                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-indigo-500 transition-all font-mono" 
+                        placeholder="Masukkan isi pesan marquee" 
+                        value={formData.name} 
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        rows={3}
+                      />
+                    ) : (
+                      <input 
+                        type="text" 
+                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-indigo-500 transition-all uppercase" 
+                        placeholder={`Masukkan nama ${subTab.toLowerCase()}`} 
+                        value={formData.name} 
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
+                      />
+                    )}
+                  </div>
+                  {(subTab === 'FEEDER' || subTab === 'YANDAL') && (
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Tautkan ke ULP *</label>
+                      <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" value={formData.ulpId} onChange={(e) => setFormData({ ...formData, ulpId: e.target.value })}>
+                        <option value="">Pilih Unit</option>
+                        {ulpList.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {subTab === 'MESSAGE' && (
+                    <div className="flex items-center gap-3 px-1 mt-2">
+                      <input 
+                        type="checkbox" 
+                        id="isActive" 
+                        className="w-5 h-5 rounded-lg border-slate-200 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        checked={formData.isActive}
+                        onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                      />
+                      <label htmlFor="isActive" className="text-[10px] font-black text-slate-600 uppercase tracking-widest cursor-pointer select-none">Aktifkan Pesan Ini</label>
+                    </div>
+                  )}
+                </div>
                  <div className="mt-8 flex gap-3"><button onClick={() => setIsModalOpen(false)} className="flex-1 py-4 bg-slate-100 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Batal</button><button onClick={handleSaveMaster} disabled={isSaving} className="flex-2 py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50 px-8">{isSaving ? '⏳' : 'Simpan'}</button></div>
               </div></div>
         </div>
