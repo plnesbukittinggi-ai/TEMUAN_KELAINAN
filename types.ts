@@ -39,6 +39,12 @@ export interface Keterangan {
   idPekerjaan: string; // Relasi ke Pekerjaan.id
 }
 
+export interface MarqueeMessage {
+  id: string;
+  text: string;
+  isActive: boolean;
+}
+
 export interface TemuanData {
   id: string; 
   tanggal: string;
