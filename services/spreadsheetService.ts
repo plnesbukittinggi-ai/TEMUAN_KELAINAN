@@ -1,5 +1,5 @@
 
-import { TemuanData, Inspector, ULP, Feeder, Keterangan, Yandal } from '../types';
+import { TemuanData, Inspector, ULP, Feeder, Keterangan, Yandal, MarqueeMessage } from '../types';
 import { SPREADSHEET_WEB_APP_URL } from '../constants';
 
 export interface AppConfig {
@@ -8,6 +8,7 @@ export interface AppConfig {
   feeders: Feeder[];
   yandalList: Yandal[];
   keteranganList: Keterangan[];
+  marqueeMessages: MarqueeMessage[];
   allData: TemuanData[];
 }
 
@@ -86,7 +87,7 @@ export const SpreadsheetService = {
     }
   },
 
-  async updateMasterData(sheetName: 'Inspectors' | 'ULP' | 'Feeders' | 'Yandal', data: any[]): Promise<ApiResponse> {
+  async updateMasterData(sheetName: 'Inspectors' | 'ULP' | 'Feeders' | 'Yandal' | 'Messages', data: any[]): Promise<ApiResponse> {
     try {
       const response = await fetch(SPREADSHEET_WEB_APP_URL, {
         method: 'POST',
