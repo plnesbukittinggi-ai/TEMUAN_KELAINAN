@@ -29,6 +29,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const [endDate, setEndDate] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedFeeder, setSelectedFeeder] = useState<string>('');
+  const [selectedPriority, setSelectedPriority] = useState<string>('');
   const [previewImage, setPreviewImage] = useState<{url: string, title: string} | null>(null);
   const [subFilter, setSubFilter] = useState<EksekusiSubFilter>('BELUM EKSEKUSI');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -184,6 +185,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   // Reset filter when tab changes
   useEffect(() => {
     setSelectedFeeder('');
+    setSelectedPriority('');
   }, [subFilter]);
 
   const availableFeeders = useMemo(() => {
@@ -208,6 +210,9 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       const matchesFeeder = !selectedFeeder || item.feeder === selectedFeeder;
       if (!matchesFeeder) return false;
 
+      const matchesPriority = !selectedPriority || String(item.prioritas) === selectedPriority;
+      if (!matchesPriority) return false;
+
       const itemDate = parseRobustDate(item.tanggal);
       const itemDateOnly = new Date(itemDate.getFullYear(), itemDate.getMonth(), itemDate.getDate());
       if (startDate) {
@@ -221,7 +226,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       return true;
     });
     return filtered.sort((a, b) => parseRobustDate(b.tanggal).getTime() - parseRobustDate(a.tanggal).getTime());
-  }, [data, startDate, endDate, searchQuery, subFilter, selectedFeeder]);
+  }, [data, startDate, endDate, searchQuery, subFilter, selectedFeeder, selectedPriority]);
 
   const renderStars = (count: number) => {
     const priority = Number(count || 1);
@@ -270,6 +275,16 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                     <option key={feederName} value={feederName}>{feederName}</option>
                   ))}
                 </select>
+                <select 
+                  className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500 transition-all uppercase"
+                  value={selectedPriority}
+                  onChange={(e) => setSelectedPriority(e.target.value)}
+                >
+                  <option value="">SEMUA PRIORITAS</option>
+                  <option value="1">⭐ 1 (Urgent)</option>
+                  <option value="2">⭐⭐ 2 (Waspada)</option>
+                  <option value="3">⭐⭐⭐ 3 (Normal)</option>
+                  </select>
                 <div className="grid grid-cols-2 gap-3">
                   <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
                   <input type="date" className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
