@@ -7,7 +7,7 @@ import {
   ResponsiveContainer, 
   Tooltip 
 } from 'recharts';
-import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan, Yandal } from '../types';
+import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan, Yandal, MarqueeMessage } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
 // Fixed casing: Using ReportService (PascalCase) to match consolidated file.
 import { ReportService } from '../services/ReportService';
@@ -84,6 +84,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const [rekapJenisPekerjaan, setRekapJenisPekerjaan] = useState<string>('');
   const [rekapJenisUlp, setRekapJenisUlp] = useState<string>('');
   const [rekapJenisFeeder, setRekapJenisFeeder] = useState<string>('');
+  const [rekapJenisStatus, setRekapJenisStatus] = useState<string>('');
   
   // Filters for Rekap Yandal
   const [rekapYandalUlp, setRekapYandalUlp] = useState<string>('');
@@ -166,6 +167,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
       const matchPekerjaan = !rekapJenisPekerjaan || item.pekerjaan === rekapJenisPekerjaan;
       const matchUlp = !rekapJenisUlp || item.ulp === rekapJenisUlp;
       const matchFeeder = !rekapJenisFeeder || item.feeder === rekapJenisFeeder;
+      const matchStatusFilter = !rekapJenisStatus || item.status === rekapJenisStatus;
       
       const matchKeterangan = (item.keterangan || 'Tanpa Keterangan') === keterangan;
       
@@ -177,7 +179,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
       else if (status === 'TIDAK DAPAT IZIN') matchStatus = item.status === 'TIDAK DAPAT IZIN';
       else if (status === 'KENDALA MATERIAL') matchStatus = item.status === 'KENDALA MATERIAL';
       
-      return matchDate && matchPekerjaan && matchUlp && matchFeeder && matchKeterangan && matchStatus;
+      return matchDate && matchPekerjaan && matchUlp && matchFeeder && matchStatusFilter && matchKeterangan && matchStatus;
     });
     
     setDetailPopup({ keterangan, status, data: filtered });
@@ -313,8 +315,9 @@ const AdminPage: React.FC<AdminPageProps> = ({
       const matchPekerjaan = !rekapJenisPekerjaan || item.pekerjaan === rekapJenisPekerjaan;
       const matchUlp = !rekapJenisUlp || item.ulp === rekapJenisUlp;
       const matchFeeder = !rekapJenisFeeder || item.feeder === rekapJenisFeeder;
+      const matchStatusFilter = !rekapJenisStatus || item.status === rekapJenisStatus;
 
-      if (matchDate && matchPekerjaan && matchUlp && matchFeeder) {
+      if (matchDate && matchPekerjaan && matchUlp && matchFeeder && matchStatusFilter) {
         const key = item.keterangan || 'Tanpa Keterangan';
         if (!counts[key]) {
           counts[key] = { keterangan: key, total: 0, belum: 0, sudah: 0, padam: 0, tidakIzin: 0, kendala: 0 };
@@ -329,7 +332,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
     });
 
     return Object.values(counts).sort((a, b) => b.total - a.total);
-  }, [data, rekapJenisStartDate, rekapJenisEndDate, rekapJenisPekerjaan, rekapJenisUlp, rekapJenisFeeder]);
+  }, [data, rekapJenisStartDate, rekapJenisEndDate, rekapJenisPekerjaan, rekapJenisUlp, rekapJenisFeeder, rekapJenisStatus]);
 
   // Filter feeders to show only those that have findings in current period for Rekap Jenis filter
   const feedersWithDataForRekapJenis = useMemo(() => {
@@ -1036,6 +1039,21 @@ const AdminPage: React.FC<AdminPageProps> = ({
                     {pekerjaanList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
                   </select>
                 </div>
+                <div className="space-y-1">
+                  <label className="text-[7px] font-bold text-emerald-700 ml-1 uppercase">Status Temuan</label>
+                  <select 
+                    className="w-full p-3 bg-white border border-emerald-100 rounded-xl text-[11px] font-bold outline-none text-emerald-900 shadow-sm focus:border-emerald-400 transition-all" 
+                    value={rekapJenisStatus} 
+                    onChange={(e) => setRekapJenisStatus(e.target.value)}
+                  >
+                    <option value="">Semua Status</option>
+                    <option value="BELUM EKSEKUSI">BELUM EKSEKUSI</option>
+                    <option value="SUDAH EKSEKUSI">SUDAH EKSEKUSI</option>
+                    <option value="BUTUH PADAM">BUTUH PADAM</option>
+                    <option value="TIDAK DAPAT IZIN">TIDAK DAPAT IZIN</option>
+                    <option value="KENDALA MATERIAL">KENDALA MATERIAL</option>
+                  </select>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -1063,6 +1081,22 @@ const AdminPage: React.FC<AdminPageProps> = ({
                   </select>
                 </div>
               </div>
+            </div>
+            <div className="flex justify-end pt-2">
+              <button 
+                onClick={() => {
+                  const dates = getDefaultRekapDates();
+                  setRekapJenisStartDate(dates.start);
+                  setRekapJenisEndDate(dates.end);
+                  setRekapJenisPekerjaan('');
+                  setRekapJenisUlp('');
+                  setRekapJenisFeeder('');
+                  setRekapJenisStatus('');
+                }}
+                className="px-6 py-2.5 bg-white border border-emerald-200 text-emerald-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-100 transition-all shadow-sm"
+              >
+                Reset Filter
+              </button>
             </div>
           </div>
 
