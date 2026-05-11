@@ -5,6 +5,9 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    include: ['react-leaflet', 'leaflet', '@react-leaflet/core']
+  },
   resolve: {
     alias: {
       'fabric': path.resolve(__dirname, 'node_modules/fabric/dist/fabric.js'),
