@@ -23,6 +23,7 @@ interface AdminPageProps {
   pekerjaanList: Pekerjaan[];
   keteranganList: Keterangan[];
   marqueeMessages: MarqueeMessage[];
+  currentRole?: string;
   onBack: () => void;
   onUpdateInspectors: (data: Inspector[]) => void;
   onUpdateUlp: (data: ULP[]) => void;
@@ -62,7 +63,7 @@ const getDefaultRekapDates = () => {
 };
 
 const AdminPage: React.FC<AdminPageProps> = ({ 
-  data, ulpList, inspectors, feeders, yandalList, pekerjaanList, keteranganList, marqueeMessages, onBack,
+  data, ulpList, inspectors, feeders, yandalList, pekerjaanList, keteranganList, marqueeMessages, currentRole, onBack,
   onUpdateInspectors, onUpdateUlp, onUpdateFeeders, onUpdateYandal, onUpdateMessages
 }) => {
   const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP' | 'REKAP_JENIS' | 'REKAP_YANDAL'>('DASHBOARD');
@@ -646,7 +647,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
           { id: 'REKAP_JENIS', label: 'REKAP JENIS TEMUAN' },
           { id: 'REKAP_YANDAL', label: 'REKAP YANDAL' },
           { id: 'DATA', label: 'DATA' },
-          { id: 'KELOLA', label: 'KELOLA' }
+          ...(currentRole === 'SUPER_ADMIN' ? [{ id: 'KELOLA', label: 'KELOLA' }] : [])
         ].map(t => (
           <button 
             key={t.id} 
