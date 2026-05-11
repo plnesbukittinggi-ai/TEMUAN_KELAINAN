@@ -282,7 +282,7 @@ const App: React.FC = () => {
           <div className="max-w-4xl mx-auto">
             <EksekusiPage 
               session={session} 
-              data={editingData ? [editingData] : allData.filter(d => d.ulp === session.ulp && d.status !== 'SUDAH EKSEKUSI')} 
+              data={editingData ? [editingData] : allData.filter(d => d.ulp === session.ulp)} 
               onBack={() => editingData ? setSession({...session, role: AppRole.VIEWER}) : handleLogout()}
               onSave={handleUpdateTemuan}
               initialData={editingData || undefined}
