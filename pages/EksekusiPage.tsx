@@ -2,6 +2,10 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { LoginSession, TemuanData, Yandal, ULP } from '../types';
 import { compressImage, getDisplayImageUrl } from '../utils/image-utils';
 import ImageEditor from '../src/components/ImageEditor';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface EksekusiPageProps {
   session: LoginSession;
@@ -14,6 +18,25 @@ interface EksekusiPageProps {
 }
 
 type EksekusiSubFilter = 'BELUM EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN' | 'KENDALA MATERIAL';
+
+const parseGeotag = (geotag?: string): [number, number] | null => {
+  if (!geotag) return null;
+  const parts = geotag.split(',').map(p => parseFloat(p.trim()));
+  if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+    return [parts[0], parts[1]];
+  }
+  return null;
+};
+
+const createCustomIcon = (color: string, isSearching: boolean) => {
+  return L.divIcon({
+    className: 'custom-leaflet-icon',
+    html: `<div class="${isSearching ? 'animate-pulse-marker' : ''}" style="background-color: ${color}; width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+    popupAnchor: [0, -7]
+  });
+};
 
 const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSave, initialData, yandalList, ulpList }) => {
   const [selectedTemuan, setSelectedTemuan] = useState<TemuanData | null>(initialData || null);
@@ -32,6 +55,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const [selectedPriority, setSelectedPriority] = useState<string>('');
   const [previewImage, setPreviewImage] = useState<{url: string, title: string} | null>(null);
   const [subFilter, setSubFilter] = useState<EksekusiSubFilter>('BELUM EKSEKUSI');
+  const [viewMode, setViewMode] = useState<'LIST' | 'MAP'>('LIST');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const openInMaps = (geotag?: string) => {
@@ -200,8 +224,12 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
 
   const filteredQueue = useMemo(() => {
     const filtered = data.filter(item => {
-      // Apply subFilter first
-      if (item.status !== subFilter) return false;
+      // In MAP mode, we show both current subFilter and already executed items
+      const isMatchStatus = viewMode === 'MAP' 
+        ? (item.status === subFilter || item.status === 'SUDAH EKSEKUSI')
+        : (item.status === subFilter);
+      
+      if (!isMatchStatus) return false;
 
       const noTiangStr = String(item.noTiang || '');
       const matchesSearch = !searchQuery || noTiangStr.toLowerCase().includes(searchQuery.toLowerCase());
@@ -226,7 +254,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       return true;
     });
     return filtered.sort((a, b) => parseRobustDate(b.tanggal).getTime() - parseRobustDate(a.tanggal).getTime());
-  }, [data, startDate, endDate, searchQuery, subFilter, selectedFeeder, selectedPriority]);
+  }, [data, startDate, endDate, searchQuery, subFilter, selectedFeeder, selectedPriority, viewMode]);
 
   const renderStars = (count: number) => {
     const priority = Number(count || 1);
@@ -293,6 +321,21 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
             </div>
           </div>
 
+          <div className="flex bg-white p-1 rounded-2xl border border-slate-200 shadow-sm gap-1 mb-4">
+            <button 
+              onClick={() => setViewMode('LIST')} 
+              className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${viewMode === 'LIST' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
+            >
+              📋 Antrean Eksekusi
+            </button>
+            <button 
+              onClick={() => setViewMode('MAP')} 
+              className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${viewMode === 'MAP' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
+            >
+              🗺️ Eksekusi By Maps
+            </button>
+          </div>
+
           <div className="flex bg-white p-1 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto gap-1 scrollbar-hide no-scrollbar">
             {(['BELUM EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN', 'KENDALA MATERIAL'] as const).map((f) => (
               <button
@@ -314,6 +357,55 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       {filteredQueue.length === 0 && !initialData ? (
         <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-slate-200 mt-6">
           <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Tidak ada data {subFilter.toLowerCase()}</p>
+        </div>
+      ) : viewMode === 'MAP' && !initialData ? (
+        <div className="mt-6 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden h-[500px] relative z-0">
+          <MapContainer 
+            center={parseGeotag(filteredQueue.find(q => q.geotag)?.geotag) || [-0.9067, 100.3543]} 
+            zoom={13} 
+            style={{ width: '100%', height: '100%' }}
+            zoomControl={false}
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            {filteredQueue.map(item => {
+              const pos = parseGeotag(item.geotag);
+              if (!pos) return null;
+              const isMatch = searchQuery !== '' && String(item.noTiang).toLowerCase().includes(searchQuery.toLowerCase());
+              return (
+                <Marker 
+                  key={item.id} 
+                  position={pos} 
+                  icon={createCustomIcon(item.status === 'SUDAH EKSEKUSI' ? '#10b981' : '#ef4444', isMatch)}
+                >
+                  <Popup>
+                    <div className="p-1 min-w-[180px] space-y-2">
+                       <div className="flex items-center justify-between border-b pb-1">
+                         {renderStars(item.prioritas)}
+                         <span className={`text-[8px] px-1.5 py-0.5 rounded font-black ${item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                           {item.status}
+                         </span>
+                       </div>
+                       <div>
+                         <p className="text-[10px] font-black text-indigo-600 uppercase">{item.noWO}</p>
+                         <p className="text-xs font-bold text-slate-900 uppercase">{item.noTiang}</p>
+                       </div>
+                       <p className="text-[9px] text-slate-600 font-bold leading-tight">📍 {item.alamat || item.lokasi || 'Alamat tidak tersedia'}</p>
+                       <p className="text-[10px] font-bold text-red-600">{item.keterangan}</p>
+                       <button 
+                         onClick={() => setSelectedTemuan(item)}
+                         className="w-full mt-2 py-2 bg-slate-900 text-white text-[9px] font-bold rounded-lg uppercase tracking-wider transition-all"
+                       >
+                         {item.status === 'SUDAH EKSEKUSI' ? 'Edit Hasil Eksekusi' : 'Proses Eksekusi'}
+                       </button>
+                    </div>
+                  </Popup>
+                </Marker>
+              );
+            })}
+          </MapContainer>
         </div>
       ) : (
         <div className="space-y-4 mt-6">
