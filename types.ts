@@ -3,6 +3,7 @@ export enum AppRole {
   INSPEKSI = 'INSPEKSI',
   EKSEKUSI = 'EKSEKUSI',
   ADMIN = 'ADMIN',
+  SUPER_ADMIN = 'SUPER_ADMIN',
   VIEWER = 'VIEWER'
 }
 
