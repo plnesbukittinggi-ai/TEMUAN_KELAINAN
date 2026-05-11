@@ -31,10 +31,10 @@ const parseGeotag = (geotag?: string): [number, number] | null => {
 const createCustomIcon = (color: string, isSearching: boolean) => {
   return L.divIcon({
     className: 'custom-leaflet-icon',
-    html: `<div class="${isSearching ? 'animate-pulse-marker' : ''}" style="background-color: ${color}; width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
-    popupAnchor: [0, -7]
+    html: `<div class="${isSearching ? 'animate-pulse-marker' : ''}" style="background-color: ${color}; width: 22px; height: 22px; border-radius: 50%; border: 3px solid white; box-shadow: 0 3px 8px rgba(0,0,0,0.3); cursor: pointer;"></div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+    popupAnchor: [0, -11]
   });
 };
 
