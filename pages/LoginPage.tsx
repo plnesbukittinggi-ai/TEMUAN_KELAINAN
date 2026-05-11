@@ -44,6 +44,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
     if (selectedRole === AppRole.ADMIN) {
       if (password === ADMIN_PASSWORD) {
         onLogin({ role: AppRole.ADMIN });
+      } else if (password === 'SuperAdmin') {
+        onLogin({ role: AppRole.SUPER_ADMIN });
       } else {
         alert('Password Admin Salah!');
       }
