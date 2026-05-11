@@ -292,6 +292,7 @@ const App: React.FC = () => {
           </div>
         );
       case AppRole.ADMIN:
+      case AppRole.SUPER_ADMIN:
         return (
           <AdminPage 
             data={allData} 
@@ -308,6 +309,7 @@ const App: React.FC = () => {
             onUpdateFeeders={setFeeders}
             onUpdateYandal={setYandalList}
             onUpdateMessages={setMarqueeMessages}
+            currentRole={session.role}
           />
         );
       case AppRole.VIEWER:
