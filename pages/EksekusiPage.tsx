@@ -17,10 +17,10 @@ interface EksekusiPageProps {
   ulpList: ULP[];
 }
 
-type EksekusiSubFilter = 'BELUM EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN' | 'KENDALA MATERIAL';
+type EksekusiSubFilter = 'SEMUA' | 'BELUM EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN' | 'KENDALA MATERIAL';
 
-const parseGeotag = (geotag?: string): [number, number] | null => {
-  if (!geotag) return null;
+const parseGeotag = (geotag?: any): [number, number] | null => {
+  if (!geotag || typeof geotag !== 'string') return null;
   const parts = geotag.split(',').map(p => parseFloat(p.trim()));
   if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
     return [parts[0], parts[1]];
@@ -54,7 +54,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const [selectedFeeder, setSelectedFeeder] = useState<string>('');
   const [selectedPriority, setSelectedPriority] = useState<string>('');
   const [previewImage, setPreviewImage] = useState<{url: string, title: string} | null>(null);
-  const [subFilter, setSubFilter] = useState<EksekusiSubFilter>('BELUM EKSEKUSI');
+  const [subFilter, setSubFilter] = useState<EksekusiSubFilter>('SEMUA');
   const [viewMode, setViewMode] = useState<'LIST' | 'MAP'>('LIST');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -215,7 +215,10 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const availableFeeders = useMemo(() => {
     const uniqueFeeders = Array.from(new Set(
       data
-        .filter(item => item.status === subFilter)
+        .filter(item => {
+          const itemStatus = item.status || 'BELUM EKSEKUSI';
+          return subFilter === 'SEMUA' ? true : itemStatus === subFilter;
+        })
         .map(item => item.feeder)
         .filter(Boolean)
     ));
@@ -224,10 +227,14 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
 
   const filteredQueue = useMemo(() => {
     const filtered = data.filter(item => {
-      // In MAP mode, we show both current subFilter and already executed items
-      const isMatchStatus = viewMode === 'MAP' 
-        ? (item.status === subFilter || item.status === 'SUDAH EKSEKUSI')
-        : (item.status === subFilter);
+      const itemStatus = item.status || 'BELUM EKSEKUSI';
+
+      // If 'SEMUA' is selected, show all items regardless of status
+      const isMatchStatus = subFilter === 'SEMUA'
+        ? true
+        : (viewMode === 'MAP' 
+            ? (itemStatus === subFilter || itemStatus === 'SUDAH EKSEKUSI')
+            : (itemStatus === subFilter));
       
       if (!isMatchStatus) return false;
 
@@ -337,7 +344,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
           </div>
 
           <div className="flex bg-white p-1 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto gap-1 scrollbar-hide no-scrollbar">
-            {(['BELUM EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN', 'KENDALA MATERIAL'] as const).map((f) => (
+            {(['SEMUA', 'BELUM EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN', 'KENDALA MATERIAL'] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setSubFilter(f)}
@@ -374,18 +381,34 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
               const pos = parseGeotag(item.geotag);
               if (!pos) return null;
               const isMatch = searchQuery !== '' && String(item.noTiang).toLowerCase().includes(searchQuery.toLowerCase());
+              
+              // Determine marker color based on status
+              const itemStatus = item.status || 'BELUM EKSEKUSI';
+              let markerColor = '#ef4444'; // Default Red
+              if (itemStatus === 'SUDAH EKSEKUSI') markerColor = '#10b981'; // Green
+              else if (itemStatus === 'BUTUH PADAM') markerColor = '#f59e0b'; // Yellow
+              else if (itemStatus === 'KENDALA MATERIAL') markerColor = '#8b5cf6'; // Purple
+              else if (itemStatus === 'TIDAK DAPAT IZIN') markerColor = '#78350f'; // Brown
+
               return (
                 <Marker 
                   key={item.id} 
                   position={pos} 
-                  icon={createCustomIcon(item.status === 'SUDAH EKSEKUSI' ? '#10b981' : '#ef4444', isMatch)}
+                  icon={createCustomIcon(markerColor, isMatch)}
                 >
                   <Popup>
                     <div className="p-1 min-w-[180px] space-y-2">
                        <div className="flex items-center justify-between border-b pb-1">
                          {renderStars(item.prioritas)}
-                         <span className={`text-[8px] px-1.5 py-0.5 rounded font-black ${item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-                           {item.status}
+                         <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${
+                           (item.status || 'BELUM EKSEKUSI') === 'SUDAH EKSEKUSI' ? 'bg-emerald-50 text-emerald-700' : 
+                           (item.status || 'BELUM EKSEKUSI') === 'BELUM EKSEKUSI' ? 'bg-red-50 text-red-700' : 
+                           (item.status || 'BELUM EKSEKUSI') === 'BUTUH PADAM' ? 'bg-amber-50 text-amber-700' : 
+                           (item.status || 'BELUM EKSEKUSI') === 'KENDALA MATERIAL' ? 'bg-purple-50 text-purple-700' : 
+                           (item.status || 'BELUM EKSEKUSI') === 'TIDAK DAPAT IZIN' ? 'bg-orange-900/10 text-orange-900' : 
+                           'bg-slate-50 text-slate-700'
+                         }`}>
+                           {(item.status || 'BELUM EKSEKUSI') === 'TIDAK DAPAT IZIN' ? 'TIDAK IZIN' : (item.status || 'BELUM EKSEKUSI')}
                          </span>
                        </div>
                        <div>
@@ -416,8 +439,15 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                   🗓️ {parseRobustDate(item.tanggal).toLocaleDateString('id-ID')}
                 </p>
                 <div className="flex flex-col items-end">
-                  <span className={`text-[8px] px-2 py-0.5 rounded font-black uppercase ${item.status === 'BUTUH PADAM' ? 'bg-amber-50 text-amber-700' : item.status === 'BELUM EKSEKUSI' ? 'bg-indigo-50 text-indigo-700' : item.status === 'TIDAK DAPAT IZIN' ? 'bg-orange-50 text-orange-700' : 'bg-red-50 text-red-700'}`}>
-                    {item.status}
+                  <span className={`text-[8px] px-2 py-0.5 rounded font-black uppercase ${
+                    (item.status || 'BELUM EKSEKUSI') === 'SUDAH EKSEKUSI' ? 'bg-emerald-50 text-emerald-700' : 
+                    (item.status || 'BELUM EKSEKUSI') === 'BELUM EKSEKUSI' ? 'bg-red-50 text-red-700' : 
+                    (item.status || 'BELUM EKSEKUSI') === 'BUTUH PADAM' ? 'bg-amber-50 text-amber-700' : 
+                    (item.status || 'BELUM EKSEKUSI') === 'KENDALA MATERIAL' ? 'bg-purple-50 text-purple-700' : 
+                    (item.status || 'BELUM EKSEKUSI') === 'TIDAK DAPAT IZIN' ? 'bg-orange-900/10 text-orange-900' : 
+                    'bg-slate-50 text-slate-700'
+                  }`}>
+                    {(item.status || 'BELUM EKSEKUSI') === 'TIDAK DAPAT IZIN' ? 'TIDAK IZIN' : (item.status || 'BELUM EKSEKUSI')}
                   </span>
                 </div>
               </div>
