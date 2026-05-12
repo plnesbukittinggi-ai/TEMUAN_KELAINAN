@@ -232,9 +232,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       // If 'SEMUA' is selected, show all items regardless of status
       const isMatchStatus = subFilter === 'SEMUA'
         ? true
-        : (viewMode === 'MAP' 
-            ? (itemStatus === subFilter || itemStatus === 'SUDAH EKSEKUSI')
-            : (itemStatus === subFilter));
+        : itemStatus === subFilter;
       
       if (!isMatchStatus) return false;
 
