@@ -17,7 +17,7 @@ interface EksekusiPageProps {
   ulpList: ULP[];
 }
 
-type EksekusiSubFilter = 'SEMUA' | 'BELUM EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN' | 'KENDALA MATERIAL';
+type EksekusiSubFilter = 'BELUM EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN' | 'KENDALA MATERIAL';
 
 const parseGeotag = (geotag?: any): [number, number] | null => {
   if (!geotag || typeof geotag !== 'string') return null;
@@ -54,7 +54,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const [selectedFeeder, setSelectedFeeder] = useState<string>('');
   const [selectedPriority, setSelectedPriority] = useState<string>('');
   const [previewImage, setPreviewImage] = useState<{url: string, title: string} | null>(null);
-  const [subFilter, setSubFilter] = useState<EksekusiSubFilter>('SEMUA');
+  const [subFilter, setSubFilter] = useState<EksekusiSubFilter>('BELUM EKSEKUSI');
   const [viewMode, setViewMode] = useState<'LIST' | 'MAP'>('LIST');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -217,7 +217,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       data
         .filter(item => {
           const itemStatus = item.status || 'BELUM EKSEKUSI';
-          return subFilter === 'SEMUA' ? true : itemStatus === subFilter;
+          return itemStatus === subFilter;
         })
         .map(item => item.feeder)
         .filter(Boolean)
@@ -228,11 +228,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const filteredQueue = useMemo(() => {
     const filtered = data.filter(item => {
       const itemStatus = item.status || 'BELUM EKSEKUSI';
-
-      // If 'SEMUA' is selected, show all items regardless of status
-      const isMatchStatus = subFilter === 'SEMUA'
-        ? true
-        : itemStatus === subFilter;
+      const isMatchStatus = itemStatus === subFilter;
       
       if (!isMatchStatus) return false;
 
@@ -342,7 +338,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
           </div>
 
           <div className="flex bg-white p-1 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto gap-1 scrollbar-hide no-scrollbar">
-            {(['SEMUA', 'BELUM EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN', 'KENDALA MATERIAL'] as const).map((f) => (
+            {(['BELUM EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN', 'KENDALA MATERIAL'] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setSubFilter(f)}
