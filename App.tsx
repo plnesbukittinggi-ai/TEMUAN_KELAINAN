@@ -55,6 +55,7 @@ const App: React.FC = () => {
               else if (header === 'namayandal1') mappedKey = 'namaYandal1';
               else if (header === 'namayandal2') mappedKey = 'namaYandal2';
               else if (header === 'nama' || header === 'name') mappedKey = 'name';
+              else if (header === 'isactive') mappedKey = 'isActive';
               obj[mappedKey] = cell;
             });
             return obj;
@@ -88,8 +89,13 @@ const App: React.FC = () => {
             else if (lowerKey === 'namayandal1') mappedKey = 'namaYandal1';
             else if (lowerKey === 'namayandal2') mappedKey = 'namaYandal2';
             else if (lowerKey === 'nama' || lowerKey === 'name') mappedKey = 'name';
+            else if (lowerKey === 'isactive') mappedKey = 'isActive';
             
-            newItem[mappedKey] = val;
+            let finalVal = val;
+            if (mappedKey === 'isActive') {
+              finalVal = val === true || val === 'TRUE' || val === 'true';
+            }
+            newItem[mappedKey] = finalVal;
           }
           return newItem;
         });
@@ -369,7 +375,7 @@ const App: React.FC = () => {
               ) : (
                 <>
                   <span className="text-sm">🛡️</span>
-                  Bahaya tidak pernah janjian. Jadi, jangan pernah lepas APD tanpa alasan
+                   Bahaya tidak pernah janjian. Jadi, jangan pernah lepas APD tanpa alasan
                   <span className="text-sm">🛡️</span>
                 </>
               )}
