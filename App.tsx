@@ -369,7 +369,7 @@ const App: React.FC = () => {
               ) : (
                 <>
                   <span className="text-sm">🛡️</span>
-                  Update V.2.0.3 : Penambahan Eksekusi By Maps. ( mengeksekusi dengan melihat di Peta ). Terdapat di Halaman Update Eksekusi
+                  Bahaya tidak pernah janjian. Jadi, jangan pernah lepas APD tanpa alasan
                   <span className="text-sm">🛡️</span>
                 </>
               )}
