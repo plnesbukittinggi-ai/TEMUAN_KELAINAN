@@ -72,11 +72,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
       }
 
       if (!formData.inspektor1 || !formData.ulp || !formData.idPekerjaan) {
-        alert('⚠️ Mohon lengkapi Unit Pelaksana, Inspektur 1, dan Jenis Pekerjaan!');
+        alert('⚠️ Mohon lengkapi Unit Pelaksana, Inspektor 1, dan Jenis Pekerjaan!');
         return;
       }
       if (formData.inspektor2 && formData.inspektor1 === formData.inspektor2) {
-        alert('⚠️ Nama Inspektur 1 dan Inspektur 2 tidak boleh sama!');
+        alert('⚠️ Nama Inspektur 1 dan Inspektor 2 tidak boleh sama!');
         return;
       }
       
@@ -175,7 +175,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Inspektur 1</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Inspektor 1</label>
                 <select 
                   className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-[10px] font-bold outline-none" 
                   value={formData.inspektor1 || ''}
@@ -196,7 +196,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Inspektur 2</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Inspektor 2</label>
                 <select 
                   className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-[10px] font-bold outline-none disabled:opacity-50 disabled:bg-slate-200" 
                   value={formData.inspektor2 || ''}
