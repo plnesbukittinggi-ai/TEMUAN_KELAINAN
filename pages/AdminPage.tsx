@@ -569,9 +569,9 @@ const AdminPage: React.FC<AdminPageProps> = ({
       } else if (subTab === 'MESSAGE') {
         sheetName = 'Messages';
         if (modalMode === 'ADD') {
-          updatedList = [...marqueeMessages, { id: `M-${Date.now()}`, text: formData.name, isActive: formData.isActive }];
+          updatedList = [...marqueeMessages, { id: `M-${Date.now()}`, text: formData.name, name: formData.name, pesan: formData.name, isActive: formData.isActive }];
         } else {
-          updatedList = marqueeMessages.map(m => m.id === editingItem.id ? { ...m, text: formData.name, isActive: formData.isActive } : m);
+          updatedList = marqueeMessages.map(m => m.id === editingItem.id ? { ...m, text: formData.name, name: formData.name, pesan: formData.name, isActive: formData.isActive } : m);
         }
       } else {
         sheetName = 'Yandal';
