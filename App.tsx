@@ -375,7 +375,7 @@ const App: React.FC = () => {
               ) : (
                 <>
                   <span className="text-sm">🛡️</span>
-                  Update V.2.0.3 : Penambahan Eksekusi By Maps. ( mengeksekusi dengan melihat di Peta ). Terdapat di Halaman Update Eksekusi
+                  Saya kerja cari rezeki, bukan cari sensasi
                   <span className="text-sm">🛡️</span>
                 </>
               )}
