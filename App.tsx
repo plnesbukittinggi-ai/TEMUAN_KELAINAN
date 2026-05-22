@@ -97,6 +97,14 @@ const App: React.FC = () => {
             }
             newItem[mappedKey] = finalVal;
           }
+
+          if (label === 'MarqueeMessages') {
+            const textValue = newItem.text || newItem.TEXT || newItem.name || newItem.NAME || newItem.pesan || newItem.PESAN || '';
+            newItem.text = textValue;
+            newItem.name = textValue;
+            newItem.pesan = textValue;
+          }
+
           return newItem;
         });
         console.log(`Normalized ${label}:`, normalized.length, "items.");
