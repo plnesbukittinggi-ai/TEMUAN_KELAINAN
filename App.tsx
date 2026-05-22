@@ -92,8 +92,18 @@ const App: React.FC = () => {
             else if (lowerKey === 'isactive') mappedKey = 'isActive';
             
             let finalVal = val;
-            if (mappedKey === 'isActive') {
-              finalVal = val === true || val === 'TRUE' || val === 'true';
+            if (mappedKey === 'isActive' || lowerKey === 'isactive') {
+              mappedKey = 'isActive';
+              finalVal = val === true || 
+                         val === 1 || 
+                         val === '1' ||
+                         (typeof val === 'string' && (
+                           val.trim().toLowerCase() === 'true' || 
+                           val.trim().toLowerCase() === 'aktif' || 
+                           val.trim().toLowerCase() === 'yes' ||
+                           val.trim().toLowerCase() === 'aktifkan' ||
+                           val.trim().toLowerCase() === 'y'
+                         ));
             }
             newItem[mappedKey] = finalVal;
           }
@@ -159,7 +169,11 @@ const App: React.FC = () => {
       const keteranganData = findDataInConfig(config, 'keteranganList');
       if (keteranganData) setKeteranganList(normalize(keteranganData, 'Keterangan'));
       
-      const marqueeData = findDataInConfig(config, 'marqueeMessages');
+      const marqueeData = findDataInConfig(config, 'marqueeMessages') || 
+                          findDataInConfig(config, 'messages') || 
+                          findDataInConfig(config, 'messageList') || 
+                          findDataInConfig(config, 'marquee') || 
+                          findDataInConfig(config, 'marqueeList');
       if (marqueeData) setMarqueeMessages(normalize(marqueeData, 'MarqueeMessages'));
       
       const allDataItems = findDataInConfig(config, 'allData');
