@@ -92,29 +92,11 @@ const App: React.FC = () => {
             else if (lowerKey === 'isactive') mappedKey = 'isActive';
             
             let finalVal = val;
-            if (mappedKey === 'isActive' || lowerKey === 'isactive') {
-              mappedKey = 'isActive';
-              finalVal = val === true || 
-                         val === 1 || 
-                         val === '1' ||
-                         (typeof val === 'string' && (
-                           val.trim().toLowerCase() === 'true' || 
-                           val.trim().toLowerCase() === 'aktif' || 
-                           val.trim().toLowerCase() === 'yes' ||
-                           val.trim().toLowerCase() === 'aktifkan' ||
-                           val.trim().toLowerCase() === 'y'
-                         ));
+            if (mappedKey === 'isActive') {
+              finalVal = val === true || val === 'TRUE' || val === 'true';
             }
             newItem[mappedKey] = finalVal;
           }
-
-          if (label === 'MarqueeMessages') {
-            const textValue = newItem.text || newItem.TEXT || newItem.name || newItem.NAME || newItem.pesan || newItem.PESAN || '';
-            newItem.text = textValue;
-            newItem.name = textValue;
-            newItem.pesan = textValue;
-          }
-
           return newItem;
         });
         console.log(`Normalized ${label}:`, normalized.length, "items.");
@@ -169,11 +151,7 @@ const App: React.FC = () => {
       const keteranganData = findDataInConfig(config, 'keteranganList');
       if (keteranganData) setKeteranganList(normalize(keteranganData, 'Keterangan'));
       
-      const marqueeData = findDataInConfig(config, 'marqueeMessages') || 
-                          findDataInConfig(config, 'messages') || 
-                          findDataInConfig(config, 'messageList') || 
-                          findDataInConfig(config, 'marquee') || 
-                          findDataInConfig(config, 'marqueeList');
+      const marqueeData = findDataInConfig(config, 'marqueeMessages');
       if (marqueeData) setMarqueeMessages(normalize(marqueeData, 'MarqueeMessages'));
       
       const allDataItems = findDataInConfig(config, 'allData');
@@ -397,7 +375,7 @@ const App: React.FC = () => {
               ) : (
                 <>
                   <span className="text-sm">🛡️</span>
-                  {m.text}
+                  Update V.2.0.3 : Penambahan Eksekusi By Maps. ( mengeksekusi dengan melihat di Peta ). Terdapat di Halaman Update Eksekusi
                   <span className="text-sm">🛡️</span>
                 </>
               )}
