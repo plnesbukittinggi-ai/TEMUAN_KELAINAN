@@ -375,7 +375,7 @@ const App: React.FC = () => {
               ) : (
                 <>
                   <span className="text-sm">🛡️</span>
-                   Bahaya tidak pernah janjian. Jadi, jangan pernah lepas APD tanpa alasan
+                   Saya belum siap jadi pemeran utama di video “detik-detik kejadian”
                   <span className="text-sm">🛡️</span>
                 </>
               )}
