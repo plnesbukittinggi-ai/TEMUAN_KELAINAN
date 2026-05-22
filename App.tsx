@@ -397,6 +397,7 @@ const App: React.FC = () => {
               ) : (
                 <>
                   <span className="text-sm">🛡️</span>
+                  {m.text}
                   <span className="text-sm">🛡️</span>
                 </>
               )}
