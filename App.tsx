@@ -262,7 +262,20 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    switch (session!.role) {
+    if (!session) {
+      return (
+        <LoginPage 
+          onLogin={setSession} 
+          inspectors={inspectors} 
+          ulpList={ulpList} 
+          pekerjaanList={pekerjaanList} 
+          isLoading={isLoading}
+          marqueeMessages={marqueeMessages}
+        />
+      );
+    }
+
+    switch (session.role) {
       case AppRole.INSPEKSI:
         return (
           <div className="max-w-3xl mx-auto">
@@ -380,19 +393,143 @@ const App: React.FC = () => {
     );
   }
 
-  // 3. HALAMAN LOGIN UTAMA (KONDISI BELUM LOGIN)
-  if (!session) {
-    return (
-      <div className="min-h-screen bg-[#edf6fc] relative overflow-x-hidden">
-        <LoginPage 
-          onLogin={setSession} 
-          inspectors={inspectors} 
-          ulpList={ulpList} 
-          pekerjaanList={pekerjaanList} 
-          isLoading={isLoading}
-          marqueeMessages={marqueeMessages}
-        />
-        
+  // 3. MAIN LAYOUT UNTUK PENGGUNA (LOGIN MAUPUN SESSION ACTIVE)
+  return (
+    <div className={`min-h-screen ${session ? 'bg-slate-50' : 'bg-[#edf6fc]'} pb-12 relative overflow-x-hidden`}>
+      {session && (
+        <>
+          <header className="bg-gradient-to-r from-[#003b71] to-[#005ba3] text-white py-3 px-4 sm:px-6 shadow-xl rounded-b-[2rem] border-b border-[#002b54]/50 relative z-50 sticky top-0">
+            <div className="max-w-7xl mx-auto flex items-center justify-between w-full">
+              
+              {/* Logo & title stack */}
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 bg-white rounded-2xl flex items-center justify-center p-1.5 shadow-lg border border-white/20 overflow-hidden flex-shrink-0 animate-fade-in">
+                  <img 
+                    src={LOGO_URL} 
+                    alt="Logo PLN" 
+                    className="w-full h-full object-contain" 
+                    referrerPolicy="no-referrer" 
+                  />
+                </div>
+                <div>
+                  <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-blue-200">SISTEM INFORMASI</p>
+                  <h1 className="text-sm sm:text-lg font-black uppercase tracking-tight text-white leading-none -mt-0.5">TEMUAN KELAINAN</h1>
+                  <p className="text-[9px] sm:text-[10px] font-bold text-blue-200/90 leading-none mt-0.5 animate-pulse">PLN ES Bukittinggi</p>
+                </div>
+              </div>
+
+              {/* Action buttons (Gear and KELUAR button if logged in) */}
+              <div className="flex items-center gap-3">
+                {session && (
+                  <button 
+                    onClick={handleLogout} 
+                    className="text-[9px] sm:text-[10px] font-black tracking-widest uppercase bg-[#002042] border border-[#001730] hover:bg-[#001730] active:scale-95 px-3 py-2 rounded-xl transition-all shadow-md animate-fade-in"
+                  >
+                    KELUAR
+                  </button>
+                )}
+                <div className="w-11 h-11 bg-white rounded-2xl flex items-center justify-center p-1.5 shadow-lg border border-white/20 flex-shrink-0">
+                  <svg viewBox="0 0 100 100" className="w-full h-full animate-[spin_20s_linear_infinite]" xmlns="http://www.w3.org/2000/svg">
+                    <g transform="translate(50, 50)">
+                      {/* 11 gear teeth */}
+                      {Array.from({ length: 11 }).map((_, i) => {
+                        const rotation = (i * 360) / 11;
+                        return (
+                          <path
+                            key={i}
+                            d="M -9.5,-46 L 9.5,-46 L 7.5,-30 L -7.5,-30 Z"
+                            fill="#10b981"
+                            transform={`rotate(${rotation})`}
+                          />
+                        );
+                      })}
+                      {/* Outer body of the gear */}
+                      <circle cx="0" cy="0" r="32" fill="#10b981" />
+                      {/* White circle inside the gear */}
+                      <circle cx="0" cy="0" r="20" fill="#ffffff" />
+                      {/* Green cross inside the white circle */}
+                      <path
+                        d="M -4.7,-13.5 L 4.7,-13.5 L 4.7,-4.7 L 13.5,-4.7 L 13.5,4.7 L 4.7,4.7 L 4.7,13.5 L -4.7,13.5 L -4.7,4.7 L -13.5,4.7 L -13.5,-4.7 L -4.7,-4.7 Z"
+                        fill="#10b981"
+                      />
+                    </g>
+                  </svg>
+                </div>
+              </div>
+
+            </div>
+          </header>
+
+          <div className="w-full bg-gradient-to-r from-amber-500/5 via-amber-500/10 to-amber-500/5 backdrop-blur-sm border-b border-amber-500/20 py-2 sm:py-2.5 shadow-sm relative z-30 flex items-center overflow-hidden">
+            <div className="w-full max-w-7xl mx-auto flex items-center gap-3 px-4 sm:px-6 relative">
+              
+              {/* Integrity Pill Label */}
+              <div className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 To-amber-600 text-white text-[9px] sm:text-xs font-black px-2.5 py-1 rounded-full shadow-md shadow-amber-500/20 z-40 flex-shrink-0 animate-pulse uppercase tracking-wider">
+                <Shield className="w-3 h-3 text-white fill-white/20" />
+                <span>INTEGRITAS</span>
+              </div>
+
+              <div className="flex-1 overflow-hidden relative h-5 flex items-center select-none ml-1 sm:ml-2">
+                {/* Edge Fades */}
+                <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#eaf4fa] to-transparent z-20 pointer-events-none" />
+                <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#eaf4fa] to-transparent z-20 pointer-events-none" />
+                
+                <div className="animate-marquee whitespace-nowrap text-amber-950 text-[10px] sm:text-xs font-black tracking-widest uppercase flex items-center" style={{ animationDuration: '45s' }}>
+                  <span className="inline-flex items-center gap-8 px-4 font-black">
+                    {activeMarqueeMessages.length > 0 ? (
+                      activeMarqueeMessages.map((m, idx) => (
+                        <span key={m.id} className="inline-flex items-center gap-2">
+                          <span className="text-amber-500">✨</span>
+                          {m.text}
+                          {idx < activeMarqueeMessages.length - 1 && (
+                            <span className="mx-8 text-amber-500/50">✦</span>
+                          )}
+                        </span>
+                      ))
+                    ) : (
+                      <>
+                        <span className="text-amber-500">✨</span>
+                        <span>SAYA KERJA CARI REZEKI, BUKAN CARI SENSASI</span>
+                        <span className="text-amber-500">✦</span>
+                        <span className="text-[#005ba3]">⚡</span>
+                        <span>BEKERJA DENGAN JUJUR, DISIPLIN, DAN BERTANGGUNG JAWAB</span>
+                        <span className="text-amber-500">✦</span>
+                        <span className="text-emerald-500">🍃</span>
+                        <span>PELAYANAN TERBAIK ADALAH PRIORITAS UTAMA MASING-MASING KITA</span>
+                      </>
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+      
+      <main className={session ? "p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto animate-fade-in" : "animate-fade-in w-full pb-14"}>
+        {renderContent()}
+      </main>
+
+      {session ? (
+        <footer className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm border-t border-slate-100 py-1 px-4 flex items-center justify-between z-[60] h-7 shadow-[0_-2px_4px_rgba(0,0,0,0.02)] animate-fade-in">
+          <div className="max-w-7xl mx-auto w-full flex items-center justify-between px-2">
+            <div className="flex items-center gap-1">
+              <div className={`w-1 h-1 rounded-full ${connectionError ? 'bg-red-500' : 'bg-emerald-500'} animate-pulse`}></div>
+              <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">
+                {connectionError ? 'Offline' : 'Online'}
+              </p>
+            </div>
+            
+            <p className="text-[7px] font-black text-slate-900 uppercase tracking-widest sm:block">
+              Sistem Informasi Temuan Kelainan V{APP_VERSION}
+            </p>
+
+            <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">
+              © DO : 2026 - IT PLN ES BKT
+            </p>
+          </div>
+        </footer>
+      ) : (
         <footer className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a3a60] text-blue-100 py-3.5 px-3 sm:px-6 shadow-2xl border-t border-blue-900/30 animate-fade-in">
           <div className="max-w-6xl mx-auto flex flex-row items-center justify-between gap-1 text-[7px] xs:text-[8.5px] sm:text-[10px] font-bold uppercase tracking-wider">
             <div className="flex items-center gap-1 flex-shrink-0">
@@ -409,139 +546,7 @@ const App: React.FC = () => {
             </div>
           </div>
         </footer>
-      </div>
-    );
-  }
-
-  // 4. MAIN LAYOUT UNTUK PENGGUNA YANG SUDAH LOGIN (SESSION ACTIVE)
-  return (
-    <div className="min-h-screen bg-slate-50 pb-12 relative overflow-x-hidden">
-      <header className="bg-gradient-to-r from-[#003b71] to-[#005ba3] text-white py-3 px-4 sm:px-6 shadow-xl rounded-b-[2rem] border-b border-[#002b54]/50 relative z-50 sticky top-0">
-        <div className="max-w-7xl mx-auto flex items-center justify-between w-full">
-          
-          {/* Logo & title stack */}
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 bg-white rounded-2xl flex items-center justify-center p-1.5 shadow-lg border border-white/20 overflow-hidden flex-shrink-0 animate-fade-in">
-              <img 
-                src={LOGO_URL} 
-                alt="Logo PLN" 
-                className="w-full h-full object-contain" 
-                referrerPolicy="no-referrer" 
-              />
-            </div>
-            <div>
-              <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-blue-200">SISTEM INFORMASI</p>
-              <h1 className="text-sm sm:text-lg font-black uppercase tracking-tight text-white leading-none -mt-0.5">TEMUAN KELAINAN</h1>
-              <p className="text-[9px] sm:text-[10px] font-bold text-blue-200/90 leading-none mt-0.5 animate-pulse">PLN ES Bukittinggi</p>
-            </div>
-          </div>
-
-          {/* Action buttons (Gear and KELUAR button if logged in) */}
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={handleLogout} 
-              className="text-[9px] sm:text-[10px] font-black tracking-widest uppercase bg-[#002042] border border-[#001730] hover:bg-[#001730] active:scale-95 px-3 py-2 rounded-xl transition-all shadow-md"
-            >
-              KELUAR
-            </button>
-            <div className="w-11 h-11 bg-white rounded-2xl flex items-center justify-center p-1.5 shadow-lg border border-white/20 flex-shrink-0">
-              <svg viewBox="0 0 100 100" className="w-full h-full animate-[spin_20s_linear_infinite]" xmlns="http://www.w3.org/2000/svg">
-                <g transform="translate(50, 50)">
-                  {/* 11 gear teeth */}
-                  {Array.from({ length: 11 }).map((_, i) => {
-                    const rotation = (i * 360) / 11;
-                    return (
-                      <path
-                        key={i}
-                        d="M -9.5,-46 L 9.5,-46 L 7.5,-30 L -7.5,-30 Z"
-                        fill="#10b981"
-                        transform={`rotate(${rotation})`}
-                      />
-                    );
-                  })}
-                  {/* Outer body of the gear */}
-                  <circle cx="0" cy="0" r="32" fill="#10b981" />
-                  {/* White circle inside the gear */}
-                  <circle cx="0" cy="0" r="20" fill="#ffffff" />
-                  {/* Green cross inside the white circle */}
-                  <path
-                    d="M -4.7,-13.5 L 4.7,-13.5 L 4.7,-4.7 L 13.5,-4.7 L 13.5,4.7 L 4.7,4.7 L 4.7,13.5 L -4.7,13.5 L -4.7,4.7 L -13.5,4.7 L -13.5,-4.7 L -4.7,-4.7 Z"
-                    fill="#10b981"
-                  />
-                </g>
-              </svg>
-            </div>
-          </div>
-
-        </div>
-      </header>
-
-      <div className="w-full bg-gradient-to-r from-amber-500/5 via-amber-500/10 to-amber-500/5 backdrop-blur-sm border-b border-amber-500/20 py-2 sm:py-2.5 shadow-sm relative z-30 flex items-center overflow-hidden">
-        <div className="w-full max-w-7xl mx-auto flex items-center gap-3 px-4 sm:px-6 relative">
-          
-          {/* Integrity Pill Label */}
-          <div className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 To-amber-600 text-white text-[9px] sm:text-xs font-black px-2.5 py-1 rounded-full shadow-md shadow-amber-500/20 z-40 flex-shrink-0 animate-pulse uppercase tracking-wider">
-            <Shield className="w-3 h-3 text-white fill-white/20" />
-            <span>INTEGRITAS</span>
-          </div>
-
-          <div className="flex-1 overflow-hidden relative h-5 flex items-center select-none ml-1 sm:ml-2">
-            {/* Edge Fades */}
-            <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#eaf4fa] to-transparent z-20 pointer-events-none" />
-            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#eaf4fa] to-transparent z-20 pointer-events-none" />
-            
-            <div className="animate-marquee whitespace-nowrap text-amber-950 text-[10px] sm:text-xs font-black tracking-widest uppercase flex items-center" style={{ animationDuration: '45s' }}>
-              <span className="inline-flex items-center gap-8 px-4 font-black">
-                {activeMarqueeMessages.length > 0 ? (
-                  activeMarqueeMessages.map((m, idx) => (
-                    <span key={m.id} className="inline-flex items-center gap-2">
-                      <span className="text-amber-500">✨</span>
-                      {m.text}
-                      {idx < activeMarqueeMessages.length - 1 && (
-                        <span className="mx-8 text-amber-500/50">✦</span>
-                      )}
-                    </span>
-                  ))
-                ) : (
-                  <>
-                    <span className="text-amber-500">✨</span>
-                    <span>SAYA KERJA CARI REZEKI, BUKAN CARI SENSASI</span>
-                    <span className="text-amber-500">✦</span>
-                    <span className="text-[#005ba3]">⚡</span>
-                    <span>BEKERJA DENGAN JUJUR, DISIPLIN, DAN BERTANGGUNG JAWAB</span>
-                    <span className="text-amber-500">✦</span>
-                    <span className="text-emerald-500">🍃</span>
-                    <span>PELAYANAN TERBAIK ADALAH PRIORITAS UTAMA MASING-MASING KITA</span>
-                  </>
-                )}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto animate-fade-in">
-        {renderContent()}
-      </main>
-
-      <footer className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm border-t border-slate-100 py-1 px-4 flex items-center justify-between z-[60] h-7 shadow-[0_-2px_4px_rgba(0,0,0,0.02)] animate-fade-in">
-        <div className="max-w-7xl mx-auto w-full flex items-center justify-between px-2">
-          <div className="flex items-center gap-1">
-            <div className={`w-1 h-1 rounded-full ${connectionError ? 'bg-red-500' : 'bg-emerald-500'} animate-pulse`}></div>
-            <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">
-              {connectionError ? 'Offline' : 'Online'}
-            </p>
-          </div>
-          
-          <p className="text-[7px] font-black text-slate-900 uppercase tracking-widest sm:block">
-            Sistem Informasi Temuan Kelainan V{APP_VERSION}
-          </p>
-
-          <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">
-            © DO : 2026 - IT PLN ES BKT
-          </p>
-        </div>
-      </footer>
+      )}
     </div>
   );
 };
