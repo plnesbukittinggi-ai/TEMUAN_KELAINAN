@@ -339,13 +339,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
                 </svg>
               )}
             </div>
-            
-            <h2 className="text-lg xs:text-xl sm:text-3.5xl font-extrabold text-[#0f2d59] tracking-tight leading-none">
-              Sistem Informasi
-            </h2>
-            <h2 className="text-lg xs:text-xl sm:text-3.5xl font-black text-[#0f2d59] tracking-tight mt-0.5">
-              Temuan Kelainan
-            </h2>
 
             {/* PLN Unit Badge */}
             <div className="bg-[#e3f2fd] border border-blue-200/80 px-2.5 xs:px-3.5 py-1 sm:py-1.5 rounded-full flex items-center gap-1.5 max-w-fit mx-auto mt-1.5 sm:mt-3 shadow-sm hover:bg-blue-100 transition-colors">
@@ -410,35 +403,35 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
             <div className="hidden md:block w-px h-12 bg-blue-100 flex-shrink-0" />
 
             {/* Feature lists deck container */}
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-4 text-center sm:text-left w-full">
+            <div className="flex-1 grid grid-cols-3 gap-1.5 sm:gap-4 text-center w-full">
               {/* Feature 1 */}
-              <div className="flex flex-col sm:flex-row items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shadow-inner">
-                  <Clock className="w-5 h-5 text-blue-600" />
+              <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2.5 justify-center">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shadow-inner flex-shrink-0">
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                 </div>
-                <div>
-                  <p className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wide leading-none">Real-time</p>
-                  <p className="text-[10px] sm:text-xs text-slate-500 font-bold mt-1.5">Data selalu terupdate</p>
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-sm font-extrabold text-slate-800 uppercase tracking-wide leading-none">Real-time</p>
+                  <p className="text-[8px] sm:text-xs text-slate-500 font-bold mt-1 sm:mt-1.5 truncate">Data terupdate</p>
                 </div>
               </div>
               {/* Feature 2 */}
-              <div className="flex flex-col sm:flex-row items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shadow-inner">
-                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
+              <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2.5 justify-center">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shadow-inner flex-shrink-0">
+                  <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600" />
                 </div>
-                <div>
-                  <p className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wide leading-none">Aman</p>
-                  <p className="text-[10px] sm:text-xs text-slate-500 font-bold mt-1.5">Data terlindungi dengan baik</p>
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-sm font-extrabold text-slate-800 uppercase tracking-wide leading-none">Aman</p>
+                  <p className="text-[8px] sm:text-xs text-slate-500 font-bold mt-1 sm:mt-1.5 truncate">Terlindungi</p>
                 </div>
               </div>
               {/* Feature 3 */}
-              <div className="flex flex-col sm:flex-row items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shadow-inner">
-                  <Users className="w-5 h-5 text-indigo-600" />
+              <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2.5 justify-center">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shadow-inner flex-shrink-0">
+                  <Users className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
                 </div>
-                <div>
-                  <p className="text-xs sm:text-sm font-extrabold text-[#0f2d59] uppercase tracking-wide leading-none">Kolaboratif</p>
-                  <p className="text-[10px] sm:text-xs text-slate-500 font-bold mt-1.5">Bekerja bersama lebih efektif</p>
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-sm font-extrabold text-[#0f2d59] uppercase tracking-wide leading-none">Kolaboratif</p>
+                  <p className="text-[8px] sm:text-xs text-slate-500 font-bold mt-1 sm:mt-1.5 truncate">Lebih efektif</p>
                 </div>
               </div>
             </div>
