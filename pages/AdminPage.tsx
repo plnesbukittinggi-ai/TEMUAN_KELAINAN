@@ -649,7 +649,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
         </div>
       </div>
 
-      <div className="flex bg-white border border-slate-200 p-1.5 rounded-2xl mb-8 shadow-sm overflow-x-auto gap-1">
+      <div className="flex bg-white border border-slate-200 p-1.5 rounded-2xl mb-8 shadow-sm overflow-x-auto gap-1 scrollbar-hide no-scrollbar">
         {[
           { id: 'DASHBOARD', label: 'DASHBOARD' },
           { id: 'REKAP', label: 'REKAP INSPEKTOR' },
@@ -664,7 +664,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
           <button 
             key={t.id} 
             onClick={() => setTab(t.id as any)} 
-            className={`flex-1 py-3 px-2 text-[8px] font-black rounded-xl transition-all tracking-widest uppercase whitespace-nowrap ${tab === t.id ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
+            className={`flex-shrink-0 py-3 px-4 text-[9px] font-black rounded-xl transition-all tracking-widest uppercase whitespace-nowrap ${tab === t.id ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
           >
             {t.label}
           </button>
@@ -1195,16 +1195,16 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
       {tab === 'DATA' && (
         <div className="space-y-6 animate-fade-in">
-          <div className="flex bg-slate-100 p-1 rounded-2xl gap-1 mb-2">
+          <div className="flex bg-slate-100 p-1 rounded-2xl gap-1 mb-2 overflow-x-auto scrollbar-hide no-scrollbar">
             <button 
               onClick={() => setDataSubTab('PLN_ES')}
-              className={`flex-1 py-3 text-[10px] font-black rounded-xl transition-all tracking-widest uppercase ${dataSubTab === 'PLN_ES' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              className={`flex-1 md:flex-initial flex-shrink-0 py-3 px-4 text-[10px] font-black rounded-xl transition-all tracking-widest uppercase whitespace-nowrap ${dataSubTab === 'PLN_ES' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
             >
               DATA PLN ES
             </button>
             <button 
               onClick={() => setDataSubTab('PLN')}
-              className={`flex-1 py-3 text-[10px] font-black rounded-xl transition-all tracking-widest uppercase ${dataSubTab === 'PLN' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              className={`flex-1 md:flex-initial flex-shrink-0 py-3 px-4 text-[10px] font-black rounded-xl transition-all tracking-widest uppercase whitespace-nowrap ${dataSubTab === 'PLN' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
             >
               DATA PLN
             </button>
@@ -1312,8 +1312,8 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
       {tab === 'KELOLA' && (
         <div className="space-y-6 animate-fade-in">
-          <div className="flex bg-slate-100 p-1 rounded-xl gap-1 overflow-x-auto no-scrollbar">
-             {(['INSPEKTOR', 'ULP', 'FEEDER', 'YANDAL', 'MESSAGE'] as const).map(s => (<button key={s} onClick={() => setSubTab(s)} className={`flex-1 py-2.5 text-[10px] font-black rounded-lg transition-all uppercase tracking-widest min-w-[100px] ${subTab === s ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>{s === 'MESSAGE' ? 'MARQUEE' : s}</button>))}
+          <div className="flex bg-slate-100 p-1 rounded-xl gap-1 overflow-x-auto no-scrollbar scrollbar-hide">
+             {(['INSPEKTOR', 'ULP', 'FEEDER', 'YANDAL', 'MESSAGE'] as const).map(s => (<button key={s} onClick={() => setSubTab(s)} className={`flex-1 md:flex-initial flex-shrink-0 py-2.5 px-4 text-[10px] font-black rounded-lg transition-all uppercase tracking-widest min-w-[100px] ${subTab === s ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>{s === 'MESSAGE' ? 'MARQUEE' : s}</button>))}
           </div>
           <div className="flex justify-between items-center px-1"><h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Daftar {subTab === 'MESSAGE' ? 'Pesan Marquee' : subTab}</h3><button onClick={handleOpenAdd} disabled={isSaving} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50">{isSaving ? '⏳' : '+ Tambah'}</button></div>
           <div className="grid grid-cols-1 gap-3">
