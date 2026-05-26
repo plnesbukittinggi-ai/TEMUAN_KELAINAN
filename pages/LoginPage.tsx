@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AppRole, LoginSession, Inspector, ULP, Pekerjaan, MarqueeMessage } from '../types';
-import { ADMIN_PASSWORD, APP_VERSION } from '../constants';
+import { ADMIN_PASSWORD } from '../constants';
 import { 
   ClipboardList, 
   Wrench, 
@@ -528,7 +528,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
   ];
 
   return (
-    <div className="w-full min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white relative overflow-y-auto overflow-x-hidden font-sans bg-[#edf6fc] pb-20">
+    <div className="w-full flex-1 flex flex-col justify-between selection:bg-blue-500 selection:text-white relative overflow-y-auto overflow-x-hidden font-sans bg-transparent pb-10">
       
       {/* Background Gradients - perfectly matches the light sky/blue tint in reference images */}
       <div className="absolute inset-0 bg-gradient-to-tr from-[#edf5fc] via-[#f3f8fc] to-[#e6eff6] pointer-events-none z-0" />
@@ -863,25 +863,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
         </div>
       )}
 
-      {/* FULL WIDTH ONLINE STATUS BOTTOM FOOTER (MATCHING PICTURE) */}
-      <footer className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a3a60] text-blue-100 py-3.5 px-3 sm:px-6 shadow-2xl border-t border-blue-900/30">
-        <div className="max-w-6xl mx-auto flex flex-row items-center justify-between gap-1 text-[7px] xs:text-[8.5px] sm:text-[10px] font-bold uppercase tracking-wider">
-          
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <span className="w-1.5 h-1.5 sm:w-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
-            <span className="text-emerald-400 font-extrabold tracking-widest text-[7.5px] sm:text-[10px]">ONLINE</span>
-          </div>
 
-          <div className="text-slate-200/90 font-black truncate px-1 flex-1 text-center text-[7px] xs:text-[8.5px] sm:text-[10px]">
-            SISTEM INFORMASI TEMUAN KELAINAN V{APP_VERSION}
-          </div>
-
-          <div className="text-blue-200/80 flex-shrink-0 text-right text-[7px] xs:text-[8px] sm:text-[10px]">
-            © DO : 2026 - IT PLN ES BKT
-          </div>
-
-        </div>
-      </footer>
 
     </div>
   );
