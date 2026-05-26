@@ -109,5 +109,29 @@ export const SpreadsheetService = {
       console.error('Update Master Error:', error);
       return { success: false, message: 'Gagal memperbarui master data.' };
     }
+  },
+
+  async deleteTemuans(ids: string[]): Promise<ApiResponse> {
+    try {
+      const response = await fetch(SPREADSHEET_WEB_APP_URL, {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+        },
+        body: JSON.stringify({ action: 'deleteTemuans', data: { ids } }),
+      });
+      
+      const text = await response.text();
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        if (text.includes('"success":true')) return { success: true };
+        throw new Error('Respon server tidak valid');
+      }
+    } catch (error: any) {
+      console.error('Delete Temuans Error:', error);
+      return { success: false, message: 'Gagal menghapus data. Periksa koneksi atau URL Script.' };
+    }
   }
 };
