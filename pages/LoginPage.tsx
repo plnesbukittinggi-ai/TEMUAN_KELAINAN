@@ -877,8 +877,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
           </div>
 
           <div className="text-blue-200/80 flex-shrink-0 text-right text-[7px] xs:text-[8px] sm:text-[10px]">
-            <span className="hidden sm:inline">© DO : 2026 - IT PLN ES BKT</span>
-            <span className="sm:hidden">IT PLN BKT</span>
+            © DO : 2026 - IT PLN ES BKT
           </div>
 
         </div>
