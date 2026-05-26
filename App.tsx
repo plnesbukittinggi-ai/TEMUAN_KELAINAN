@@ -211,6 +211,27 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDeleteTemuans = async (ids: string[]): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const result = await SpreadsheetService.deleteTemuans(ids);
+      if (result.success) {
+        setAllData(prev => prev.filter(item => !ids.includes(item.id)));
+        alert('BERHASIL: ' + (result.message || `${ids.length} data temuan berhasil dihapus.`));
+        await refreshData();
+        return true;
+      } else {
+        alert('GAGAL: ' + (result.message || 'Gagal menghapus data dari server.'));
+        return false;
+      }
+    } catch (e) {
+      alert('ERROR: Terjadi kesalahan sistem saat menghapus data.');
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const startEdit = (data: TemuanData) => {
     setEditingData(data);
     const executionStatuses = ['SUDAH EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN', 'KENDALA MATERIAL'];
@@ -316,6 +337,7 @@ const App: React.FC = () => {
             onUpdateYandal={setYandalList}
             onUpdateMessages={setMarqueeMessages}
             currentRole={session.role}
+            onDeleteTemuans={handleDeleteTemuans}
           />
         );
       case AppRole.VIEWER:
@@ -375,7 +397,7 @@ const App: React.FC = () => {
               ) : (
                 <>
                   <span className="text-sm">🛡️</span>
-                  Saya kerja cari rezeki, bukan cari sensasi
+                  Update V.2.0.3 : Penambahan Eksekusi By Maps. ( mengeksekusi dengan melihat di Peta ). Terdapat di Halaman Update Eksekusi
                   <span className="text-sm">🛡️</span>
                 </>
               )}
