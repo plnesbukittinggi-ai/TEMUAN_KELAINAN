@@ -342,7 +342,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
               <button
                 key={f}
                 onClick={() => setSubFilter(f)}
-                className={`whitespace-nowrap px-4 py-2.5 text-[8px] font-black rounded-xl transition-all uppercase tracking-widest flex-1 min-w-max ${subFilter === f ? 'bg-slate-900 text-white shadow-md scale-100' : 'text-slate-400 hover:bg-slate-50'}`}
+                className={`whitespace-nowrap px-5 py-3 text-[10px] font-black rounded-xl transition-all uppercase tracking-widest flex-shrink-0 flex-1 md:flex-initial min-w-max ${subFilter === f ? 'bg-slate-900 text-white shadow-md scale-100' : 'text-slate-400 hover:bg-slate-50'}`}
               >
                 {f === 'TIDAK DAPAT IZIN' ? 'TIDAK IZIN' : f}
               </button>
@@ -371,7 +371,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            {filteredQueue.map(item => {
+            {filteredQueue.map((item, idx) => {
               const pos = parseGeotag(item.geotag);
               if (!pos) return null;
               const isMatch = searchQuery !== '' && String(item.noTiang).toLowerCase().includes(searchQuery.toLowerCase());
@@ -386,7 +386,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
 
               return (
                 <Marker 
-                  key={item.id} 
+                  key={`${item.id}-${idx}`} 
                   position={pos} 
                   icon={createCustomIcon(markerColor, isMatch)}
                 >
@@ -426,8 +426,8 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
         </div>
       ) : (
         <div className="space-y-4 mt-6">
-          {(initialData ? [initialData] : filteredQueue).map((item) => (
-            <div key={item.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:border-indigo-200 transition-all flex flex-col group animate-fade-in">
+          {(initialData ? [initialData] : filteredQueue).map((item, idx) => (
+            <div key={`${item.id}-${idx}`} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:border-indigo-200 transition-all flex flex-col group animate-fade-in">
               <div className="px-4 pt-3 pb-1 border-b border-slate-50 flex justify-between items-center">
                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                   🗓️ {parseRobustDate(item.tanggal).toLocaleDateString('id-ID')}
