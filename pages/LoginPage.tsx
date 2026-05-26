@@ -123,7 +123,124 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
       role: AppRole.INSPEKSI, 
       title: 'Input Inspeksi', 
       desc: 'Lapor temuan kelainan jaringan', 
-      icon: <ClipboardList className="w-6 h-6 xs:w-7 xs:h-7 sm:w-10 sm:h-10 text-blue-600 fill-blue-500/15 stroke-[2.2] filter drop-shadow-[0_2px_5px_rgba(37,99,235,0.25)] group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300" />, 
+      icon: (
+        <svg viewBox="0 0 120 120" className="w-full h-full select-none pointer-events-none group-hover:scale-110 transition-transform duration-300" strokeLinecap="round" strokeLinejoin="round">
+          {/* Circular backdrop gradient */}
+          <defs>
+            <linearGradient id="bgGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#60a5fa" />
+              <stop offset="100%" stopColor="#2563eb" />
+            </linearGradient>
+            <linearGradient id="clipGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#3b82f6" />
+              <stop offset="100%" stopColor="#1d4ed8" />
+            </linearGradient>
+            <linearGradient id="towerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#94a3b8" />
+              <stop offset="100%" stopColor="#475569" />
+            </linearGradient>
+            <linearGradient id="lensGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#e0f2fe" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.3" />
+            </linearGradient>
+          </defs>
+
+          {/* Backdrop circle */}
+          <circle cx="50" cy="65" r="32" fill="url(#bgGrad1)" opacity="0.85" />
+
+          {/* Transformer on Left */}
+          <g transform="translate(18, 52) scale(0.65)" stroke="#334155" strokeWidth="1.2">
+            {/* Transformer body */}
+            <rect x="5" y="20" width="16" height="22" rx="2" fill="#64748b" />
+            {/* Cooling fins */}
+            <line x1="2" y1="23" x2="5" y2="23" />
+            <line x1="2" y1="27" x2="5" y2="27" />
+            <line x1="2" y1="31" x2="5" y2="31" />
+            <line x1="2" y1="35" x2="5" y2="35" />
+            <line x1="21" y1="23" x2="24" y2="23" />
+            <line x1="21" y1="27" x2="24" y2="27" />
+            <line x1="21" y1="31" x2="24" y2="31" />
+            <line x1="21" y1="35" x2="24" y2="35" />
+            {/* Bushings/insulators on top */}
+            <path d="M 8,12 L 8,20 M 13,12 L 13,20 M 18,12 L 18,20" stroke="#475569" strokeWidth="2" />
+            <circle cx="8" cy="11" r="1.5" fill="#f59e0b" stroke="none" />
+            <circle cx="13" cy="11" r="1.5" fill="#f59e0b" stroke="none" />
+            <circle cx="18" cy="11" r="1.5" fill="#f59e0b" stroke="none" />
+            {/* Lightning Bolt Danger Symbol */}
+            <path d="M 14,25 L 10,32 H 14 L 12,38" fill="#f59e0b" stroke="none" />
+          </g>
+
+          {/* Electrical Tower on Right */}
+          <g transform="translate(62, 28) scale(0.7)" stroke="url(#towerGrad)" strokeWidth="1.5">
+            {/* Tower body outer truss */}
+            <path d="M 20,95 L 35,20 L 41,20 L 56,95" />
+            {/* Cross bracing horizontal segments */}
+            <path d="M 22,80 L 54,80" />
+            <path d="M 26,60 L 50,60" />
+            <path d="M 29,43 L 47,43" />
+            <path d="M 33,28 L 43,28" />
+            {/* Diagonals */}
+            <path d="M 20,95 L 50,60 L 20,80 L 54,80" />
+            <path d="M 26,60 L 43,28 L 29,43 L 47,43" />
+            <path d="M 35,20 L 41,20" />
+            {/* Cross arms for wires */}
+            <path d="M 12,35 L 64,35" strokeWidth="2.2" />
+            <path d="M 8,50 L 68,50" strokeWidth="2.2" stroke="#334155" />
+            {/* Insulators hanging down */}
+            <line x1="12" y1="35" x2="12" y2="42" stroke="#475569" strokeWidth="2.5" />
+            <line x1="64" y1="35" x2="64" y2="42" stroke="#475569" strokeWidth="2.5" />
+            <line x1="8" y1="50" x2="8" y2="58" stroke="#475569" strokeWidth="2.5" />
+            <line x1="68" y1="50" x2="68" y2="58" stroke="#475569" strokeWidth="2.5" />
+          </g>
+
+          {/* Clipboard Panel Main */}
+          <g transform="translate(24, 30)">
+            {/* Shadow / Base Board */}
+            <rect x="5" y="10" width="46" height="60" rx="6" fill="url(#clipGrad)" stroke="#1e3a8a" strokeWidth="1.5" />
+            
+            {/* Metal Clip at TOP */}
+            <path d="M 18,10 Q 18,3 28,3 Q 38,3 38,10 Z" fill="#94a3b8" stroke="#475569" strokeWidth="1.2" />
+            <rect x="16" y="7" width="24" height="6" rx="2.5" fill="#cbd5e1" stroke="#475569" strokeWidth="1.2" />
+            <circle cx="28" cy="10" r="1.5" fill="#475569" />
+
+            {/* Paper Sheet */}
+            <rect x="9" y="18" width="38" height="48" rx="2" fill="#ffffff" />
+
+            {/* Checkbox Rows */}
+            {/* Row 1 */}
+            <rect x="13" y="24" width="8" height="8" rx="1.5" fill="#eff6ff" stroke="#2563eb" strokeWidth="1.2" />
+            <path d="M 15,28 L 17,30 L 20,25" stroke="#2563eb" strokeWidth="1.5" fill="none" />
+            <line x1="25" y1="26" x2="43" y2="26" stroke="#e2e8f0" strokeWidth="1.5" />
+            <line x1="25" y1="30" x2="38" y2="30" stroke="#e2e8f0" strokeWidth="1.5" />
+
+            {/* Row 2 */}
+            <rect x="13" y="36" width="8" height="8" rx="1.5" fill="#eff6ff" stroke="#2563eb" strokeWidth="1.2" />
+            <path d="M 15,40 L 17,42 L 20,37" stroke="#2563eb" strokeWidth="1.5" fill="none" />
+            <line x1="25" y1="38" x2="43" y2="38" stroke="#e2e8f0" strokeWidth="1.5" />
+            <line x1="25" y1="42" x2="35" y2="42" stroke="#e2e8f0" strokeWidth="1.5" />
+
+            {/* Row 3 */}
+            <rect x="13" y="48" width="8" height="8" rx="1.5" fill="#eff6ff" stroke="#2563eb" strokeWidth="1.2" />
+            <path d="M 15,52 L 17,54 L 20,49" stroke="#2563eb" strokeWidth="1.5" fill="none" />
+            <line x1="25" y1="50" x2="43" y2="50" stroke="#e2e8f0" strokeWidth="1.5" />
+            <line x1="25" y1="54" x2="39" y2="54" stroke="#e2e8f0" strokeWidth="1.5" />
+          </g>
+
+          {/* Magnifying Glass Over the Clipboard */}
+          <g transform="translate(56, 68) rotate(-15)">
+            {/* Handle shadow/base */}
+            <rect x="3" y="22" width="6" height="24" rx="3" fill="#1e293b" stroke="#0f172a" strokeWidth={1} />
+            {/* Metal Ring connection */}
+            <rect x="2" y="16" width="8" height="6" rx="1" fill="#cbd5e1" stroke="#64748b" strokeWidth={1} />
+            {/* Circular Frame */}
+            <circle cx="6" cy="6" r="14" fill="#ffffff" stroke="#475569" strokeWidth={3} />
+            {/* Glass lens with reflection */}
+            <circle cx="6" cy="6" r="11.5" fill="url(#lensGrad)" />
+            {/* Handle grip detail */}
+            <line x1="6" y1="26" x2="6" y2="40" stroke="#475569" strokeWidth="1.2" />
+          </g>
+        </svg>
+      ),
       themeColor: 'blue',
       bgColor: 'from-blue-50 to-blue-100/90 border border-blue-200/55',
       btnColor: 'bg-gradient-to-r from-blue-500 to-blue-600 shadow-lg shadow-blue-500/25 hover:from-blue-600 hover:to-blue-700',
@@ -134,7 +251,85 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
       role: AppRole.EKSEKUSI, 
       title: 'Update Eksekusi', 
       desc: 'Update hasil perbaikan lapangan', 
-      icon: <Wrench className="w-6 h-6 xs:w-7 xs:h-7 sm:w-10 sm:h-10 text-emerald-600 fill-emerald-500/15 stroke-[2.2] filter drop-shadow-[0_2px_5px_rgba(16,185,129,0.25)] group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300" />, 
+      icon: (
+        <svg viewBox="0 0 120 120" className="w-full h-full select-none pointer-events-none group-hover:scale-110 transition-transform duration-300" strokeLinecap="round" strokeLinejoin="round">
+          <defs>
+            <linearGradient id="bgGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#0ea5e9" />
+              <stop offset="100%" stopColor="#0d9488" />
+            </linearGradient>
+            <linearGradient id="pencilYellow" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#fbbf24" />
+              <stop offset="50%" stopColor="#f59e0b" />
+              <stop offset="100%" stopColor="#d97706" />
+            </linearGradient>
+            <linearGradient id="woodTip" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#fef08a" />
+              <stop offset="100%" stopColor="#fef08a" />
+            </linearGradient>
+            <linearGradient id="eraserGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#f43f5e" />
+              <stop offset="100%" stopColor="#e11d48" />
+            </linearGradient>
+            <linearGradient id="gearGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#2563eb" />
+              <stop offset="100%" stopColor="#3b82f6" />
+            </linearGradient>
+          </defs>
+
+          {/* Backdrop circle */}
+          <circle cx="70" cy="55" r="32" fill="url(#bgGrad2)" opacity="0.85" />
+
+          {/* Document Base */}
+          <g transform="translate(25, 22)">
+            <rect x="0" y="5" width="46" height="58" rx="6" fill="#f8fafc" stroke="#94a3b8" strokeWidth="1" />
+            <rect x="2" y="7" width="42" height="54" rx="4" fill="#ffffff" />
+            
+            {/* Document Checklines */}
+            <rect x="8" y="16" width="7" height="7" rx="1.5" stroke="#0ea5e9" strokeWidth="1.5" fill="none" />
+            <path d="M 10,19.5 L 11.5,21 L 14,17.5" stroke="#0ea5e9" strokeWidth="1.5" fill="none" />
+            <line x1="19" y1="18.5" x2="36" y2="18.5" stroke="#94a3b8" strokeWidth="2.2" />
+            <line x1="19" y1="22.5" x2="28" y2="22.5" stroke="#cbd5e1" strokeWidth="1.5" />
+
+            <rect x="8" y="28" width="7" height="7" rx="1.5" stroke="#0ea5e9" strokeWidth="1.5" fill="none" />
+            <path d="M 10,31.5 L 11.5,33 L 14,29.5" stroke="#0ea5e9" strokeWidth="1.5" fill="none" />
+            <line x1="19" y1="30.5" x2="36" y2="30.5" stroke="#94a3b8" strokeWidth="2.2" />
+            <line x1="19" y1="34.5" x2="30" y2="34.5" stroke="#cbd5e1" strokeWidth="1.5" />
+
+            <rect x="8" y="40" width="7" height="7" rx="1.5" stroke="#0ea5e9" strokeWidth="1.5" fill="none" />
+            <line x1="19" y1="42.5" x2="36" y2="42.5" stroke="#cbd5e1" strokeWidth="2.2" />
+            <line x1="19" y1="46.5" x2="26" y2="46.5" stroke="#e2e8f0" strokeWidth="1.5" />
+          </g>
+
+          {/* Gear on Right */}
+          <g transform="translate(76, 68)" fill="url(#gearGrad)" stroke="#1e40af" strokeWidth="1.2">
+            <circle cx="16" cy="16" r="11" />
+            {Array.from({ length: 8 }).map((_, i) => {
+              const rotation = (i * 360) / 8;
+              return (
+                <path
+                  key={i}
+                  d="M 12.5,-3 L 19.5,-3 L 18.5,4 L 13.5,4 Z"
+                  transform={`translate(16, 16) rotate(${rotation}) translate(-16, -16) translate(0, -11)`}
+                />
+              );
+            })}
+            <circle cx="16" cy="16" r="5" fill="#ffffff" stroke="#1e40af" strokeWidth="1.2" />
+          </g>
+
+          {/* Classic Pencil leaning in */}
+          <g transform="translate(68, 62) rotate(-35) scale(0.95)">
+            <rect x="-4" y="-36" width="8" height="7" rx="1.5" fill="url(#eraserGrad)" />
+            <rect x="-4" y="-29" width="8" height="4" fill="#94a3b8" />
+            <line x1="-4" y1="-27" x2="4" y2="-27" stroke="#334155" strokeWidth="0.8" />
+            <rect x="-4" y="-25" width="8" height="34" fill="url(#pencilYellow)" />
+            <line x1="-1.5" y1="-25" x2="-1.5" y2="9" stroke="#fbbf24" strokeWidth="0.8" opacity="0.4" />
+            <line x1="1.5" y1="-25" x2="1.5" y2="9" stroke="#b45309" strokeWidth="0.8" opacity="0.4" />
+            <path d="M -4,9 L 0,18 L 4,9" fill="url(#woodTip)" />
+            <path d="M -1.8,14 L 0,18 L 1.8,14" fill="#1e293b" />
+          </g>
+        </svg>
+      ),
       themeColor: 'emerald',
       bgColor: 'from-emerald-50 to-emerald-100/90 border border-emerald-200/55',
       btnColor: 'bg-gradient-to-r from-emerald-500 to-[#10b981] shadow-lg shadow-emerald-500/25 hover:from-[#059669] hover:to-[#047857]',
@@ -143,9 +338,103 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
     },
     { 
       role: AppRole.VIEWER, 
-      title: 'Monitoring Data', 
+      title: 'Monitoring Temuan', 
       desc: 'Rekapitulasi status real-time', 
-      icon: <Monitor className="w-6 h-6 xs:w-7 xs:h-7 sm:w-10 sm:h-10 text-indigo-600 fill-indigo-500/15 stroke-[2.2] filter drop-shadow-[0_2px_5px_rgba(99,102,241,0.25)] group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300" />, 
+      icon: (
+        <svg viewBox="0 0 120 120" className="w-full h-full select-none pointer-events-none group-hover:scale-110 transition-transform duration-300" strokeLinecap="round" strokeLinejoin="round">
+          <defs>
+            <linearGradient id="bgGrad3" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#3b82f6" />
+              <stop offset="100%" stopColor="#1e3a8a" />
+            </linearGradient>
+            <linearGradient id="pieBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#38bdf8" />
+              <stop offset="100%" stopColor="#0284c7" />
+            </linearGradient>
+            <linearGradient id="pieYellow" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#fbbf24" />
+              <stop offset="100%" stopColor="#ea580c" />
+            </linearGradient>
+            <linearGradient id="barTeal" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#2dd4bf" />
+              <stop offset="100%" stopColor="#0f766e" />
+            </linearGradient>
+          </defs>
+
+          {/* Backdrop circle */}
+          <circle cx="50" cy="62" r="32" fill="url(#bgGrad3)" opacity="0.85" />
+
+          {/* Transformer on Left */}
+          <g transform="translate(14, 58) scale(0.65)" stroke="#334155" strokeWidth="1.2">
+            <rect x="5" y="20" width="16" height="22" rx="2" fill="#475569" />
+            <line x1="2" y1="23" x2="5" y2="23" />
+            <line x1="2" y1="29" x2="5" y2="29" />
+            <line x1="2" y1="35" x2="5" y2="35" />
+            <line x1="21" y1="23" x2="24" y2="23" />
+            <line x1="21" y1="29" x2="24" y2="29" />
+            <line x1="21" y1="35" x2="24" y2="35" />
+            <path d="M 8,12 L 8,20 M 13,12 L 13,20 M 18,12 L 18,20" stroke="#334155" strokeWidth="1.8" />
+            <path d="M 14,25 L 10,32 H 14 L 12,38" fill="#f59e0b" stroke="none" />
+          </g>
+
+          {/* Utility/Concrete Pole on Right */}
+          <g transform="translate(85, 30) scale(0.72)" stroke="#475569" strokeWidth="1.8">
+            {/* Main vertical cement pole */}
+            <path d="M 20,95 L 20,15" strokeWidth="3" />
+            {/* Cross-arms / Crossbars */}
+            <path d="M 5,22 L 35,22" strokeWidth="2.5" />
+            <path d="M 8,36 L 32,36" strokeWidth="2.2" />
+            {/* Side bracket support struts */}
+            <line x1="14" y1="30" x2="20" y2="22" />
+            <line x1="26" y1="30" x2="20" y2="22" />
+            {/* Insulator caps cylindrical details */}
+            <rect x="4" y="16" width="3" height="6" rx="0.5" fill="#f59e0b" stroke="none" />
+            <rect x="18" y="16" width="4" height="6" rx="0.5" fill="#f59e0b" stroke="none" />
+            <rect x="33" y="16" width="3" height="6" rx="0.5" fill="#f59e0b" stroke="none" />
+            
+            <rect x="7" y="31" width="3" height="5" rx="0.5" fill="#64748b" stroke="none" />
+            <rect x="30" y="31" width="3" height="5" rx="0.5" fill="#64748b" stroke="none" />
+            {/* Overhead Line-hanging cylinder element */}
+            <rect x="25" y="44" width="7" height="15" rx="1" fill="#475569" stroke="none" />
+            <line x1="28.5" y1="36" x2="28.5" y2="44" strokeWidth="1.2" />
+          </g>
+
+          {/* LCD Computer Monitor showing charts */}
+          <g transform="translate(26, 32)">
+            {/* Stand base & neck */}
+            <path d="M 18,46 L 24,46 L 27,53 L 15,53 Z" fill="#334155" stroke="#1e293b" strokeWidth="1.2" />
+            {/* Main screen bevel border */}
+            <rect x="1" y="2" width="48" height="37" rx="4" fill="#0f172a" stroke="#1e293b" strokeWidth="1.8" />
+            {/* Web Canvas background */}
+            <rect x="3" y="4" width="44" height="33" rx="2" fill="#ffffff" />
+
+            {/* Pie Chart Donut slice illustration */}
+            <g transform="translate(13, 14)">
+              <circle cx="0" cy="0" r="7.5" fill="none" stroke="url(#pieBlue)" strokeWidth="4.5" />
+              <path d="M 0,0 M -7.5,0 A 7.5,7.5 0 0,1 5,-5" fill="none" stroke="url(#pieYellow)" strokeWidth="4.5" />
+              <circle cx="0" cy="0" r="3.2" fill="#ffffff" />
+            </g>
+
+            {/* lines beside pie */}
+            <line x1="23" y1="10" x2="33" y2="10" stroke="#cbd5e1" strokeWidth="2.2" />
+            <line x1="23" y1="14" x2="29" y2="14" stroke="#e2e8f0" strokeWidth="1.5" />
+
+            {/* Bar graphics on Right of screen */}
+            <rect x="35" y="16" width="3" height="10" rx="0.8" fill="url(#barTeal)" />
+            <rect x="39" y="12" width="3" height="14" rx="0.8" fill="url(#barTeal)" />
+            <rect x="43" y="19" width="3" height="7" rx="0.8" fill="url(#pieYellow)" />
+
+            {/* Line Chart */}
+            <path d="M 6,32 L 12,28 L 20,31 L 28,26 L 35,29 L 42,24" fill="none" stroke="#2563eb" strokeWidth="2" />
+            <circle cx="6" cy="32" r="1.5" fill="#1d4ed8" />
+            <circle cx="12" cy="28" r="1.5" fill="#1d4ed8" />
+            <circle cx="20" cy="31" r="1.5" fill="#1d4ed8" />
+            <circle cx="28" cy="26" r="1.5" fill="#1d4ed8" />
+            <circle cx="35" cy="29" r="1.5" fill="#1d4ed8" />
+            <circle cx="42" cy="24" r="1.5" fill="#1d4ed8" />
+          </g>
+        </svg>
+      ),
       themeColor: 'violet',
       bgColor: 'from-indigo-50 to-indigo-100/90 border border-indigo-200/55',
       btnColor: 'bg-gradient-to-r from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/25 hover:from-indigo-600 hover:to-violet-700',
@@ -156,7 +445,80 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
       role: AppRole.ADMIN, 
       title: 'Panel Admin', 
       desc: 'Kelola pengguna dlm sistem', 
-      icon: <UserCheck className="w-6 h-6 xs:w-7 xs:h-7 sm:w-10 sm:h-10 text-amber-600 fill-amber-500/15 stroke-[2.2] filter drop-shadow-[0_2px_5px_rgba(245,158,11,0.25)] group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300" />, 
+      icon: (
+        <svg viewBox="0 0 120 120" className="w-full h-full select-none pointer-events-none group-hover:scale-110 transition-transform duration-300" strokeLinecap="round" strokeLinejoin="round">
+          <defs>
+            <linearGradient id="bgGrad4" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#3b82f6" />
+              <stop offset="100%" stopColor="#1d4ed8" />
+            </linearGradient>
+            <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#2563eb" />
+              <stop offset="100%" stopColor="#1e3a8a" />
+            </linearGradient>
+            <linearGradient id="lockSilver" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#f1f5f9" />
+              <stop offset="50%" stopColor="#cbd5e1" />
+              <stop offset="100%" stopColor="#94a3b8" />
+            </linearGradient>
+            <linearGradient id="gearAdmin" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#1e40af" />
+              <stop offset="100%" stopColor="#1e3a8a" />
+            </linearGradient>
+          </defs>
+
+          {/* Backdrop circle */}
+          <circle cx="68" cy="62" r="32" fill="url(#bgGrad4)" opacity="0.85" />
+
+          {/* Web Browser Panel Window */}
+          <g transform="translate(16, 26)">
+            <rect x="0" y="0" width="46" height="42" rx="4.5" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="1.2" />
+            <path d="M 0,4.5 A 4.5,4.5 0 0,1 4.5,0 L 41.5,0 A 4.5,4.5 0 0,1 46,4.5 L 46,10 L 0,10 Z" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="0" />
+            
+            <circle cx="4.5" cy="5" r="1.2" fill="#ef4444" />
+            <circle cx="9.5" cy="5" r="1.2" fill="#eab308" />
+            <circle cx="14.5" cy="5" r="1.2" fill="#22c55e" />
+
+            <rect x="5" y="15" width="13" height="13" rx="2.5" fill="#dbeafe" />
+            <circle cx="11.5" cy="19.5" r="2.8" fill="#3b82f6" />
+            <path d="M 7,27 Q 7,23.5 11.5,23.5 Q 16,23.5 16,27 Z" fill="#3b82f6" />
+
+            <line x1="22" y1="18" x2="38" y2="18" stroke="#cbd5e1" strokeWidth="2.5" />
+            <line x1="22" y1="23" x2="32" y2="23" stroke="#cbd5e1" strokeWidth="1.8" />
+            <line x1="5" y1="33" x2="25" y2="33" stroke="#fbbf24" strokeWidth="2.5" />
+          </g>
+
+          {/* Shield overlay */}
+          <g transform="translate(56, 25)">
+            <path d="M 2,4 L 19,4 Q 30,4 34,10 Q 36,18 34,32 Q 32,45 19,53 Q 6,45 4,32 Q 2,18 2,4 Z" fill="url(#shieldGrad)" stroke="#1d4ed8" strokeWidth="1.8" />
+            <path d="M 19,4 L 19,51.8 Q 11.5,46 6.5,33.5 Q 4,20.5 4.5,6.5 L 19,6.5 Z" fill="#3b82f6" opacity="0.18" />
+          </g>
+
+          {/* Security System Gear */}
+          <g transform="translate(84, 68)" fill="url(#gearAdmin)" stroke="#1e293b" strokeWidth="1">
+            <circle cx="13" cy="13" r="9" />
+            {Array.from({ length: 8 }).map((_, i) => {
+              const rotation = (i * 360) / 8;
+              return (
+                <path
+                  key={i}
+                  d="M 10.5,-2.5 L 15.5,-2.5 L 14.5,3 L 11.5,3 Z"
+                  transform={`translate(13, 13) rotate(${rotation}) translate(-13, -13) translate(0, -9)`}
+                />
+              );
+            })}
+            <circle cx="13" cy="13" r="4.2" fill="#ffffff" stroke="#1e293b" strokeWidth="1" />
+          </g>
+
+          {/* Padlock */}
+          <g transform="translate(48, 62)">
+            <path d="M 10,12 L 10,7 A 7,7 0 0,1 24,7 L 24,12" stroke="#475569" strokeWidth="3" fill="none" />
+            <rect x="5" y="11" width="24" height="20" rx="4.5" fill="url(#lockSilver)" stroke="#475569" strokeWidth="1.5" />
+            <circle cx="17" cy="18.5" r="2.8" fill="#1e293b" stroke="none" />
+            <path d="M 15.5,19 Q 15.5,18.5 17,18.5 Q 18.5,18.5 18.5,19 L 20,26.5 L 14,26.5 Z" fill="#1e293b" stroke="none" />
+          </g>
+        </svg>
+      ),
       themeColor: 'amber',
       bgColor: 'from-amber-50 to-amber-100/90 border border-amber-200/55',
       btnColor: 'bg-gradient-to-r from-amber-500 to-amber-600 shadow-lg shadow-amber-500/25 hover:from-amber-600 hover:to-amber-700',
@@ -510,13 +872,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
             <span className="text-emerald-400 font-extrabold tracking-widest text-[7.5px] sm:text-[10px]">ONLINE</span>
           </div>
 
-          <div className="text-slate-200/90 font-black truncate px-1 flex-1 text-center text-[7px] xs:text-[8px] sm:text-[10px]">
-            <span className="hidden xs:inline">SISTEM INFORMASI TEMUAN KELAINAN V{APP_VERSION}</span>
-            <span className="xs:hidden">SI TEMUAN KELAINAN V{APP_VERSION}</span>
+          <div className="text-slate-200/90 font-black truncate px-1 flex-1 text-center text-[7px] xs:text-[8.5px] sm:text-[10px]">
+            SISTEM INFORMASI TEMUAN KELAINAN V{APP_VERSION}
           </div>
 
           <div className="text-blue-200/80 flex-shrink-0 text-right text-[7px] xs:text-[8px] sm:text-[10px]">
-            <span className="hidden sm:inline">© 2026 - IT PLN ES BKT</span>
+            <span className="hidden sm:inline">© DO : 2026 - IT PLN ES BKT</span>
             <span className="sm:hidden">IT PLN BKT</span>
           </div>
 
