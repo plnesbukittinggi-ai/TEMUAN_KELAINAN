@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppRole, TemuanData, LoginSession, Inspector, ULP, Feeder, Pekerjaan, Keterangan, Yandal, MarqueeMessage } from './types';
 import { INITIAL_INSPECTORS, INITIAL_ULP, INITIAL_FEEDERS, INITIAL_KETERANGAN, INITIAL_PEKERJAAN, INITIAL_YANDAL, APP_VERSION } from './constants';
+import { Shield } from 'lucide-react';
 import { SpreadsheetService } from './services/spreadsheetService';
 import LoginPage from './pages/LoginPage';
 import InspeksiPage from './pages/InspeksiPage';
@@ -286,6 +287,7 @@ const App: React.FC = () => {
           ulpList={ulpList} 
           pekerjaanList={pekerjaanList} 
           isLoading={isLoading}
+          marqueeMessages={marqueeMessages}
         />
       );
     }
@@ -358,21 +360,39 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 relative pb-12 overflow-x-hidden">
-      <header className="bg-slate-900 text-white p-4 sm:p-5 sticky top-0 z-50 border-b border-slate-800">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+    <div className={`min-h-screen ${session ? 'bg-slate-50 pb-12' : 'bg-gradient-to-br from-[#dfefe2]/30 via-[#e2f1fc] to-[#e4f6fc]'} relative overflow-x-hidden`}>
+      <header className="bg-gradient-to-r from-[#003b71] to-[#005ba3] text-white py-3 px-4 sm:px-6 shadow-xl rounded-b-[2rem] border-b border-[#002b54]/50 relative z-50 sticky top-0">
+        <div className="max-w-7xl mx-auto flex items-center justify-between w-full">
+          
+          {/* Logo & title stack */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-lg p-1 sm:p-1.5 flex items-center justify-center shadow-inner">
-              <img src={LOGO_URL} alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+            <div className="w-11 h-11 bg-white rounded-2xl flex items-center justify-center p-1.5 shadow-lg border border-white/20 overflow-hidden flex-shrink-0 animate-fade-in">
+              <img 
+                src={LOGO_URL} 
+                alt="Logo PLN" 
+                className="w-full h-full object-contain" 
+                referrerPolicy="no-referrer" 
+              />
             </div>
             <div>
-              <h1 className="font-black text-sm sm:text-base tracking-tight uppercase text-white">Sistem Informasi Temuan Kelainan</h1>
-              <p className="text-[10px] sm:text-[11px] text-slate-400 font-bold">PLN ES Bukittinggi</p>
+              <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-blue-200">SISTEM INFORMASI</p>
+              <h1 className="text-sm sm:text-lg font-black uppercase tracking-tight text-white leading-none -mt-0.5">TEMUAN KELAINAN</h1>
+              <p className="text-[9px] sm:text-[10px] font-bold text-blue-200/90 leading-none mt-0.5 animate-pulse">PLN ES Bukittinggi</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-lg p-1 sm:p-1.5 flex items-center justify-center shadow-inner">
-              <svg viewBox="0 0 100 100" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+
+          {/* Action buttons (Gear and KELUAR button if logged in) */}
+          <div className="flex items-center gap-3">
+            {session && (
+              <button 
+                onClick={handleLogout} 
+                className="text-[9px] sm:text-[10px] font-black tracking-widest uppercase bg-[#002042] border border-[#001730] hover:bg-[#001730] active:scale-95 px-3 py-2 rounded-xl transition-all shadow-md"
+              >
+                KELUAR
+              </button>
+            )}
+            <div className="w-11 h-11 bg-white rounded-2xl flex items-center justify-center p-1.5 shadow-lg border border-white/20 flex-shrink-0">
+              <svg viewBox="0 0 100 100" className="w-full h-full animate-[spin_20s_linear_infinite]" xmlns="http://www.w3.org/2000/svg">
                 <g transform="translate(50, 50)">
                   {/* 11 gear teeth */}
                   {Array.from({ length: 11 }).map((_, i) => {
@@ -398,65 +418,79 @@ const App: React.FC = () => {
                 </g>
               </svg>
             </div>
-            {session && (
-              <button 
-                onClick={handleLogout} 
-                className="text-[9px] sm:text-[10px] font-bold bg-slate-800 border border-slate-700 hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-all"
-              >
-                KELUAR
-              </button>
-            )}
           </div>
+
         </div>
       </header>
 
-      <div className="bg-amber-50 border-b border-amber-100 overflow-hidden py-2 shadow-sm">
-        <div className="relative">
-          <div className="animate-marquee whitespace-nowrap flex items-center pr-10">
-            <span className="text-[10px] sm:text-[11px] font-black text-amber-800 uppercase tracking-[0.1em] flex items-center gap-2">
-              {marqueeMessages.filter(m => m.isActive).length > 0 ? (
-                marqueeMessages.filter(m => m.isActive).map((m, idx) => (
-                  <React.Fragment key={m.id}>
-                    <span className="text-sm">🛡️</span>
-                    {m.text}
-                    <span className="text-sm">🛡️</span>
-                    {idx < marqueeMessages.filter(m => m.isActive).length - 1 && <span className="mx-8">|</span>}
-                  </React.Fragment>
-                ))
-              ) : (
-                <>
-                  <span className="text-sm">🛡️</span>
-                  
-                  <span className="text-sm">🛡️</span>
-                </>
-              )}
-            </span>
+      <div className="w-full bg-gradient-to-r from-amber-500/5 via-amber-500/10 to-amber-500/5 backdrop-blur-sm border-b border-amber-500/20 py-2 sm:py-2.5 shadow-sm relative z-30 flex items-center overflow-hidden">
+        <div className="w-full max-w-7xl mx-auto flex items-center gap-3 px-4 sm:px-6 relative">
+          
+          {/* Integrity Pill Label */}
+          <div className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[9px] sm:text-xs font-black px-2.5 py-1 rounded-full shadow-md shadow-amber-500/20 z-40 flex-shrink-0 animate-pulse uppercase tracking-wider">
+            <Shield className="w-3 h-3 text-white fill-white/20" />
+            <span>INTEGRITAS</span>
+          </div>
+
+          <div className="flex-1 overflow-hidden relative h-5 flex items-center select-none ml-1 sm:ml-2">
+            {/* Edge Fades */}
+            <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#eaf4fa] to-transparent z-20 pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#eaf4fa] to-transparent z-20 pointer-events-none" />
+            
+            <div className="animate-marquee whitespace-nowrap text-amber-950 text-[10px] sm:text-xs font-black tracking-widest uppercase flex items-center" style={{ animationDuration: '45s' }}>
+              <span className="inline-flex items-center gap-8 px-4 font-black">
+                {marqueeMessages && marqueeMessages.filter(m => m.isActive).length > 0 ? (
+                  marqueeMessages.filter(m => m.isActive).map((m, idx) => (
+                    <span key={m.id} className="inline-flex items-center gap-2">
+                      <span className="text-amber-500">✨</span>
+                      {m.text}
+                      {idx < marqueeMessages.filter(m => m.isActive).length - 1 && (
+                        <span className="mx-8 text-amber-500/50">✦</span>
+                      )}
+                    </span>
+                  ))
+                ) : (
+                  <>
+                    <span className="text-amber-500">✨</span>
+                    <span>SAYA KERJA CARI REZEKI, BUKAN CARI SENSASI</span>
+                    <span className="text-amber-500">✦</span>
+                    <span className="text-[#005ba3]">⚡</span>
+                    <span>BEKERJA DENGAN JUJUR, DISIPLIN, DAN BERTANGGUNG JAWAB</span>
+                    <span className="text-amber-500">✦</span>
+                    <span className="text-emerald-500">🍃</span>
+                    <span>PELAYANAN TERBAIK ADALAH PRIORITAS UTAMA MASING-MASING KITA</span>
+                  </>
+                )}
+              </span>
+            </div>
           </div>
         </div>
       </div>
       
-      <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto animate-fade-in">
+      <main className={session ? "p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto animate-fade-in" : "animate-fade-in w-full min-h-screen"}>
         {renderContent()}
       </main>
 
-      <footer className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm border-t border-slate-100 py-1 px-4 flex items-center justify-between z-[60] h-7 shadow-[0_-2px_4px_rgba(0,0,0,0.02)]">
-        <div className="max-w-7xl mx-auto w-full flex items-center justify-between px-2">
-          <div className="flex items-center gap-1">
-            <div className={`w-1 h-1 rounded-full ${connectionError ? 'bg-red-500' : 'bg-emerald-500'} animate-pulse`}></div>
+      {session && (
+        <footer className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm border-t border-slate-100 py-1 px-4 flex items-center justify-between z-[60] h-7 shadow-[0_-2px_4px_rgba(0,0,0,0.02)]">
+          <div className="max-w-7xl mx-auto w-full flex items-center justify-between px-2">
+            <div className="flex items-center gap-1">
+              <div className={`w-1 h-1 rounded-full ${connectionError ? 'bg-red-500' : 'bg-emerald-500'} animate-pulse`}></div>
+              <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">
+                {connectionError ? 'Offline' : 'Online'}
+              </p>
+            </div>
+            
+            <p className="text-[7px] font-black text-slate-900 uppercase tracking-widest sm:block">
+              Sistem Informasi Temuan Kelainan V{APP_VERSION}
+            </p>
+
             <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">
-              {connectionError ? 'Offline' : 'Online'}
+              © 2026 - IT PLN ES BKT
             </p>
           </div>
-          
-          <p className="text-[7px] font-black text-slate-900 uppercase tracking-widest sm:block">
-            Sistem Informasi Temuan Kelainan V{APP_VERSION}
-          </p>
-
-          <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">
-            © 2026 - IT PLN ES BKT
-          </p>
-        </div>
-      </footer>
+        </footer>
+      )}
     </div>
   );
 };
