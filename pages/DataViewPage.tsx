@@ -294,11 +294,11 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
           </select>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide no-scrollbar">
           {['ALL', 'BELUM EKSEKUSI', 'SUDAH EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN', 'KENDALA MATERIAL'].map((f) => (
             <button
               key={f} onClick={() => setFilter(f as any)}
-              className={`whitespace-nowrap px-4 py-2 text-[10px] font-bold rounded-lg border transition-all uppercase tracking-wide ${filter === f ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-400 border-slate-200'}`}
+              className={`whitespace-nowrap flex-shrink-0 px-4 py-2 text-[10px] font-bold rounded-lg border transition-all uppercase tracking-wide ${filter === f ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-400 border-slate-200'}`}
             >
               {f === 'ALL' ? 'SEMUA' : f === 'TIDAK DAPAT IZIN' ? 'TDK IZIN' : f === 'KENDALA MATERIAL' ? 'KENDALA' : f}
             </button>
@@ -312,8 +312,8 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
             <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Data Tidak Ditemukan</p>
           </div>
         ) : (
-          sortedAndFilteredData.map((item) => (
-            <div key={item.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden hover:border-indigo-200 transition-all flex flex-col">
+          sortedAndFilteredData.map((item, idx) => (
+            <div key={`${item.id}-${idx}`} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden hover:border-indigo-200 transition-all flex flex-col">
               <div className="px-4 pt-3 pb-1 border-b border-slate-50 flex justify-between items-center">
                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                   🗓️ {parseRobustDate(item.tanggal).toLocaleDateString('id-ID')}
