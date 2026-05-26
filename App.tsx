@@ -370,14 +370,43 @@ const App: React.FC = () => {
               <p className="text-[10px] sm:text-[11px] text-slate-400 font-bold">PLN ES Bukittinggi</p>
             </div>
           </div>
-          {session && (
-            <button 
-              onClick={handleLogout} 
-              className="text-[9px] sm:text-[10px] font-bold bg-slate-800 border border-slate-700 hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-all"
-            >
-              KELUAR
-            </button>
-          )}
+          <div className="flex items-center gap-4">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-lg p-1 sm:p-1.5 flex items-center justify-center shadow-inner">
+              <svg viewBox="0 0 100 100" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                <g transform="translate(50, 50)">
+                  {/* 11 gear teeth */}
+                  {Array.from({ length: 11 }).map((_, i) => {
+                    const rotation = (i * 360) / 11;
+                    return (
+                      <path
+                        key={i}
+                        d="M -9.5,-46 L 9.5,-46 L 7.5,-30 L -7.5,-30 Z"
+                        fill="#10b981"
+                        transform={`rotate(${rotation})`}
+                      />
+                    );
+                  })}
+                  {/* Outer body of the gear */}
+                  <circle cx="0" cy="0" r="32" fill="#10b981" />
+                  {/* White circle inside the gear */}
+                  <circle cx="0" cy="0" r="20" fill="#ffffff" />
+                  {/* Green cross inside the white circle */}
+                  <path
+                    d="M -4.7,-13.5 L 4.7,-13.5 L 4.7,-4.7 L 13.5,-4.7 L 13.5,4.7 L 4.7,4.7 L 4.7,13.5 L -4.7,13.5 L -4.7,4.7 L -13.5,4.7 L -13.5,-4.7 L -4.7,-4.7 Z"
+                    fill="#10b981"
+                  />
+                </g>
+              </svg>
+            </div>
+            {session && (
+              <button 
+                onClick={handleLogout} 
+                className="text-[9px] sm:text-[10px] font-bold bg-slate-800 border border-slate-700 hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-all"
+              >
+                KELUAR
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
