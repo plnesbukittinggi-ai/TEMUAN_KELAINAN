@@ -30,6 +30,7 @@ interface AdminPageProps {
   onUpdateFeeders: (data: Feeder[]) => void;
   onUpdateYandal: (data: Yandal[]) => void;
   onUpdateMessages: (data: MarqueeMessage[]) => void;
+  onDeleteTemuans?: (ids: string[]) => Promise<boolean>;
 }
 
 const MONTHS = [
@@ -64,10 +65,18 @@ const getDefaultRekapDates = () => {
 
 const AdminPage: React.FC<AdminPageProps> = ({ 
   data, ulpList, inspectors, feeders, yandalList, pekerjaanList, keteranganList, marqueeMessages, currentRole, onBack,
-  onUpdateInspectors, onUpdateUlp, onUpdateFeeders, onUpdateYandal, onUpdateMessages
+  onUpdateInspectors, onUpdateUlp, onUpdateFeeders, onUpdateYandal, onUpdateMessages, onDeleteTemuans
 }) => {
-  const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP' | 'REKAP_JENIS' | 'REKAP_YANDAL'>('DASHBOARD');
+  const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP' | 'REKAP_JENIS' | 'REKAP_YANDAL' | 'HAPUS_REALISASI'>('DASHBOARD');
   const [dataSubTab, setDataSubTab] = useState<'PLN_ES' | 'PLN'>('PLN_ES');
+  
+  // States for Hapus Realisasi Tab
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [deleteSearch, setDeleteSearch] = useState('');
+  const [deleteUlpFilter, setDeleteUlpFilter] = useState('');
+  const [deleteStatusFilter, setDeleteStatusFilter] = useState('');
+  const [deleteDateFilter, setDeleteDateFilter] = useState('');
   const [aiInsight, setAiInsight] = useState<string>('Menganalisis performa data...');
   
   const [dashFilterMonth, setDashFilterMonth] = useState<number>(new Date().getMonth() + 1);
@@ -569,9 +578,9 @@ const AdminPage: React.FC<AdminPageProps> = ({
       } else if (subTab === 'MESSAGE') {
         sheetName = 'Messages';
         if (modalMode === 'ADD') {
-          updatedList = [...marqueeMessages, { id: `M-${Date.now()}`, text: formData.name, name: formData.name, pesan: formData.name, isActive: formData.isActive }];
+          updatedList = [...marqueeMessages, { id: `M-${Date.now()}`, text: formData.name, isActive: formData.isActive }];
         } else {
-          updatedList = marqueeMessages.map(m => m.id === editingItem.id ? { ...m, text: formData.name, name: formData.name, pesan: formData.name, isActive: formData.isActive } : m);
+          updatedList = marqueeMessages.map(m => m.id === editingItem.id ? { ...m, text: formData.name, isActive: formData.isActive } : m);
         }
       } else {
         sheetName = 'Yandal';
@@ -647,7 +656,10 @@ const AdminPage: React.FC<AdminPageProps> = ({
           { id: 'REKAP_JENIS', label: 'REKAP JENIS TEMUAN' },
           { id: 'REKAP_YANDAL', label: 'REKAP YANDAL' },
           { id: 'DATA', label: 'DATA' },
-          ...(currentRole === 'SUPER_ADMIN' ? [{ id: 'KELOLA', label: 'KELOLA' }] : [])
+          ...(currentRole === 'SUPER_ADMIN' ? [
+            { id: 'KELOLA', label: 'KELOLA' },
+            { id: 'HAPUS_REALISASI', label: 'HAPUS REALISASI' }
+          ] : [])
         ].map(t => (
           <button 
             key={t.id} 
@@ -1254,10 +1266,10 @@ const AdminPage: React.FC<AdminPageProps> = ({
              <div className="flex justify-between items-center px-1">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Preview {filteredAndSortedData.length} Data Terbaru</p>
              </div>
-             {filteredAndSortedData.slice(0, 50).map(item => {
+             {filteredAndSortedData.slice(0, 50).map((item, idx) => {
                 const itemDate = parseRobustDate(item.tanggal);
                 return (
-                <div key={item.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex gap-4">
+                <div key={`${item.id}-${idx}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex gap-4">
                    <div className="flex flex-col items-center flex-shrink-0">
                       <div className="w-14 h-14 bg-slate-50 rounded-xl overflow-hidden border border-slate-100">
                         <img src={getDisplayImageUrl(item.fotoTemuan)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
@@ -1310,6 +1322,308 @@ const AdminPage: React.FC<AdminPageProps> = ({
              {subTab === 'FEEDER' && feeders.map(f => (<div key={f.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all"><div><p className="text-[11px] font-black text-slate-900 uppercase">{f.name}</p><p className="text-[8px] text-indigo-600 font-bold uppercase tracking-widest mt-0.5">{ulpList.find(u => u.id === f.ulpId)?.name || 'Unit Unknown'}</p></div><div className="flex gap-2"><button onClick={() => handleOpenEdit(f)} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">✏️</button><button onClick={() => handleDelete(f)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button></div></div>))}
              {subTab === 'YANDAL' && yandalList.map(y => (<div key={y.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all"><div><p className="text-[11px] font-black text-slate-900 uppercase">{y.name}</p><p className="text-[8px] text-emerald-600 font-bold uppercase tracking-widest mt-0.5">{ulpList.find(u => u.id === y.ulpId)?.name || 'Unit Unknown'}</p></div><div className="flex gap-2"><button onClick={() => handleOpenEdit(y)} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">✏️</button><button onClick={() => handleDelete(y)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button></div></div>))}
              {subTab === 'MESSAGE' && marqueeMessages.map(m => (<div key={m.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all"><div><p className="text-[11px] font-black text-slate-900 uppercase">{m.text}</p><div className="flex items-center gap-2 mt-1"><span className={`w-1.5 h-1.5 rounded-full ${m.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></span><p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">{m.isActive ? 'Aktif' : 'Non-aktif'}</p></div></div><div className="flex gap-2"><button onClick={() => handleOpenEdit(m)} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">✏️</button><button onClick={() => handleDelete(m)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button></div></div>))}
+          </div>
+        </div>
+      )}
+
+      {tab === 'HAPUS_REALISASI' && (
+        <div className="space-y-6 animate-fade-in text-left">
+          {/* Filtering and Selection Header Panel */}
+          <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Menu SuperAdmin</p>
+                <h3 className="text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                  <span className="w-1.5 h-4 bg-red-600 rounded-full"></span>
+                  Hapus Realisasi Temuan
+                </h3>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-black px-3.5 py-1.5 bg-slate-100 text-slate-600 rounded-full uppercase tracking-wider">
+                  {selectedIds.length} dari {data.length} Terpilih
+                </span>
+                <button
+                  onClick={() => selectedIds.length > 0 && setIsDeleteConfirmOpen(true)}
+                  disabled={selectedIds.length === 0}
+                  className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all active:scale-95 flex items-center gap-2 ${
+                    selectedIds.length > 0 
+                      ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-200 cursor-pointer' 
+                      : 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
+                  }`}
+                >
+                  🗑️ HAPUS
+                </button>
+              </div>
+            </div>
+
+            {/* In-tab Filters */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+              <input
+                type="text"
+                placeholder="Cari No Tiang / Feeder / Ket..."
+                value={deleteSearch}
+                onChange={e => setDeleteSearch(e.target.value)}
+                className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none uppercase"
+              />
+              <select
+                value={deleteUlpFilter}
+                onChange={e => setDeleteUlpFilter(e.target.value)}
+                className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
+              >
+                <option value="">Semua ULP</option>
+                {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+              </select>
+              <select
+                value={deleteStatusFilter}
+                onChange={e => setDeleteStatusFilter(e.target.value)}
+                className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
+              >
+                <option value="">Semua Status</option>
+                <option value="BELUM EKSEKUSI">BELUM EKSEKUSI</option>
+                <option value="SUDAH EKSEKUSI">SUDAH EKSEKUSI</option>
+                <option value="BUTUH PADAM">BUTUH PADAM</option>
+                <option value="TIDAK DAPAT IZIN">TIDAK DAPAT IZIN</option>
+                <option value="KENDALA MATERIAL">KENDALA MATERIAL</option>
+              </select>
+              <input
+                type="date"
+                value={deleteDateFilter}
+                onChange={e => setDeleteDateFilter(e.target.value)}
+                className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
+              />
+            </div>
+          </div>
+
+          {/* List of findings with Checkboxes */}
+          <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+            {/* Table or Card view header */}
+            <div className="px-6 py-4 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="selectAllDelete"
+                  className="w-5 h-5 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer"
+                  checked={
+                    (() => {
+                      const filtered = data.filter(item => {
+                        const s = deleteSearch.toLowerCase();
+                        const matchSearch = !deleteSearch || 
+                          String(item.noTiang || '').toLowerCase().includes(s) || 
+                          String(item.feeder || '').toLowerCase().includes(s) || 
+                          String(item.keterangan || '').toLowerCase().includes(s) || 
+                          String(item.alamat || '').toLowerCase().includes(s);
+                        const matchUlp = !deleteUlpFilter || item.ulp === deleteUlpFilter;
+                        const matchStatus = !deleteStatusFilter || item.status === deleteStatusFilter;
+                        
+                        let matchDate = true;
+                        if (deleteDateFilter) {
+                          const filterD = new Date(deleteDateFilter);
+                          filterD.setHours(0,0,0,0);
+                          const itemD = parseRobustDate(item.tanggal);
+                          itemD.setHours(0,0,0,0);
+                          matchDate = filterD.getTime() === itemD.getTime();
+                        }
+                        
+                        return matchSearch && matchUlp && matchStatus && matchDate;
+                      });
+                      return filtered.length > 0 && filtered.every(item => selectedIds.includes(item.id));
+                    })()
+                  }
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    const filtered = data.filter(item => {
+                      const s = deleteSearch.toLowerCase();
+                      const matchSearch = !deleteSearch || 
+                        String(item.noTiang || '').toLowerCase().includes(s) || 
+                        String(item.feeder || '').toLowerCase().includes(s) || 
+                        String(item.keterangan || '').toLowerCase().includes(s) || 
+                        String(item.alamat || '').toLowerCase().includes(s);
+                      const matchUlp = !deleteUlpFilter || item.ulp === deleteUlpFilter;
+                      const matchStatus = !deleteStatusFilter || item.status === deleteStatusFilter;
+                      
+                      let matchDate = true;
+                      if (deleteDateFilter) {
+                        const filterD = new Date(deleteDateFilter);
+                        filterD.setHours(0,0,0,0);
+                        const itemD = parseRobustDate(item.tanggal);
+                        itemD.setHours(0,0,0,0);
+                        matchDate = filterD.getTime() === itemD.getTime();
+                      }
+                      
+                      return matchSearch && matchUlp && matchStatus && matchDate;
+                    });
+
+                    if (checked) {
+                      const newIds = Array.from(new Set([...selectedIds, ...filtered.map(item => item.id)]));
+                      setSelectedIds(newIds);
+                    } else {
+                      const filteredIds = filtered.map(item => item.id);
+                      setSelectedIds(selectedIds.filter(id => !filteredIds.includes(id)));
+                    }
+                  }}
+                />
+                <label htmlFor="selectAllDelete" className="text-[10px] font-black text-slate-500 uppercase tracking-widest cursor-pointer select-none">
+                  Pilih Semua yang Ditampilkan
+                </label>
+              </div>
+              <button
+                onClick={() => setSelectedIds([])}
+                disabled={selectedIds.length === 0}
+                className="text-[9px] font-semibold text-slate-400 hover:text-red-500 uppercase disabled:opacity-0 transition-all font-black tracking-widest cursor-pointer"
+              >
+                Reset Pilihan
+              </button>
+            </div>
+
+            <div className="divide-y divide-slate-50 p-4 space-y-3 max-h-[60vh] overflow-y-auto">
+              {(() => {
+                const filtered = data.filter(item => {
+                  const s = deleteSearch.toLowerCase();
+                  const matchSearch = !deleteSearch || 
+                    String(item.noTiang || '').toLowerCase().includes(s) || 
+                    String(item.feeder || '').toLowerCase().includes(s) || 
+                    String(item.keterangan || '').toLowerCase().includes(s) || 
+                    String(item.alamat || '').toLowerCase().includes(s);
+                  const matchUlp = !deleteUlpFilter || item.ulp === deleteUlpFilter;
+                  const matchStatus = !deleteStatusFilter || item.status === deleteStatusFilter;
+                  
+                  let matchDate = true;
+                  if (deleteDateFilter) {
+                    const filterD = new Date(deleteDateFilter);
+                    filterD.setHours(0,0,0,0);
+                    const itemD = parseRobustDate(item.tanggal);
+                    itemD.setHours(0,0,0,0);
+                    matchDate = filterD.getTime() === itemD.getTime();
+                  }
+                  
+                  return matchSearch && matchUlp && matchStatus && matchDate;
+                }).sort((a,b) => parseRobustDate(b.tanggal).getTime() - parseRobustDate(a.tanggal).getTime());
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="py-16 text-center opacity-30">
+                      <span className="text-4xl">📂</span>
+                      <p className="text-[10px] font-black uppercase tracking-widest mt-2">Tidak ada data untuk filter terpilih</p>
+                    </div>
+                  );
+                }
+
+                return filtered.map((item, idx) => {
+                  const isChecked = selectedIds.includes(item.id);
+                  const dDate = parseRobustDate(item.tanggal);
+                  return (
+                    <div
+                      key={`${item.id}-${idx}`}
+                      onClick={() => {
+                        if (isChecked) {
+                          setSelectedIds(selectedIds.filter(id => id !== item.id));
+                        } else {
+                          setSelectedIds([...selectedIds, item.id]);
+                        }
+                      }}
+                      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all cursor-pointer ${
+                        isChecked 
+                          ? 'bg-red-50/40 border-red-200' 
+                          : 'bg-white border-slate-100 hover:border-slate-200'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {}} // Handled by outer div onClick
+                        className="w-5 h-5 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer flex-shrink-0"
+                      />
+                      
+                      <div className="w-12 h-12 bg-slate-50 border border-slate-200 rounded-xl overflow-hidden flex-shrink-0 shadow-sm">
+                        <img 
+                          src={getDisplayImageUrl(item.fotoTemuan)} 
+                          alt="" 
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start mb-0.5">
+                          <p className={`text-[11px] font-black uppercase tracking-tight truncate ${isChecked ? 'text-red-900' : 'text-slate-950'}`}>
+                            {item.noTiang || 'TANPA TIANG'} • {item.feeder || 'TANPA FEEDER'}
+                          </p>
+                          <span className={`text-[8px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider ${
+                            item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-100 text-emerald-700' : 
+                            item.status === 'BELUM EKSEKUSI' ? 'bg-indigo-100 text-indigo-700' :
+                            'bg-amber-100 text-amber-700'
+                          }`}>
+                            {item.status}
+                          </span>
+                        </div>
+                        
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight line-clamp-1">
+                          {item.keterangan || 'Tanpa Keterangan Kelainan'}
+                        </p>
+                        
+                        <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                          <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">
+                            📅 {dDate.toLocaleDateString('id-ID')}
+                          </span>
+                          <span className="text-[8px] font-black text-indigo-600/75 uppercase tracking-wider">
+                            🏢 {item.ulp || 'Unit Pelaksana'}
+                          </span>
+                          <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
+                            👤 {item.inspektor1 || '-'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal PopUp */}
+      {isDeleteConfirmOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[250] flex items-center justify-center p-4 animate-fade-in text-center">
+          <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden animate-slide-up">
+            <div className="p-8 space-y-6">
+              <div className="w-20 h-20 bg-red-50 border border-red-100 rounded-full flex items-center justify-center text-4xl mx-auto shadow-inner">
+                ⚠️
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-black text-slate-950 uppercase tracking-tight">
+                  Apakah Anda Sudah Yakin?
+                </h3>
+                <p className="text-xs text-slate-500 font-bold leading-relaxed">
+                  Tindakan ini akan menghapus sebanyak <span className="font-black text-red-600">{selectedIds.length} data temuan</span> yang dipilih secara permanen dari database.
+                </p>
+              </div>
+
+              <div className="flex gap-4 pt-2">
+                <button
+                  onClick={() => setIsDeleteConfirmOpen(false)}
+                  className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 active:scale-95 transition-all cursor-pointer"
+                >
+                  TIDAK
+                </button>
+                <button
+                  onClick={async () => {
+                    setIsDeleteConfirmOpen(false);
+                    if (onDeleteTemuans) {
+                      const success = await onDeleteTemuans(selectedIds);
+                      if (success) {
+                        setSelectedIds([]);
+                      }
+                    } else {
+                      alert('Fungsi penghapusan tidak terpasang.');
+                    }
+                  }}
+                  className="flex-1 py-4 bg-red-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-200 hover:bg-red-700 active:scale-95 transition-all cursor-pointer"
+                >
+                  YA
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
