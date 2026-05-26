@@ -854,9 +854,20 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
             <button 
               onClick={handleFinalLogin}
               disabled={isLoading && pekerjaanList.length === 0}
-              className={`w-full ${isLoading && pekerjaanList.length === 0 ? 'bg-slate-400' : 'bg-gradient-to-r from-[#003b71] to-[#005ba3] hover:from-[#002e5c] hover:to-[#004b87] shadow-xl'} text-white font-black py-4.5 rounded-2xl active:scale-95 transition-all text-xs uppercase tracking-[0.25em] mt-4`}
+              className={`w-full h-14 sm:h-16 flex items-center justify-center ${
+                isLoading && pekerjaanList.length === 0 
+                  ? 'bg-slate-400 cursor-not-allowed' 
+                  : 'bg-gradient-to-r from-[#003b71] via-[#004e8c] to-[#005ba3] hover:from-[#002e5c] hover:via-[#003e7a] hover:to-[#004b87] shadow-lg shadow-blue-900/20 hover:shadow-xl hover:shadow-blue-900/30 hover:-translate-y-0.5 transition-all duration-300'
+              } text-white font-black rounded-2xl active:scale-[0.98] text-xs sm:text-sm uppercase tracking-[0.25em] mt-6`}
             >
-              {isLoading && pekerjaanList.length === 0 ? 'Mohon Tunggu...' : 'Masuk Sistem →'}
+              {isLoading && pekerjaanList.length === 0 ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                  Mohon Tunggu...
+                </span>
+              ) : (
+                'Masuk Sistem →'
+              )}
             </button>
 
           </div>
