@@ -278,7 +278,7 @@ const App: React.FC = () => {
     switch (session.role) {
       case AppRole.INSPEKSI:
         return (
-          <div className="max-w-3xl mx-auto">
+          <div className="w-full max-w-full">
             <InspeksiPage 
               session={session!} 
               onBack={() => editingData ? setSession({...session!, role: AppRole.VIEWER}) : handleLogout()} 
@@ -291,7 +291,7 @@ const App: React.FC = () => {
         );
       case AppRole.EKSEKUSI:
         return (
-          <div className="max-w-4xl mx-auto">
+          <div className="w-full max-w-full">
             <EksekusiPage 
               session={session!} 
               data={editingData ? [editingData] : sessionUlpData} 
@@ -306,36 +306,40 @@ const App: React.FC = () => {
       case AppRole.ADMIN:
       case AppRole.SUPER_ADMIN:
         return (
-          <AdminPage 
-            data={allData} 
-            ulpList={ulpList} 
-            inspectors={inspectors}
-            feeders={feeders}
-            yandalList={yandalList}
-            pekerjaanList={pekerjaanList}
-            keteranganList={keteranganList}
-            marqueeMessages={marqueeMessages}
-            onBack={handleLogout}
-            onUpdateInspectors={setInspectors}
-            onUpdateUlp={setUlpList}
-            onUpdateFeeders={setFeeders}
-            onUpdateYandal={setYandalList}
-            onUpdateMessages={setMarqueeMessages}
-            currentRole={session!.role}
-            onDeleteTemuans={handleDeleteTemuans}
-          />
+          <div className="w-full max-w-full">
+            <AdminPage 
+              data={allData} 
+              ulpList={ulpList} 
+              inspectors={inspectors}
+              feeders={feeders}
+              yandalList={yandalList}
+              pekerjaanList={pekerjaanList}
+              keteranganList={keteranganList}
+              marqueeMessages={marqueeMessages}
+              onBack={handleLogout}
+              onUpdateInspectors={setInspectors}
+              onUpdateUlp={setUlpList}
+              onUpdateFeeders={setFeeders}
+              onUpdateYandal={setYandalList}
+              onUpdateMessages={setMarqueeMessages}
+              currentRole={session!.role}
+              onDeleteTemuans={handleDeleteTemuans}
+            />
+          </div>
         );
       case AppRole.VIEWER:
         return (
-          <DataViewPage 
-            ulp={session!.ulp || ''} 
-            data={sessionUlpData} 
-            onBack={handleLogout}
-            onAddTemuan={session!.inspektor1 ? () => { setEditingData(null); setSession({ ...session!, role: AppRole.INSPEKSI }); } : undefined}
-            onAddEksekusi={session!.team ? () => { setEditingData(null); setSession({ ...session!, role: AppRole.EKSEKUSI }); } : undefined}
-            onEdit={startEdit}
-            currentSession={session!}
-          />
+          <div className="w-full max-w-full">
+            <DataViewPage 
+              ulp={session!.ulp || ''} 
+              data={sessionUlpData} 
+              onBack={handleLogout}
+              onAddTemuan={session!.inspektor1 ? () => { setEditingData(null); setSession({ ...session!, role: AppRole.INSPEKSI }); } : undefined}
+              onAddEksekusi={session!.team ? () => { setEditingData(null); setSession({ ...session!, role: AppRole.EKSEKUSI }); } : undefined}
+              onEdit={startEdit}
+              currentSession={session!}
+            />
+          </div>
         );
       default:
         return null;
@@ -395,9 +399,9 @@ const App: React.FC = () => {
 
   // 3. MAIN LAYOUT UNTUK PENGGUNA (LOGIN MAUPUN SESSION ACTIVE)
   return (
-    <div className={`min-h-screen ${session ? 'bg-slate-50 pb-12' : 'bg-[#edf6fc]'} relative overflow-x-hidden flex flex-col`}>
+    <div className={`min-h-screen ${session ? 'bg-slate-50' : 'bg-[#edf6fc]'} pb-16 sm:pb-14 relative overflow-x-hidden flex flex-col`}>
       <header className="bg-gradient-to-r from-[#003b71] to-[#005ba3] text-white py-3 px-4 sm:px-6 shadow-xl rounded-b-[2rem] border-b border-[#002b54]/50 relative z-50 sticky top-0">
-        <div className="max-w-7xl mx-auto flex items-center justify-between w-full">
+        <div className="max-w-full mx-auto flex items-center justify-between w-full px-2 sm:px-4">
           
           {/* Logo & title stack */}
           <div className="flex items-center gap-3">
@@ -459,7 +463,7 @@ const App: React.FC = () => {
       </header>
 
       <div className="w-full bg-gradient-to-r from-amber-500/5 via-amber-500/10 to-amber-500/5 backdrop-blur-sm border-b border-amber-500/20 py-2 sm:py-2.5 shadow-sm relative z-30 flex items-center overflow-hidden">
-        <div className="w-full max-w-7xl mx-auto flex items-center gap-3 px-4 sm:px-6 relative">
+        <div className="w-full max-w-full mx-auto flex items-center gap-3 px-4 sm:px-6 relative">
           
           {/* Integrity Pill Label */}
           <div className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 To-amber-600 text-white text-[9px] sm:text-xs font-black px-2.5 py-1 rounded-full shadow-md shadow-amber-500/20 z-40 flex-shrink-0 animate-pulse uppercase tracking-wider">
@@ -502,47 +506,28 @@ const App: React.FC = () => {
         </div>
       </div>
       
-      <main className={session ? "p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto animate-fade-in flex-1" : "animate-fade-in w-full flex-1 flex flex-col"}>
+      <main className={session ? "p-4 sm:p-6 lg:p-8 w-full max-w-full mx-auto animate-fade-in flex-1" : "animate-fade-in w-full flex-1 flex flex-col"}>
         {renderContent()}
       </main>
 
-      {session ? (
-        <footer className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm border-t border-slate-100 py-1 px-4 flex items-center justify-between z-[60] h-7 shadow-[0_-2px_4px_rgba(0,0,0,0.02)] animate-fade-in">
-          <div className="max-w-7xl mx-auto w-full flex items-center justify-between px-2">
-            <div className="flex items-center gap-1">
-              <div className={`w-1 h-1 rounded-full ${connectionError ? 'bg-red-500' : 'bg-emerald-500'} animate-pulse`}></div>
-              <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">
-                {connectionError ? 'Offline' : 'Online'}
-              </p>
-            </div>
-            
-            <p className="text-[7px] font-black text-slate-900 uppercase tracking-widest sm:block">
-              Sistem Informasi Temuan Kelainan V{APP_VERSION}
-            </p>
-
-            <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">
-              © DO : 2026 - IT PLN ES BKT
-            </p>
+      <footer className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a3a60] text-blue-100 py-3 px-4 sm:px-6 shadow-2xl border-t border-blue-900/30 animate-fade-in">
+        <div className="max-w-full mx-auto flex flex-row items-center justify-between gap-2 text-[6.5px] xs:text-[7.5px] sm:text-[8.5px] font-bold uppercase tracking-wider">
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <span className={`w-1 h-1 sm:w-1.5 rounded-full ${connectionError ? 'bg-red-400' : 'bg-emerald-400'} inline-block animate-pulse`}></span>
+            <span className={`${connectionError ? 'text-red-400' : 'text-emerald-400'} font-black tracking-widest text-[6.5px] xs:text-[7.5px] sm:text-[8.5px]`}>
+              {connectionError ? 'OFFLINE' : 'ONLINE'}
+            </span>
           </div>
-        </footer>
-      ) : (
-        <footer className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a3a60] text-blue-100 py-3.5 px-3 sm:px-6 shadow-2xl border-t border-blue-900/30 animate-fade-in">
-          <div className="max-w-6xl mx-auto flex flex-row items-center justify-between gap-1 text-[7px] xs:text-[8.5px] sm:text-[10px] font-bold uppercase tracking-wider">
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <span className="w-1.5 h-1.5 sm:w-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
-              <span className="text-emerald-400 font-extrabold tracking-widest text-[7.5px] sm:text-[10px]">ONLINE</span>
-            </div>
 
-            <div className="text-slate-200/90 font-black truncate px-1 flex-1 text-center text-[7px] xs:text-[8.5px] sm:text-[10px]">
-              SISTEM INFORMASI TEMUAN KELAINAN V{APP_VERSION}
-            </div>
-
-            <div className="text-blue-200/80 flex-shrink-0 text-right text-[7px] xs:text-[8px] sm:text-[10px]">
-              © DO : 2026 - IT PLN ES BKT
-            </div>
+          <div className="text-slate-300 font-extrabold truncate px-1 flex-1 text-center text-[6.5px] xs:text-[7.5px] sm:text-[8.5px] tracking-[0.05em]">
+            SISTEM INFORMASI TEMUAN KELAINAN V{APP_VERSION}
           </div>
-        </footer>
-      )}
+
+          <div className="text-blue-200/70 flex-shrink-0 text-right text-[6.2px] xs:text-[7.2px] sm:text-[8.5px] font-black tracking-wider">
+            © DO : 2026 - IT PLN ES BKT
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
