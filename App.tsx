@@ -24,6 +24,13 @@ const App: React.FC = () => {
   
   const [editingData, setEditingData] = useState<TemuanData | null>(null);
 
+  // Derived state to cleanup and simplify variables
+  const activeMarqueeMessages = marqueeMessages ? marqueeMessages.filter(m => m.isActive) : [];
+  const sessionUlpData = session && session.ulp ? allData.filter(d => d.ulp === session.ulp) : [];
+  const filteredFeeders = session && session.ulp 
+    ? feeders.filter(f => f.ulpId === ulpList.find(u => u.name === session.ulp)?.id)
+    : [];
+
   const LOGO_URL = "https://lh3.googleusercontent.com/d/1kpaHfckdo0GhhCXtANR_Q38KWuBc0T9u";
 
   const refreshData = async () => {
@@ -255,52 +262,15 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
-    if (connectionError && !session) {
-      return (
-        <div className="flex flex-col items-center justify-center py-20 px-8 text-center animate-fade-in max-w-lg mx-auto">
-          <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center text-3xl mb-6 border border-red-100">⚠️</div>
-          <h2 className="text-lg font-bold text-slate-900 mb-2">Koneksi Server Terputus</h2>
-          <p className="text-slate-500 text-sm mb-8 leading-relaxed">
-            Tidak dapat sinkronisasi dengan database cloud. Periksa pengaturan Apps Script Anda.
-          </p>
-          <button onClick={refreshData} className="w-full bg-slate-900 text-white font-semibold py-3.5 rounded-xl shadow-lg active:scale-95 transition-all text-sm">
-            HUBUNGKAN ULANG
-          </button>
-        </div>
-      );
-    }
-
-    if (isLoading && !session) {
-      return (
-        <div className="flex flex-col items-center justify-center py-40 px-10 text-center">
-          <div className="animate-spin h-10 w-10 border-4 border-indigo-600 border-t-transparent rounded-full mb-6"></div>
-          <p className="text-slate-400 text-xs font-medium tracking-widest uppercase">Sinkronisasi Database...</p>
-        </div>
-      );
-    }
-
-    if (!session) {
-      return (
-        <LoginPage 
-          onLogin={setSession} 
-          inspectors={inspectors} 
-          ulpList={ulpList} 
-          pekerjaanList={pekerjaanList} 
-          isLoading={isLoading}
-          marqueeMessages={marqueeMessages}
-        />
-      );
-    }
-
-    switch (session.role) {
+    switch (session!.role) {
       case AppRole.INSPEKSI:
         return (
           <div className="max-w-3xl mx-auto">
             <InspeksiPage 
-              session={session} 
-              onBack={() => editingData ? setSession({...session, role: AppRole.VIEWER}) : handleLogout()} 
+              session={session!} 
+              onBack={() => editingData ? setSession({...session!, role: AppRole.VIEWER}) : handleLogout()} 
               onSave={handleAddTemuan}
-              feeders={feeders.filter(f => f.ulpId === ulpList.find(u => u.name === session.ulp)?.id)}
+              feeders={filteredFeeders}
               keteranganList={keteranganList}
               initialData={editingData || undefined}
             />
@@ -310,9 +280,9 @@ const App: React.FC = () => {
         return (
           <div className="max-w-4xl mx-auto">
             <EksekusiPage 
-              session={session} 
-              data={editingData ? [editingData] : allData.filter(d => d.ulp === session.ulp)} 
-              onBack={() => editingData ? setSession({...session, role: AppRole.VIEWER}) : handleLogout()}
+              session={session!} 
+              data={editingData ? [editingData] : sessionUlpData} 
+              onBack={() => editingData ? setSession({...session!, role: AppRole.VIEWER}) : handleLogout()}
               onSave={handleUpdateTemuan}
               initialData={editingData || undefined}
               yandalList={yandalList}
@@ -338,20 +308,20 @@ const App: React.FC = () => {
             onUpdateFeeders={setFeeders}
             onUpdateYandal={setYandalList}
             onUpdateMessages={setMarqueeMessages}
-            currentRole={session.role}
+            currentRole={session!.role}
             onDeleteTemuans={handleDeleteTemuans}
           />
         );
       case AppRole.VIEWER:
         return (
           <DataViewPage 
-            ulp={session.ulp || ''} 
-            data={allData.filter(d => d.ulp === session.ulp)} 
+            ulp={session!.ulp || ''} 
+            data={sessionUlpData} 
             onBack={handleLogout}
-            onAddTemuan={session.inspektor1 ? () => { setEditingData(null); setSession({ ...session, role: AppRole.INSPEKSI }); } : undefined}
-            onAddEksekusi={session.team ? () => { setEditingData(null); setSession({ ...session, role: AppRole.EKSEKUSI }); } : undefined}
+            onAddTemuan={session!.inspektor1 ? () => { setEditingData(null); setSession({ ...session!, role: AppRole.INSPEKSI }); } : undefined}
+            onAddEksekusi={session!.team ? () => { setEditingData(null); setSession({ ...session!, role: AppRole.EKSEKUSI }); } : undefined}
             onEdit={startEdit}
-            currentSession={session}
+            currentSession={session!}
           />
         );
       default:
@@ -359,8 +329,93 @@ const App: React.FC = () => {
     }
   };
 
+  // 1. SINKRONISASI KONEKSI PUTUS (KONDISI BELUM LOGIN)
+  if (connectionError && !session) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#dfefe2]/30 via-[#e2f1fc] to-[#e4f6fc] flex flex-col justify-between items-center py-10 px-4">
+        <div className="flex-1 flex flex-col items-center justify-center text-center animate-fade-in max-w-lg mx-auto">
+          <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center p-3 shadow-lg border border-slate-200/50 mb-6">
+            <img src={LOGO_URL} alt="Logo PLN" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+          </div>
+          <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center text-3xl mb-6 border border-red-100 shadow-md">⚠️</div>
+          <h2 className="text-xl font-black text-slate-950 mb-2 uppercase tracking-tight">Koneksi Server Terputus</h2>
+          <p className="text-slate-500 text-sm mb-8 leading-relaxed font-semibold">
+            Tidak dapat sinkronisasi dengan database cloud. <br/>Periksa koneksi jaringan atau pengaturan spreadsheet Anda.
+          </p>
+          <button onClick={refreshData} className="w-full bg-[#003b71] hover:bg-[#002b54] text-white font-extrabold py-3.5 rounded-xl shadow-lg active:scale-95 transition-all text-xs uppercase tracking-widest">
+            HUBUNGKAN ULANG
+          </button>
+        </div>
+        <footer className="text-center text-[10px] font-extrabold text-slate-400 uppercase tracking-wider pb-4">
+          © DO : 2026 - IT PLN ES BKT
+        </footer>
+      </div>
+    );
+  }
+
+  // 2. AWAL MEMBUKA APLIKASI / LOADING DATA (KONDISI BELUM LOGIN)
+  if (isLoading && !session) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#dfefe2]/30 via-[#e2f1fc] to-[#e4f6fc] flex flex-col justify-between items-center py-12 px-4">
+        <div className="flex-1 flex flex-col items-center justify-center text-center animate-fade-in">
+          <div className="inline-flex items-center justify-center bg-white w-28 h-28 sm:w-32 sm:h-32 rounded-3xl shadow-xl border border-blue-100/70 p-3.5 mb-6 animate-pulse">
+            <img 
+              src={LOGO_URL} 
+              alt="Logo PLN ES Bukittinggi" 
+              className="w-full h-full object-contain" 
+              referrerPolicy="no-referrer" 
+            />
+          </div>
+          
+          <div className="animate-spin h-9 w-9 border-4 border-[#005ba3] border-t-transparent rounded-full mb-4"></div>
+          <p className="text-slate-500 text-[10px] font-bold tracking-widest uppercase animate-pulse">
+            Sinkronisasi Database...
+          </p>
+        </div>
+        
+        <footer className="text-center text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+          © DO : 2026 - IT PLN ES BKT
+        </footer>
+      </div>
+    );
+  }
+
+  // 3. HALAMAN LOGIN UTAMA (KONDISI BELUM LOGIN)
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-[#edf6fc] relative overflow-x-hidden">
+        <LoginPage 
+          onLogin={setSession} 
+          inspectors={inspectors} 
+          ulpList={ulpList} 
+          pekerjaanList={pekerjaanList} 
+          isLoading={isLoading}
+          marqueeMessages={marqueeMessages}
+        />
+        
+        <footer className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a3a60] text-blue-100 py-3.5 px-3 sm:px-6 shadow-2xl border-t border-blue-900/30 animate-fade-in">
+          <div className="max-w-6xl mx-auto flex flex-row items-center justify-between gap-1 text-[7px] xs:text-[8.5px] sm:text-[10px] font-bold uppercase tracking-wider">
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <span className="w-1.5 h-1.5 sm:w-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
+              <span className="text-emerald-400 font-extrabold tracking-widest text-[7.5px] sm:text-[10px]">ONLINE</span>
+            </div>
+
+            <div className="text-slate-200/90 font-black truncate px-1 flex-1 text-center text-[7px] xs:text-[8.5px] sm:text-[10px]">
+              SISTEM INFORMASI TEMUAN KELAINAN V{APP_VERSION}
+            </div>
+
+            <div className="text-blue-200/80 flex-shrink-0 text-right text-[7px] xs:text-[8px] sm:text-[10px]">
+              © DO : 2026 - IT PLN ES BKT
+            </div>
+          </div>
+        </footer>
+      </div>
+    );
+  }
+
+  // 4. MAIN LAYOUT UNTUK PENGGUNA YANG SUDAH LOGIN (SESSION ACTIVE)
   return (
-    <div className={`min-h-screen ${session ? 'bg-slate-50 pb-12' : 'bg-gradient-to-br from-[#dfefe2]/30 via-[#e2f1fc] to-[#e4f6fc]'} relative overflow-x-hidden`}>
+    <div className="min-h-screen bg-slate-50 pb-12 relative overflow-x-hidden">
       <header className="bg-gradient-to-r from-[#003b71] to-[#005ba3] text-white py-3 px-4 sm:px-6 shadow-xl rounded-b-[2rem] border-b border-[#002b54]/50 relative z-50 sticky top-0">
         <div className="max-w-7xl mx-auto flex items-center justify-between w-full">
           
@@ -383,14 +438,12 @@ const App: React.FC = () => {
 
           {/* Action buttons (Gear and KELUAR button if logged in) */}
           <div className="flex items-center gap-3">
-            {session && (
-              <button 
-                onClick={handleLogout} 
-                className="text-[9px] sm:text-[10px] font-black tracking-widest uppercase bg-[#002042] border border-[#001730] hover:bg-[#001730] active:scale-95 px-3 py-2 rounded-xl transition-all shadow-md"
-              >
-                KELUAR
-              </button>
-            )}
+            <button 
+              onClick={handleLogout} 
+              className="text-[9px] sm:text-[10px] font-black tracking-widest uppercase bg-[#002042] border border-[#001730] hover:bg-[#001730] active:scale-95 px-3 py-2 rounded-xl transition-all shadow-md"
+            >
+              KELUAR
+            </button>
             <div className="w-11 h-11 bg-white rounded-2xl flex items-center justify-center p-1.5 shadow-lg border border-white/20 flex-shrink-0">
               <svg viewBox="0 0 100 100" className="w-full h-full animate-[spin_20s_linear_infinite]" xmlns="http://www.w3.org/2000/svg">
                 <g transform="translate(50, 50)">
@@ -427,7 +480,7 @@ const App: React.FC = () => {
         <div className="w-full max-w-7xl mx-auto flex items-center gap-3 px-4 sm:px-6 relative">
           
           {/* Integrity Pill Label */}
-          <div className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[9px] sm:text-xs font-black px-2.5 py-1 rounded-full shadow-md shadow-amber-500/20 z-40 flex-shrink-0 animate-pulse uppercase tracking-wider">
+          <div className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 To-amber-600 text-white text-[9px] sm:text-xs font-black px-2.5 py-1 rounded-full shadow-md shadow-amber-500/20 z-40 flex-shrink-0 animate-pulse uppercase tracking-wider">
             <Shield className="w-3 h-3 text-white fill-white/20" />
             <span>INTEGRITAS</span>
           </div>
@@ -439,12 +492,12 @@ const App: React.FC = () => {
             
             <div className="animate-marquee whitespace-nowrap text-amber-950 text-[10px] sm:text-xs font-black tracking-widest uppercase flex items-center" style={{ animationDuration: '45s' }}>
               <span className="inline-flex items-center gap-8 px-4 font-black">
-                {marqueeMessages && marqueeMessages.filter(m => m.isActive).length > 0 ? (
-                  marqueeMessages.filter(m => m.isActive).map((m, idx) => (
+                {activeMarqueeMessages.length > 0 ? (
+                  activeMarqueeMessages.map((m, idx) => (
                     <span key={m.id} className="inline-flex items-center gap-2">
                       <span className="text-amber-500">✨</span>
                       {m.text}
-                      {idx < marqueeMessages.filter(m => m.isActive).length - 1 && (
+                      {idx < activeMarqueeMessages.length - 1 && (
                         <span className="mx-8 text-amber-500/50">✦</span>
                       )}
                     </span>
@@ -467,30 +520,28 @@ const App: React.FC = () => {
         </div>
       </div>
       
-      <main className={session ? "p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto animate-fade-in" : "animate-fade-in w-full min-h-screen"}>
+      <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto animate-fade-in">
         {renderContent()}
       </main>
 
-      {session && (
-        <footer className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm border-t border-slate-100 py-1 px-4 flex items-center justify-between z-[60] h-7 shadow-[0_-2px_4px_rgba(0,0,0,0.02)]">
-          <div className="max-w-7xl mx-auto w-full flex items-center justify-between px-2">
-            <div className="flex items-center gap-1">
-              <div className={`w-1 h-1 rounded-full ${connectionError ? 'bg-red-500' : 'bg-emerald-500'} animate-pulse`}></div>
-              <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">
-                {connectionError ? 'Offline' : 'Online'}
-              </p>
-            </div>
-            
-            <p className="text-[7px] font-black text-slate-900 uppercase tracking-widest sm:block">
-              Sistem Informasi Temuan Kelainan V{APP_VERSION}
-            </p>
-
+      <footer className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm border-t border-slate-100 py-1 px-4 flex items-center justify-between z-[60] h-7 shadow-[0_-2px_4px_rgba(0,0,0,0.02)] animate-fade-in">
+        <div className="max-w-7xl mx-auto w-full flex items-center justify-between px-2">
+          <div className="flex items-center gap-1">
+            <div className={`w-1 h-1 rounded-full ${connectionError ? 'bg-red-500' : 'bg-emerald-500'} animate-pulse`}></div>
             <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">
-              © DO : 2026 - IT PLN ES BKT
+              {connectionError ? 'Offline' : 'Online'}
             </p>
           </div>
-        </footer>
-      )}
+          
+          <p className="text-[7px] font-black text-slate-900 uppercase tracking-widest sm:block">
+            Sistem Informasi Temuan Kelainan V{APP_VERSION}
+          </p>
+
+          <p className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">
+            © DO : 2026 - IT PLN ES BKT
+          </p>
+        </div>
+      </footer>
     </div>
   );
 };
