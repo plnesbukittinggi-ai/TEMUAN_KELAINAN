@@ -123,7 +123,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
       role: AppRole.INSPEKSI, 
       title: 'Input Inspeksi', 
       desc: 'Lapor temuan kelainan jaringan', 
-      icon: <ClipboardList className="w-5 h-5 sm:w-7 sm:h-7 text-blue-600 fill-blue-500/15 stroke-[2.2] filter drop-shadow-[0_2px_5px_rgba(37,99,235,0.25)] group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300" />, 
+      icon: <ClipboardList className="w-6 h-6 xs:w-7 xs:h-7 sm:w-10 sm:h-10 text-blue-600 fill-blue-500/15 stroke-[2.2] filter drop-shadow-[0_2px_5px_rgba(37,99,235,0.25)] group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300" />, 
       themeColor: 'blue',
       bgColor: 'from-blue-50 to-blue-100/90 border border-blue-200/55',
       btnColor: 'bg-gradient-to-r from-blue-500 to-blue-600 shadow-lg shadow-blue-500/25 hover:from-blue-600 hover:to-blue-700',
@@ -134,7 +134,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
       role: AppRole.EKSEKUSI, 
       title: 'Update Eksekusi', 
       desc: 'Update hasil perbaikan lapangan', 
-      icon: <Wrench className="w-5 h-5 sm:w-7 sm:h-7 text-emerald-600 fill-emerald-500/15 stroke-[2.2] filter drop-shadow-[0_2px_5px_rgba(16,185,129,0.25)] group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300" />, 
+      icon: <Wrench className="w-6 h-6 xs:w-7 xs:h-7 sm:w-10 sm:h-10 text-emerald-600 fill-emerald-500/15 stroke-[2.2] filter drop-shadow-[0_2px_5px_rgba(16,185,129,0.25)] group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300" />, 
       themeColor: 'emerald',
       bgColor: 'from-emerald-50 to-emerald-100/90 border border-emerald-200/55',
       btnColor: 'bg-gradient-to-r from-emerald-500 to-[#10b981] shadow-lg shadow-emerald-500/25 hover:from-[#059669] hover:to-[#047857]',
@@ -145,7 +145,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
       role: AppRole.VIEWER, 
       title: 'Monitoring Data', 
       desc: 'Rekapitulasi status real-time', 
-      icon: <Monitor className="w-5 h-5 sm:w-7 sm:h-7 text-indigo-600 fill-indigo-500/15 stroke-[2.2] filter drop-shadow-[0_2px_5px_rgba(99,102,241,0.25)] group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300" />, 
+      icon: <Monitor className="w-6 h-6 xs:w-7 xs:h-7 sm:w-10 sm:h-10 text-indigo-600 fill-indigo-500/15 stroke-[2.2] filter drop-shadow-[0_2px_5px_rgba(99,102,241,0.25)] group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300" />, 
       themeColor: 'violet',
       bgColor: 'from-indigo-50 to-indigo-100/90 border border-indigo-200/55',
       btnColor: 'bg-gradient-to-r from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/25 hover:from-indigo-600 hover:to-violet-700',
@@ -156,7 +156,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
       role: AppRole.ADMIN, 
       title: 'Panel Admin', 
       desc: 'Kelola pengguna dlm sistem', 
-      icon: <UserCheck className="w-5 h-5 sm:w-7 sm:h-7 text-amber-600 fill-amber-500/15 stroke-[2.2] filter drop-shadow-[0_2px_5px_rgba(245,158,11,0.25)] group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300" />, 
+      icon: <UserCheck className="w-6 h-6 xs:w-7 xs:h-7 sm:w-10 sm:h-10 text-amber-600 fill-amber-500/15 stroke-[2.2] filter drop-shadow-[0_2px_5px_rgba(245,158,11,0.25)] group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300" />, 
       themeColor: 'amber',
       bgColor: 'from-amber-50 to-amber-100/90 border border-amber-200/55',
       btnColor: 'bg-gradient-to-r from-amber-500 to-amber-600 shadow-lg shadow-amber-500/25 hover:from-amber-600 hover:to-amber-700',
@@ -166,7 +166,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
   ];
 
   return (
-    <div className="w-full h-screen sm:h-auto sm:min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white relative overflow-hidden font-sans bg-[#edf6fc]">
+    <div className="w-full min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white relative overflow-y-auto overflow-x-hidden font-sans bg-[#edf6fc] pb-20">
       
       {/* Background Gradients - perfectly matches the light sky/blue tint in reference images */}
       <div className="absolute inset-0 bg-gradient-to-tr from-[#edf5fc] via-[#f3f8fc] to-[#e6eff6] pointer-events-none z-0" />
@@ -241,32 +241,32 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
           </div>
 
           {/* CHOOSE MENU GRID (2x2 ON MOBILE & DESKTOP) */}
-          <div className="grid grid-cols-2 gap-2 sm:gap-6 w-full max-w-4xl px-1.5 sm:px-4 mb-2.5 sm:mb-8">
+          <div className="grid grid-cols-2 gap-3.5 sm:gap-8 w-full max-w-4xl px-2.2 sm:px-6 mb-3 sm:mb-10">
             {menuItems.map((item) => (
               <button 
                 key={item.role}
                 onClick={() => handleSelectRole(item.role)}
-                className={`group flex items-center p-2.5 xs:p-3 sm:p-5 rounded-2xl sm:rounded-[2.2rem] bg-white border border-slate-200/85 ${item.hoverBorder} ${item.hoverShadow} hover:-translate-y-0.5 transition-all duration-300 active:scale-98 w-full relative text-left`}
+                className={`group flex items-center p-3.5 xs:p-4.5 sm:p-7 rounded-[1.75rem] sm:rounded-[2.5rem] bg-white border border-slate-200/85 ${item.hoverBorder} ${item.hoverShadow} hover:-translate-y-1 transition-all duration-300 active:scale-95 w-full relative text-left shadow-lg shadow-blue-900/5`}
               >
-                <div className={`w-9 h-9 xs:w-11 xs:h-11 sm:w-14 sm:h-14 bg-gradient-to-br ${item.bgColor} rounded-xl sm:rounded-2xl flex items-center justify-center mr-2 sm:mr-4 shadow-inner flex-shrink-0 group-hover:scale-105 transition-transform duration-300`}>
+                <div className={`w-11 h-11 xs:w-13 xs:h-13 sm:w-20 sm:h-20 bg-gradient-to-br ${item.bgColor} rounded-2xl sm:rounded-3xl flex items-center justify-center mr-3 sm:mr-6 shadow-inner flex-shrink-0 group-hover:scale-105 transition-transform duration-300`}>
                   {item.icon}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-extrabold text-[#0f2d59] text-[10px] xs:text-xs sm:text-base tracking-tight leading-tight truncate">{item.title}</p>
-                  <p className="text-[8px] xs:text-[9.5px] sm:text-[11px] text-slate-400 font-semibold mt-0.5 sm:mt-1 leading-normal truncate">{item.desc}</p>
+                <div className="flex-1 min-w-0 pr-1">
+                  <p className="font-extrabold text-[#0f2d59] text-[12px] xs:text-[15.5px] sm:text-2xl tracking-tight leading-tight uppercase">{item.title}</p>
+                  <p className="text-[9.5px] xs:text-[11.5px] sm:text-[14px] text-slate-500 font-bold mt-1 sm:mt-1.5 leading-normal truncate">{item.desc}</p>
                 </div>
-                <div className={`w-5 h-5 xs:w-7 xs:h-7 sm:w-9 sm:h-9 ${item.btnColor} rounded-full flex items-center justify-center text-white shadow-lg flex-shrink-0 group-hover:translate-x-1 transition-all duration-300 ml-1.5`}>
-                  <ChevronRight className="w-3 xs:w-4 sm:w-5 sm:h-5 stroke-[2.5] sm:stroke-[3.5]" />
+                <div className={`w-6 h-6 xs:w-8 xs:h-8 sm:w-11 sm:h-11 ${item.btnColor} rounded-full flex items-center justify-center text-white shadow-lg flex-shrink-0 group-hover:translate-x-1.5 transition-all duration-300 ml-1.5`}>
+                  <ChevronRight className="w-3.5 xs:w-4.5 sm:w-6 sm:h-6 stroke-[3] sm:stroke-[4]" />
                 </div>
               </button>
             ))}
           </div>
 
           {/* HIGH POLISH GRAPHICS FOOTER COMPONENT - Cozy Card styled exactly like the provided reference image */}
-          <div className="w-full max-w-4xl bg-white/70 backdrop-blur-md border border-blue-100/80 rounded-[2rem] p-5 sm:p-6 shadow-xl relative overflow-hidden flex flex-col md:flex-row items-center gap-6 mt-4 z-20 animate-fade-in mb-8">
+          <div className="w-full max-w-4xl bg-white/70 backdrop-blur-md border border-blue-100/80 rounded-[2rem] p-3.5 sm:p-6 shadow-xl relative overflow-hidden flex flex-row items-center gap-2.5 sm:gap-6 mt-4 z-20 animate-fade-in mb-8">
             
-            {/* Integrated Vector Transmission Tower Silhouette (Left side of card - matching reference image) */}
-            <div className="w-32 h-16 md:h-20 flex-shrink-0 relative opacity-40 text-blue-600">
+            {/* Integrated Vector Transmission Tower Silhouette (Left side of card - now inline on mobile too!) */}
+            <div className="w-12 h-9 xs:w-16 xs:h-11 sm:w-28 sm:h-14 md:w-32 md:h-20 flex-shrink-0 relative opacity-40 text-blue-600">
               <svg viewBox="0 0 160 120" className="w-full h-full pointer-events-none select-none" fill="none" stroke="currentColor" strokeWidth="1.5">
                 {/* Ground Line */}
                 <path d="M 10,110 L 150,110" strokeWidth="2" />
@@ -290,39 +290,39 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
               </svg>
             </div>
 
-            {/* Vertical divider on desktop */}
-            <div className="hidden md:block w-px h-12 bg-blue-100 flex-shrink-0" />
+            {/* Vertical divider visible on all viewports to anchor the column */}
+            <div className="w-px h-8 sm:h-12 bg-blue-100 flex-shrink-0" />
 
             {/* Feature lists deck container */}
-            <div className="flex-1 grid grid-cols-3 gap-1.5 sm:gap-4 text-center w-full">
+            <div className="flex-1 grid grid-cols-3 gap-1 xs:gap-1.5 sm:gap-4 w-full">
               {/* Feature 1 */}
-              <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2.5 justify-center">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shadow-inner flex-shrink-0">
-                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+              <div className="flex flex-row items-center gap-1.5 xs:gap-2.5 sm:gap-2.5 justify-center text-left">
+                <div className="w-7 h-7 xs:w-8.5 xs:h-8.5 sm:w-10 sm:h-10 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shadow-inner flex-shrink-0">
+                  <Clock className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-blue-600" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] sm:text-sm font-extrabold text-slate-800 uppercase tracking-wide leading-none">Real-time</p>
-                  <p className="text-[8px] sm:text-xs text-slate-500 font-bold mt-1 sm:mt-1.5 truncate">Data terupdate</p>
+                  <p className="text-[8.5px] xs:text-[10px] sm:text-sm font-extrabold text-slate-800 uppercase tracking-wide leading-none">Real-time</p>
+                  <p className="text-[7.5px] xs:text-[8px] sm:text-xs text-slate-500 font-bold mt-0.5 sm:mt-1.5 truncate">Data terupdate</p>
                 </div>
               </div>
               {/* Feature 2 */}
-              <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2.5 justify-center">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shadow-inner flex-shrink-0">
-                  <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600" />
+              <div className="flex flex-row items-center gap-1.5 xs:gap-2.5 sm:gap-2.5 justify-center text-left">
+                <div className="w-7 h-7 xs:w-8.5 xs:h-8.5 sm:w-10 sm:h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shadow-inner flex-shrink-0">
+                  <ShieldCheck className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-emerald-600" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] sm:text-sm font-extrabold text-slate-800 uppercase tracking-wide leading-none">Aman</p>
-                  <p className="text-[8px] sm:text-xs text-slate-500 font-bold mt-1 sm:mt-1.5 truncate">Terlindungi</p>
+                  <p className="text-[8.5px] xs:text-[10px] sm:text-sm font-extrabold text-slate-800 uppercase tracking-wide leading-none">Aman</p>
+                  <p className="text-[7.5px] xs:text-[8px] sm:text-xs text-slate-500 font-bold mt-0.5 sm:mt-1.5 truncate">Terlindungi</p>
                 </div>
               </div>
               {/* Feature 3 */}
-              <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2.5 justify-center">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shadow-inner flex-shrink-0">
-                  <Users className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
+              <div className="flex flex-row items-center gap-1.5 xs:gap-2.5 sm:gap-2.5 justify-center text-left">
+                <div className="w-7 h-7 xs:w-8.5 xs:h-8.5 sm:w-10 sm:h-10 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shadow-inner flex-shrink-0">
+                  <Users className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-indigo-600" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] sm:text-sm font-extrabold text-[#0f2d59] uppercase tracking-wide leading-none">Kolaboratif</p>
-                  <p className="text-[8px] sm:text-xs text-slate-500 font-bold mt-1 sm:mt-1.5 truncate">Lebih efektif</p>
+                  <p className="text-[8.5px] xs:text-[10px] sm:text-sm font-extrabold text-[#0f2d59] uppercase tracking-wide leading-none">Kolaboratif</p>
+                  <p className="text-[7.5px] xs:text-[8px] sm:text-xs text-slate-500 font-bold mt-0.5 sm:mt-1.5 truncate">Lebih efektif</p>
                 </div>
               </div>
             </div>
@@ -502,20 +502,22 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
       )}
 
       {/* FULL WIDTH ONLINE STATUS BOTTOM FOOTER (MATCHING PICTURE) */}
-      <footer className="w-full bg-[#0a3a60] text-blue-100 py-3 px-4 sm:px-6 relative z-30 shadow-2xl border-t border-blue-900/30">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-center sm:text-left">
+      <footer className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a3a60] text-blue-100 py-3.5 px-3 sm:px-6 shadow-2xl border-t border-blue-900/30">
+        <div className="max-w-6xl mx-auto flex flex-row items-center justify-between gap-1 text-[7px] xs:text-[8.5px] sm:text-[10px] font-bold uppercase tracking-wider">
           
-          <div className="flex items-center gap-1.5 justify-center sm:justify-start">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
-            <span className="text-emerald-400 font-extrabold tracking-widest">ONLINE</span>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <span className="w-1.5 h-1.5 sm:w-2 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
+            <span className="text-emerald-400 font-extrabold tracking-widest text-[7.5px] sm:text-[10px]">ONLINE</span>
           </div>
 
-          <div className="text-slate-200/90 font-black">
-            SISTEM INFORMASI TEMUAN KELAINAN V{APP_VERSION}
+          <div className="text-slate-200/90 font-black truncate px-1 flex-1 text-center text-[7px] xs:text-[8px] sm:text-[10px]">
+            <span className="hidden xs:inline">SISTEM INFORMASI TEMUAN KELAINAN V{APP_VERSION}</span>
+            <span className="xs:hidden">SI TEMUAN KELAINAN V{APP_VERSION}</span>
           </div>
 
-          <div className="text-blue-200/80">
-            © 2026 - IT PLN ES BKT
+          <div className="text-blue-200/80 flex-shrink-0 text-right text-[7px] xs:text-[8px] sm:text-[10px]">
+            <span className="hidden sm:inline">© 2026 - IT PLN ES BKT</span>
+            <span className="sm:hidden">IT PLN BKT</span>
           </div>
 
         </div>
