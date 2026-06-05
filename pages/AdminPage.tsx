@@ -479,6 +479,27 @@ const AdminPage: React.FC<AdminPageProps> = ({
     } finally { setIsExporting(false); }
   };
 
+  const handleExportYandalExcel = async () => {
+    if (rekapYandalData.length === 0) {
+      alert("Tidak ada data rekap Yandal untuk diexport.");
+      return;
+    }
+    setIsExporting(true);
+    try {
+      const filters = {
+        start: rekapYandalStartDate,
+        end: rekapYandalEndDate,
+        ulp: rekapYandalUlp
+      };
+      await ReportService.downloadYandalExcel(rekapYandalData, filters);
+    } catch (error) {
+      console.error(error);
+      alert("Gagal mengunduh file Excel Rekap Yandal.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
 
   const resetDataFilters = () => {
@@ -703,7 +724,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
           </div>
 
           <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
+            <div className="p-6 border-b border-slate-50 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center bg-slate-50/30">
               <div>
                 <h3 className="text-sm font-black text-slate-900 tracking-tight flex items-center gap-2 uppercase">
                   <span className="w-1.5 h-4 bg-blue-600 rounded-full"></span>
@@ -711,8 +732,21 @@ const AdminPage: React.FC<AdminPageProps> = ({
                 </h3>
                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Leaderboard Performa Petugas</p>
               </div>
-              <div className="px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-full">
-                <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{rekapYandalData.length} Petugas</span>
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                <button
+                  onClick={handleExportYandalExcel}
+                  disabled={isExporting}
+                  className={`px-4 py-2.5 text-[10px] font-black rounded-xl transition-all uppercase tracking-widest flex items-center gap-2 shadow-md ${
+                    isExporting 
+                      ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                      : 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95'
+                  }`}
+                >
+                  {isExporting ? '⏳ EXPORTING...' : '📗 EXPORT EXCEL'}
+                </button>
+                <div className="px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-full shrink-0">
+                  <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{rekapYandalData.length} Petugas</span>
+                </div>
               </div>
             </div>
             <div className="overflow-x-auto">
