@@ -96,7 +96,7 @@ export const ReportService = {
     worksheet.addRow([]);
 
     const headerRow = worksheet.addRow([
-      'NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEBELUM', 'FOTO SESUDAH', 'KETERANGAN', 'SARAN'
+      'NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEBELUM', 'FOTO SESUDAH', 'KETERANGAN', 'SARAN', 'CATATAN'
     ]);
     headerRow.eachCell((cell) => {
       cell.font = { bold: true, color: { argb: '000000' }, name: 'Arial', size: 11 };
@@ -116,18 +116,23 @@ export const ReportService = {
     worksheet.getColumn(9).width = 18.2;
     worksheet.getColumn(10).width = 25;
     worksheet.getColumn(11).width = 45;
+    worksheet.getColumn(12).width = 30;
 
     for (let i = 0; i < data.length; i++) {
       const item = data[i];
       const cleanEksekusiDate = item.tanggalEksekusi ? item.tanggalEksekusi.split(/[ T,]/)[0] : '-';
       let displayStatus: string = item.status;
       if (item.status === 'SUDAH EKSEKUSI') {
-        displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${cleanEksekusiDate}`;
+        let teamInfo = item.timEksekusi || '-';
+        if (item.timEksekusi === 'Team Yandal' && (item.namaYandal1 || item.namaYandal2)) {
+          teamInfo += ` (${item.namaYandal1} & ${item.namaYandal2})`;
+        }
+        displayStatus = `SUDAH EKSEKUSI oleh ${teamInfo} pada ${cleanEksekusiDate}`;
       }
       const cleanInspeksiDate = item.tanggal ? item.tanggal.split(/[ T,]/)[0] : '-';
 
       const row = worksheet.addRow([
-        i + 1, cleanInspeksiDate, item.noTiang, item.noWO, item.feeder, item.lokasi || "-", item.geotag || "-", "", "", item.keterangan, displayStatus
+        i + 1, cleanInspeksiDate, item.noTiang, item.noWO, item.feeder, item.lokasi || "-", item.geotag || "-", "", "", item.keterangan, displayStatus, item.catatan || "-"
       ]);
       row.height = 101.25;
       
@@ -204,7 +209,11 @@ export const ReportService = {
       let displayStatus: string = item.status;
       if (item.status === 'SUDAH EKSEKUSI') {
         const cleanEksekusiDate = item.tanggalEksekusi ? item.tanggalEksekusi.split(/[ T,]/)[0] : '-';
-        displayStatus = `SUDAH EKSEKUSI oleh ${item.timEksekusi || '-'} pada ${cleanEksekusiDate}`;
+        let teamInfo = item.timEksekusi || '-';
+        if (item.timEksekusi === 'Team Yandal' && (item.namaYandal1 || item.namaYandal2)) {
+          teamInfo += ` (${item.namaYandal1} & ${item.namaYandal2})`;
+        }
+        displayStatus = `SUDAH EKSEKUSI oleh ${teamInfo} pada ${cleanEksekusiDate}`;
       }
       const cleanInspeksiDate = item.tanggal ? item.tanggal.split(/[ T,]/)[0] : '-';
       return [
@@ -229,5 +238,115 @@ export const ReportService = {
     doc.text(`               ${filters.inspektor2 || '-'}`, 220, finalY + 25);
     doc.text(`ADMINSPEKSI  : ENDANG WINARNINGSIH`, 220, finalY + 30);
     doc.save(`Laporan_${filters.pekerjaan || 'PLN'}.pdf`);
+  },
+
+  async downloadYandalExcel(yandalData: { name: string, ulp: string, total: number, period: string }[], filters: { start: string, end: string, ulp: string }) {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Rekap Yandal');
+    
+    // PAGE & PRINT SETUP
+    worksheet.pageSetup = {
+      paperSize: 9,            // A4
+      orientation: 'portrait',
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0
+    };
+
+    worksheet.pageSetup.margins = {
+      left: 0.5,
+      right: 0.5,
+      top: 0.5,
+      bottom: 0.5,
+      header: 0.3,
+      footer: 0.3
+    };
+
+    worksheet.mergeCells('A1:E1');
+    worksheet.getCell('A1').value = 'LAPORAN REKAP EKSEKUSI PETUGAS YANDAL';
+    worksheet.getCell('A1').font = { bold: true, size: 14 };
+    worksheet.getCell('A1').alignment = { horizontal: 'center' };
+
+    worksheet.mergeCells('A2:E2');
+    worksheet.getCell('A2').value = 'SISTEM INFORMASI TEMUAN KELAINAN';
+    worksheet.getCell('A2').font = { bold: true, size: 12 };
+    worksheet.getCell('A2').alignment = { horizontal: 'center' };
+
+    worksheet.mergeCells('A3:E3');
+    worksheet.getCell('A3').value = 'PLN ELECTRICITY SERVICES UL BUKITTINGGI';
+    worksheet.getCell('A3').font = { bold: true, size: 12 };
+    worksheet.getCell('A3').alignment = { horizontal: 'center' };
+
+    worksheet.addRow([]);
+    
+    const filterRow1 = worksheet.addRow(['', 'PERIODE', `: ${filters.start ? filters.start : 'SEMUA'} S/D ${filters.end ? filters.end : 'SEMUA'}`]);
+    filterRow1.getCell(2).font = { bold: true };
+    filterRow1.getCell(3).font = { bold: true };
+
+    const filterRow2 = worksheet.addRow(['', 'ULP', `: ${(filters.ulp || 'SEMUA ULP').toUpperCase()}`]);
+    filterRow2.getCell(2).font = { bold: true };
+    filterRow2.getCell(3).font = { bold: true };
+
+    worksheet.addRow([]);
+
+    const headerRow = worksheet.addRow([
+      'NO. URUT', 'BULAN / PERIODE', 'NAMA PETUGAS YANDAL', 'ULP / UNIT', 'TOTAL EKSEKUSI'
+    ]);
+    headerRow.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: 'FFFFFF' }, name: 'Arial', size: 11 };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '4682B4' } }; // SteelBlue
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    });
+
+    worksheet.getColumn(1).width = 12; // No. Urut
+    worksheet.getColumn(2).width = 25; // Bulan / Periode
+    worksheet.getColumn(3).width = 35; // Nama Petugas Yandal
+    worksheet.getColumn(4).width = 25; // ULP / Unit
+    worksheet.getColumn(5).width = 20; // Total Eksekusi
+
+    for (let i = 0; i < yandalData.length; i++) {
+      const item = yandalData[i];
+      const row = worksheet.addRow([
+        i + 1, item.period, item.name, item.ulp, item.total
+      ]);
+      row.height = 24;
+      
+      row.eachCell((cell, colNum) => {
+        cell.font = { color: { argb: '000000' }, size: 10, name: 'Arial' };
+        if (colNum === 1 || colNum === 2 || colNum === 5) {
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        } else {
+          cell.alignment = { horizontal: 'left', vertical: 'middle' };
+        }
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+      });
+    }
+
+    worksheet.addRow([]);
+    worksheet.addRow([]);
+    
+    // Add signature space
+    const dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    const sigRow1 = worksheet.addRow(['', '', '', 'Bukittinggi, ' + dateStr]);
+    const sigRow2 = worksheet.addRow(['', '', '', 'ADM INSPEKSI']);
+    worksheet.addRow([]);
+    worksheet.addRow([]);
+    worksheet.addRow([]);
+    const sigRow6 = worksheet.addRow(['', '', '', 'ENDANG WINARNINGSIH']);
+    
+    [sigRow1, sigRow2, sigRow6].forEach(row => {
+      row.getCell(4).font = { bold: true, name: 'Arial', size: 10 };
+      row.getCell(4).alignment = { horizontal: 'center' };
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const fileNameExcel = `REKAP_YANDAL_${(filters.ulp || 'SEMUA')}_${Date.now()}`.toUpperCase();
+    a.download = `${fileNameExcel}.xlsx`;
+    a.click();
   }
 };
