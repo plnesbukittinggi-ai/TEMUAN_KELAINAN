@@ -348,5 +348,151 @@ export const ReportService = {
     const fileNameExcel = `REKAP_YANDAL_${(filters.ulp || 'SEMUA')}_${Date.now()}`.toUpperCase();
     a.download = `${fileNameExcel}.xlsx`;
     a.click();
+  },
+
+  async downloadJenisExcel(jenisData: { keterangan: string, total: number, belum: number, sudah: number, padam: number, tidakIzin: number, kendala: number }[], filters: { start: string, end: string, pekerjaan: string, ulp: string, feeder: string, status: string }) {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Rekap Jenis Temuan');
+    
+    // PAGE & PRINT SETUP
+    worksheet.pageSetup = {
+      paperSize: 9,            // A4
+      orientation: 'landscape',
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0
+    };
+
+    worksheet.pageSetup.margins = {
+      left: 0.5,
+      right: 0.5,
+      top: 0.5,
+      bottom: 0.5,
+      header: 0.3,
+      footer: 0.3
+    };
+
+    worksheet.mergeCells('A1:H1');
+    worksheet.getCell('A1').value = 'LAPORAN REKAP JENIS TEMUAN KELAINAN';
+    worksheet.getCell('A1').font = { bold: true, size: 14 };
+    worksheet.getCell('A1').alignment = { horizontal: 'center' };
+
+    worksheet.mergeCells('A2:H2');
+    worksheet.getCell('A2').value = 'SISTEM INFORMASI TEMUAN KELAINAN';
+    worksheet.getCell('A2').font = { bold: true, size: 12 };
+    worksheet.getCell('A2').alignment = { horizontal: 'center' };
+
+    worksheet.mergeCells('A3:H3');
+    worksheet.getCell('A3').value = 'PLN ELECTRICITY SERVICES UL BUKITTINGGI';
+    worksheet.getCell('A3').font = { bold: true, size: 12 };
+    worksheet.getCell('A3').alignment = { horizontal: 'center' };
+
+    worksheet.addRow([]);
+    
+    const filterRow1 = worksheet.addRow(['', 'PERIODE', `: ${filters.start ? filters.start : 'SEMUA'} S/D ${filters.end ? filters.end : 'SEMUA'}`]);
+    filterRow1.getCell(2).font = { bold: true };
+    filterRow1.getCell(3).font = { bold: true };
+
+    const filterRow2 = worksheet.addRow(['', 'PEKERJAAN', `: ${(filters.pekerjaan || 'SEMUA PEKERJAAN').toUpperCase()}`]);
+    filterRow2.getCell(2).font = { bold: true };
+    filterRow2.getCell(3).font = { bold: true };
+
+    const filterRow3 = worksheet.addRow(['', 'ULP', `: ${(filters.ulp || 'SEMUA ULP').toUpperCase()}`]);
+    filterRow3.getCell(2).font = { bold: true };
+    filterRow3.getCell(3).font = { bold: true };
+
+    const filterRow4 = worksheet.addRow(['', 'FEEDER / STATUS', `: ${(filters.feeder || 'SEMUA FEEDER').toUpperCase()} / ${(filters.status || 'SEMUA STATUS').toUpperCase()}`]);
+    filterRow4.getCell(2).font = { bold: true };
+    filterRow4.getCell(3).font = { bold: true };
+
+    worksheet.addRow([]);
+
+    const headerRow = worksheet.addRow([
+      'NO. URUT', 'KETERANGAN/JENIS TEMUAN', 'JUMLAH TEMUAN', 'BELUM EKSEKUSI', 'SUDAH EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN', 'KENDALA MATERIAL'
+    ]);
+    headerRow.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: 'FFFFFF' }, name: 'Arial', size: 11 };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '047857' } }; // emerald-700
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    });
+
+    worksheet.getColumn(1).width = 12; // No. Urut
+    worksheet.getColumn(2).width = 45; // Keterangan
+    worksheet.getColumn(3).width = 18; // Jumlah
+    worksheet.getColumn(4).width = 18; // Belum
+    worksheet.getColumn(5).width = 18; // Sudah
+    worksheet.getColumn(6).width = 18; // Padam
+    worksheet.getColumn(7).width = 18; // Tdk Izin
+    worksheet.getColumn(8).width = 18; // Kendala
+
+    for (let i = 0; i < jenisData.length; i++) {
+      const item = jenisData[i];
+      const row = worksheet.addRow([
+        i + 1, item.keterangan, item.total, item.belum, item.sudah, item.padam, item.tidakIzin, item.kendala
+      ]);
+      row.height = 24;
+      
+      row.eachCell((cell, colNum) => {
+        cell.font = { color: { argb: '000000' }, size: 10, name: 'Arial' };
+        if (colNum === 1 || colNum > 2) {
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        } else {
+          cell.alignment = { horizontal: 'left', vertical: 'middle' };
+        }
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+      });
+    }
+
+    // Add total row
+    const totalRow = worksheet.addRow([
+      'TOTAL KESELURUHAN', 
+      '', 
+      jenisData.reduce((s, r) => s + r.total, 0),
+      jenisData.reduce((s, r) => s + r.belum, 0),
+      jenisData.reduce((s, r) => s + r.sudah, 0),
+      jenisData.reduce((s, r) => s + r.padam, 0),
+      jenisData.reduce((s, r) => s + r.tidakIzin, 0),
+      jenisData.reduce((s, r) => s + r.kendala, 0)
+    ]);
+    totalRow.height = 26;
+    worksheet.mergeCells(`A${totalRow.number}:B${totalRow.number}`);
+    
+    totalRow.eachCell((cell, colNum) => {
+      cell.font = { bold: true, color: { argb: 'FFFFFF' }, size: 10, name: 'Arial' };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '111827' } }; // charcoal/black
+      if (colNum === 1 || colNum > 2) {
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      } else {
+        cell.alignment = { horizontal: 'left', vertical: 'middle' };
+      }
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    });
+
+    worksheet.addRow([]);
+    worksheet.addRow([]);
+    
+    // Add signature space
+    const dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    const sigRow1 = worksheet.addRow(['', '', '', '', '', '', 'Bukittinggi, ' + dateStr]);
+    const sigRow2 = worksheet.addRow(['', '', '', '', '', '', 'ADM INSPEKSI']);
+    worksheet.addRow([]);
+    worksheet.addRow([]);
+    worksheet.addRow([]);
+    const sigRow6 = worksheet.addRow(['', '', '', '', '', '', 'ENDANG WINARNINGSIH']);
+    
+    [sigRow1, sigRow2, sigRow6].forEach(row => {
+      row.getCell(7).font = { bold: true, name: 'Arial', size: 10 };
+      row.getCell(7).alignment = { horizontal: 'center' };
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const fileNameExcel = `REKAP_JENIS_TEMUAN_${(filters.ulp || 'SEMUA')}_${Date.now()}`.toUpperCase();
+    a.download = `${fileNameExcel}.xlsx`;
+    a.click();
   }
 };
