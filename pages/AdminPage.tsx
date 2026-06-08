@@ -500,6 +500,30 @@ const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
+  const handleExportJenisExcel = async () => {
+    if (rekapJenisData.length === 0) {
+      alert("Tidak ada data rekap jenis temuan untuk diexport.");
+      return;
+    }
+    setIsExporting(true);
+    try {
+      const filters = {
+        start: rekapJenisStartDate,
+        end: rekapJenisEndDate,
+        pekerjaan: rekapJenisPekerjaan,
+        ulp: rekapJenisUlp,
+        feeder: rekapJenisFeeder,
+        status: rekapJenisStatus
+      };
+      await ReportService.downloadJenisExcel(rekapJenisData, filters);
+    } catch (error) {
+      console.error(error);
+      alert("Gagal mengunduh file Excel Rekap Jenis Temuan.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
 
   const resetDataFilters = () => {
@@ -1148,6 +1172,31 @@ const AdminPage: React.FC<AdminPageProps> = ({
           </div>
 
           <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl overflow-hidden">
+            <div className="p-6 border-b border-emerald-100 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center bg-emerald-50/10">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 tracking-tight flex items-center gap-2 uppercase">
+                  <span className="w-1.5 h-4 bg-emerald-600 rounded-full"></span>
+                  Rekapitulasi Jenis Temuan
+                </h3>
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Statistik Temuan Berdasarkan Kelainan</p>
+              </div>
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                <button
+                  onClick={handleExportJenisExcel}
+                  disabled={isExporting}
+                  className={`px-4 py-2.5 text-[10px] font-black rounded-xl transition-all uppercase tracking-widest flex items-center gap-2 shadow-md ${
+                    isExporting 
+                      ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                      : 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95'
+                  }`}
+                >
+                  {isExporting ? '⏳ EXPORTING...' : '📗 EXPORT EXCEL'}
+                </button>
+                <div className="px-3 py-1.5 bg-emerald-50 border border-emerald-100 rounded-full shrink-0">
+                  <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">{rekapJenisData.length} Keterangan</span>
+                </div>
+              </div>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[800px]">
                 <thead>
