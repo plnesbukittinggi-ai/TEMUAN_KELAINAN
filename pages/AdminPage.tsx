@@ -384,7 +384,12 @@ const AdminPage: React.FC<AdminPageProps> = ({
     const getStats = (name: string) => {
       const items = dashboardData.filter(d => d.pekerjaan === name);
       const total = items.length;
-      const done = items.filter(d => d.status === 'SUDAH EKSEKUSI').length;
+      const done = items.filter(d => 
+        d.status === 'SUDAH EKSEKUSI' || 
+        d.status === 'BUTUH PADAM' || 
+        d.status === 'TIDAK DAPAT IZIN' || 
+        d.status === 'KENDALA MATERIAL'
+      ).length;
       const pct = total > 0 ? Math.round((done / total) * 100) : 0;
       return { total, done, pct };
     };
