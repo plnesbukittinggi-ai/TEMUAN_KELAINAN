@@ -526,6 +526,7 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                   <option value="">-- Pilih Tim Kerja --</option>
                   <option value="Team ROW">Team ROW</option>
                   <option value="Team Yandal">Team Yandal</option>
+                  <option value="Team HAR">Team HAR</option>
                   <option value="Team Pemeliharaan">Team PLN</option>
                 </select>
               </div>
