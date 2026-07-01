@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { LoginSession, TemuanData, Feeder, Keterangan } from '../types';
+import { LoginSession, TemuanData, Feeder, Keterangan, Tujuan } from '../types';
 import { compressImage, getDisplayImageUrl } from '../utils/image-utils';
 import ImageEditor from '../src/components/ImageEditor';
 
@@ -7,13 +7,14 @@ interface InspeksiPageProps {
   session: LoginSession;
   feeders: Feeder[];
   keteranganList: Keterangan[];
+  tujuanList?: Tujuan[];
   onBack: () => void;
   onSave: (data: TemuanData) => void;
   historyData?: TemuanData[];
   initialData?: TemuanData; // Support for Edit mode
 }
 
-const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranganList, onBack, onSave, historyData = [], initialData }) => {
+const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranganList, tujuanList = [], onBack, onSave, historyData = [], initialData }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
@@ -51,6 +52,17 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
     return filtered;
   }, [keteranganList, session, initialData]);
 
+  const availableTujuan = useMemo(() => {
+    if (tujuanList && tujuanList.length > 0) {
+      return tujuanList;
+    }
+    return [
+      { id: 't1', name: 'YANDAL' },
+      { id: 't2', name: 'ROW' },
+      { id: 't3', name: 'HAR' },
+    ];
+  }, [tujuanList]);
+
   // Ensure prioritas is a number from the start
   const initialPrioritas = initialData?.prioritas !== undefined ? Number(initialData.prioritas) : 1;
 
@@ -71,7 +83,8 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
     keterangan: initialData?.keterangan || '',
     status: initialData?.status || 'BELUM EKSEKUSI',
     prioritas: initialPrioritas,
-    catatan: initialData?.catatan || ''
+    catatan: initialData?.catatan || '',
+    Team_Tujuan: initialData?.Team_Tujuan || ''
   });
 
   const fetchLocation = () => {
@@ -116,7 +129,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.noTiang || !formData.feeder || !formData.fotoTemuan || !formData.keterangan || !formData.alamat) {
+    if (!formData.noTiang || !formData.feeder || !formData.fotoTemuan || !formData.keterangan || !formData.alamat || !formData.Team_Tujuan) {
       alert('Mohon lengkapi seluruh field wajib (*)');
       return;
     }
@@ -292,6 +305,20 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
             <p className="text-center text-[8px] text-slate-400 font-bold uppercase mt-4 tracking-widest italic">
               * Bintang 1 adalah prioritas tertinggi (Segera Eksekusi)
             </p>
+          </div>
+
+          <div className="pt-4 border-t border-slate-100">
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide ml-1 mb-2">TEAM TUJUAN *</label>
+            <select 
+              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-500" 
+              value={formData.Team_Tujuan || ''} 
+              onChange={e => setFormData({ ...formData, Team_Tujuan: e.target.value })}
+            >
+              <option value="">-- Pilih Team Eksekusi Tujuan --</option>
+              {availableTujuan.map(t => (
+                <option key={t.id} value={t.name}>{t.name}</option>
+              ))}
+            </select>
           </div>
 
           <div className="pt-4 border-t border-slate-100">
