@@ -7,7 +7,7 @@ import {
   ResponsiveContainer, 
   Tooltip 
 } from 'recharts';
-import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan, Yandal, MarqueeMessage } from '../types';
+import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan, Yandal, Har, Row, MarqueeMessage } from '../types';
 import { getDashboardInsights } from '../services/geminiService';
 // Fixed casing: Using ReportService (PascalCase) to match consolidated file.
 import { ReportService } from '../services/ReportService';
@@ -20,6 +20,8 @@ interface AdminPageProps {
   inspectors: Inspector[];
   feeders: Feeder[];
   yandalList: Yandal[];
+  harList: Har[];
+  rowList: Row[];
   pekerjaanList: Pekerjaan[];
   keteranganList: Keterangan[];
   marqueeMessages: MarqueeMessage[];
@@ -64,10 +66,10 @@ const getDefaultRekapDates = () => {
 };
 
 const AdminPage: React.FC<AdminPageProps> = ({ 
-  data, ulpList, inspectors, feeders, yandalList, pekerjaanList, keteranganList, marqueeMessages, currentRole, onBack,
+  data, ulpList, inspectors, feeders, yandalList, harList = [], rowList = [], pekerjaanList, keteranganList, marqueeMessages, currentRole, onBack,
   onUpdateInspectors, onUpdateUlp, onUpdateFeeders, onUpdateYandal, onUpdateMessages, onDeleteTemuans
 }) => {
-  const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP' | 'REKAP_JENIS' | 'REKAP_YANDAL' | 'HAPUS_REALISASI'>('DASHBOARD');
+  const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP' | 'REKAP_JENIS' | 'REKAP_YANDAL' | 'REKAP_HAR_ROW' | 'HAPUS_REALISASI'>('DASHBOARD');
   const [dataSubTab, setDataSubTab] = useState<'PLN_ES' | 'PLN'>('PLN_ES');
   
   // States for Hapus Realisasi Tab
@@ -100,6 +102,11 @@ const AdminPage: React.FC<AdminPageProps> = ({
   const [rekapYandalUlp, setRekapYandalUlp] = useState<string>('');
   const [rekapYandalStartDate, setRekapYandalStartDate] = useState<string>(initialRekapDates.start);
   const [rekapYandalEndDate, setRekapYandalEndDate] = useState<string>(initialRekapDates.end);
+
+  // Filters for Rekap HAR/ROW
+  const [rekapHarRowUlp, setRekapHarRowUlp] = useState<string>('');
+  const [rekapHarRowStartDate, setRekapHarRowStartDate] = useState<string>(initialRekapDates.start);
+  const [rekapHarRowEndDate, setRekapHarRowEndDate] = useState<string>(initialRekapDates.end);
 
   const [filterUlp, setFilterUlp] = useState<string>('');
   const [filterFeeder, setFilterFeeder] = useState<string>('');
@@ -294,6 +301,84 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
     return Object.values(counts).sort((a, b) => b.total - a.total);
   }, [data, rekapYandalStartDate, rekapYandalEndDate, rekapYandalUlp]);
+
+  const rekapRowData = useMemo(() => {
+    const counts: Record<string, { name: string, total: number, period: string }> = {};
+    
+    data.forEach(item => {
+      if (item.status !== 'SUDAH EKSEKUSI') return;
+      if (!item.ROW) return;
+      
+      const dDate = parseRobustDate(item.tanggalEksekusi || item.tanggal);
+      
+      if (rekapHarRowStartDate) {
+        const start = new Date(rekapHarRowStartDate);
+        start.setHours(0,0,0,0);
+        if (dDate < start) return;
+      }
+      if (rekapHarRowEndDate) {
+        const end = new Date(rekapHarRowEndDate);
+        end.setHours(23,59,59,999);
+        if (dDate > end) return;
+      }
+      
+      if (rekapHarRowUlp && item.ulp !== rekapHarRowUlp) return;
+
+      const monthName = MONTHS[dDate.getMonth()]?.label || 'Desember';
+      const year = dDate.getFullYear();
+      const period = `${monthName} ${year}`;
+
+      const name = item.ROW.trim();
+      if (!name) return;
+
+      const key = `${name}|${period}`;
+      if (!counts[key]) {
+        counts[key] = { name, total: 0, period };
+      }
+      counts[key].total++;
+    });
+
+    return Object.values(counts).sort((a, b) => b.total - a.total);
+  }, [data, rekapHarRowStartDate, rekapHarRowEndDate, rekapHarRowUlp]);
+
+  const rekapHarData = useMemo(() => {
+    const counts: Record<string, { name: string, total: number, period: string }> = {};
+    
+    data.forEach(item => {
+      if (item.status !== 'SUDAH EKSEKUSI') return;
+      if (!item.HAR) return;
+      
+      const dDate = parseRobustDate(item.tanggalEksekusi || item.tanggal);
+      
+      if (rekapHarRowStartDate) {
+        const start = new Date(rekapHarRowStartDate);
+        start.setHours(0,0,0,0);
+        if (dDate < start) return;
+      }
+      if (rekapHarRowEndDate) {
+        const end = new Date(rekapHarRowEndDate);
+        end.setHours(23,59,59,999);
+        if (dDate > end) return;
+      }
+      
+      if (rekapHarRowUlp && item.ulp !== rekapHarRowUlp) return;
+
+      const monthName = MONTHS[dDate.getMonth()]?.label || 'Desember';
+      const year = dDate.getFullYear();
+      const period = `${monthName} ${year}`;
+
+      const name = item.HAR.trim();
+      if (!name) return;
+
+      const key = `${name}|${period}`;
+      if (!counts[key]) {
+        counts[key] = { name, total: 0, period };
+      }
+      counts[key].total++;
+    });
+
+    return Object.values(counts).sort((a, b) => b.total - a.total);
+  }, [data, rekapHarRowStartDate, rekapHarRowEndDate, rekapHarRowUlp]);
 
   // Logic for Rekap Jenis Temuan
   const rekapJenisData = useMemo(() => {
@@ -705,6 +790,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
           { id: 'REKAP', label: 'REKAP INSPEKTOR' },
           { id: 'REKAP_JENIS', label: 'REKAP JENIS TEMUAN' },
           { id: 'REKAP_YANDAL', label: 'REKAP YANDAL' },
+          { id: 'REKAP_HAR_ROW', label: 'REKAP HAR / ROW' },
           { id: 'DATA', label: 'DATA' },
           ...(currentRole === 'SUPER_ADMIN' ? [
             { id: 'KELOLA', label: 'KELOLA' },
@@ -720,6 +806,187 @@ const AdminPage: React.FC<AdminPageProps> = ({
           </button>
         ))}
       </div>
+
+      {tab === 'REKAP_HAR_ROW' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 ml-1">Filter Rekap HAR & ROW</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Mulai Tanggal</label>
+                <input type="date" value={rekapHarRowStartDate} onChange={(e) => setRekapHarRowStartDate(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500/20 transition-all" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Sampai Tanggal</label>
+                <input type="date" value={rekapHarRowEndDate} onChange={(e) => setRekapHarRowEndDate(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500/20 transition-all" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Filter ULP</label>
+                <select value={rekapHarRowUlp} onChange={(e) => setRekapHarRowUlp(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500/20 transition-all">
+                  <option value="">Semua ULP</option>
+                  {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button onClick={() => {
+                const dates = getDefaultRekapDates();
+                setRekapHarRowStartDate(dates.start);
+                setRekapHarRowEndDate(dates.end);
+                setRekapHarRowUlp('');
+              }} className="px-6 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Reset Filter</button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* ROW REKAP TABLE */}
+            <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 tracking-tight flex items-center gap-2 uppercase">
+                    <span className="w-1.5 h-4 bg-orange-500 rounded-full"></span>
+                    Rekap Eksekusi ROW
+                  </h3>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Kinerja Eksekusi Tim ROW</p>
+                </div>
+                <div className="px-3 py-1.5 bg-orange-50 border border-orange-100 rounded-full shrink-0">
+                  <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest">{rekapRowData.length} Tim ROW</span>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-slate-50/50">
+                      <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest w-20">No. Urut</th>
+                      <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Bulan / Periode</th>
+                      <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Nama Team ROW</th>
+                      <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center w-36">Total Eksekusi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {rekapRowData.length > 0 ? rekapRowData.map((item, idx) => {
+                      const rank = idx + 1;
+                      let medal = null;
+                      if (rank === 1) medal = "🥇";
+                      else if (rank === 2) medal = "🥈";
+                      else if (rank === 3) medal = "🥉";
+
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              {medal ? (
+                                <span className="text-2xl drop-shadow-sm animate-bounce-subtle">{medal}</span>
+                              ) : (
+                                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-[11px] font-black text-slate-400">
+                                  {rank}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">{item.period}</span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-xs font-black text-slate-900 uppercase tracking-tight group-hover:text-orange-600 transition-colors">{item.name}</div>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <div className="inline-flex items-center justify-center min-w-[40px] h-8 px-3 rounded-full bg-orange-500 text-white text-[11px] font-black shadow-lg shadow-orange-200">
+                              {item.total}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }) : (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-20 text-center">
+                          <div className="flex flex-col items-center gap-3 opacity-20">
+                            <span className="text-4xl">🌲</span>
+                            <p className="text-[10px] font-black uppercase tracking-widest">Belum ada data eksekusi ROW</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* HAR REKAP TABLE */}
+            <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 tracking-tight flex items-center gap-2 uppercase">
+                    <span className="w-1.5 h-4 bg-purple-600 rounded-full"></span>
+                    Rekap Eksekusi Team HAR
+                  </h3>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Kinerja Eksekusi Tim HAR</p>
+                </div>
+                <div className="px-3 py-1.5 bg-purple-50 border border-purple-100 rounded-full shrink-0">
+                  <span className="text-[10px] font-black text-purple-600 uppercase tracking-widest">{rekapHarData.length} Tim HAR</span>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-slate-50/50">
+                      <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest w-20">No. Urut</th>
+                      <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Bulan / Periode</th>
+                      <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Nama Team HAR</th>
+                      <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center w-36">Total Eksekusi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {rekapHarData.length > 0 ? rekapHarData.map((item, idx) => {
+                      const rank = idx + 1;
+                      let medal = null;
+                      if (rank === 1) medal = "🥇";
+                      else if (rank === 2) medal = "🥈";
+                      else if (rank === 3) medal = "🥉";
+
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              {medal ? (
+                                <span className="text-2xl drop-shadow-sm animate-bounce-subtle">{medal}</span>
+                              ) : (
+                                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-[11px] font-black text-slate-400">
+                                  {rank}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">{item.period}</span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-xs font-black text-slate-900 uppercase tracking-tight group-hover:text-purple-600 transition-colors">{item.name}</div>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <div className="inline-flex items-center justify-center min-w-[40px] h-8 px-3 rounded-full bg-purple-600 text-white text-[11px] font-black shadow-lg shadow-purple-200">
+                              {item.total}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }) : (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-20 text-center">
+                          <div className="flex flex-col items-center gap-3 opacity-20">
+                            <span className="text-4xl">⚡</span>
+                            <p className="text-[10px] font-black uppercase tracking-widest">Belum ada data eksekusi HAR</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {tab === 'REKAP_YANDAL' && (
         <div className="space-y-6 animate-fade-in">
