@@ -1,15 +1,31 @@
 
-import { Inspector, ULP, Feeder, Keterangan, Pekerjaan, Yandal } from './types';
+import { Inspector, ULP, Feeder, Keterangan, Pekerjaan, Yandal, Har, Row, Tujuan } from './types';
 
 export const SPREADSHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbw_8wCUk4EZcTVwxG3oryedtEEOc24glOKgpug5zPY3S3E7QuDXuzohnMpp_W_jajIN/exec';
 
-export const APP_VERSION = '2.0.4';
+export const APP_VERSION = '3.0.0';
 
 export const INITIAL_YANDAL: Yandal[] = [
   { id: 'y1', name: 'ALDI', ulpId: 'u6' },
   { id: 'y3', name: 'ANDRI', ulpId: 'u6' },
   { id: 'y7', name: 'ARIF', ulpId: 'u6' },
   { id: 'y11', name: 'DEDI', ulpId: 'u6' },
+];
+
+export const INITIAL_HAR: Har[] = [
+  { id: 'h1', name: 'TIM HAR 1', ulpId: 'u6' },
+  { id: 'h2', name: 'TIM HAR 2', ulpId: 'u6' },
+];
+
+export const INITIAL_ROW: Row[] = [
+  { id: 'r1', name: 'TIM ROW 1', ulpId: 'u6' },
+  { id: 'r2', name: 'TIM ROW 2', ulpId: 'u6' },
+];
+
+export const INITIAL_TUJUAN: Tujuan[] = [
+  { id: 't1', name: 'YANDAL' },
+  { id: 't2', name: 'ROW' },
+  { id: 't3', name: 'HAR' },
 ];
 
 export const INITIAL_PEKERJAAN: Pekerjaan[] = [
