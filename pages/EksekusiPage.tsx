@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { LoginSession, TemuanData, Yandal, ULP } from '../types';
+import { LoginSession, TemuanData, Yandal, Har, Row, ULP } from '../types';
 import { compressImage, getDisplayImageUrl } from '../utils/image-utils';
 import ImageEditor from '../src/components/ImageEditor';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
@@ -14,6 +14,8 @@ interface EksekusiPageProps {
   onSave: (data: TemuanData) => Promise<void> | void;
   initialData?: TemuanData;
   yandalList: Yandal[];
+  harList: Har[];
+  rowList: Row[];
   ulpList: ULP[];
 }
 
@@ -38,13 +40,15 @@ const createCustomIcon = (color: string, isSearching: boolean) => {
   });
 };
 
-const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSave, initialData, yandalList, ulpList }) => {
+const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSave, initialData, yandalList, harList, rowList, ulpList }) => {
   const [selectedTemuan, setSelectedTemuan] = useState<TemuanData | null>(initialData || null);
   const [executionPhoto, setExecutionPhoto] = useState<string>(initialData?.fotoEksekusi || '');
   const [executionDate, setExecutionDate] = useState<string>('');
   const [selectedTeam, setSelectedTeam] = useState<string>(initialData?.timEksekusi || '');
   const [namaYandal1, setNamaYandal1] = useState<string>(initialData?.namaYandal1 || '');
   const [namaYandal2, setNamaYandal2] = useState<string>(initialData?.namaYandal2 || '');
+  const [selectedHar, setSelectedHar] = useState<string>(initialData?.HAR || '');
+  const [selectedRow, setSelectedRow] = useState<string>(initialData?.ROW || '');
   const [isSaving, setIsSaving] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   const [editingImage, setEditingImage] = useState<string | null>(null);
@@ -107,6 +111,8 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
     if (initialData?.timEksekusi) setSelectedTeam(initialData.timEksekusi);
     if (initialData?.namaYandal1) setNamaYandal1(initialData.namaYandal1);
     if (initialData?.namaYandal2) setNamaYandal2(initialData.namaYandal2);
+    if (initialData?.HAR) setSelectedHar(initialData.HAR);
+    if (initialData?.ROW) setSelectedRow(initialData.ROW);
   }, [initialData]);
 
   const formatDriveUrl = (url?: string) => {
@@ -141,33 +147,37 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   const availableYandal = useMemo(() => {
     if (!session.ulp) return [];
     
-    // Find current ULP by name or ID
     const currentUlp = ulpList.find(u => 
       (u.name && u.name.trim().toLowerCase() === session.ulp?.trim().toLowerCase()) ||
       (u.id && u.id.trim().toLowerCase() === session.ulp?.trim().toLowerCase())
     );
     
-    if (!currentUlp) {
-      console.warn("ULP not found in list:", session.ulp, "Available ULPs:", ulpList.map(u => `${u.id}:${u.name}`));
-      return [];
-    }
-    
-    // Filter Yandal by ulpId (which could be the ULP's ID or Name in the spreadsheet)
     const filtered = yandalList.filter(y => {
-      if (!y.ulpId) return false;
-      const yUlpId = String(y.ulpId).trim().toLowerCase();
-      const targetId = String(currentUlp.id).trim().toLowerCase();
-      const targetName = String(currentUlp.name).trim().toLowerCase();
+      const yUlpId = String(y.ulpId || (y as any).ulp || '').trim().toLowerCase();
+      if (!yUlpId) return false;
       
-      // Also check if yUlpId matches the session.ulp directly as a fallback
       const sessionUlp = session.ulp?.trim().toLowerCase();
+      if (yUlpId === sessionUlp) return true;
       
-      return yUlpId === targetId || yUlpId === targetName || yUlpId === sessionUlp;
+      if (currentUlp) {
+        const targetId = String(currentUlp.id).trim().toLowerCase();
+        const targetName = String(currentUlp.name).trim().toLowerCase();
+        return yUlpId === targetId || yUlpId === targetName;
+      }
+      return false;
     });
 
-    console.log(`Filtering Yandal for ${session.ulp} (ID: ${currentUlp.id}). Found: ${filtered.length} of ${yandalList.length}`);
+    console.log(`Filtering Yandal for ${session.ulp}. Found: ${filtered.length} of ${yandalList.length}`);
     return filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [yandalList, ulpList, session.ulp]);
+
+  const availableHar = useMemo(() => {
+    return [...harList].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [harList]);
+
+  const availableRow = useMemo(() => {
+    return [...rowList].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [rowList]);
 
   const handleAction = async (newStatus: 'SUDAH EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN' | 'KENDALA MATERIAL') => {
     if (!selectedTemuan) return;
@@ -189,7 +199,9 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
       fotoEksekusi: executionPhoto,
       timEksekusi: selectedTeam,
       namaYandal1: selectedTeam === 'Team Yandal' ? namaYandal1 : '',
-      namaYandal2: selectedTeam === 'Team Yandal' ? namaYandal2 : ''
+      namaYandal2: selectedTeam === 'Team Yandal' ? namaYandal2 : '',
+      HAR: selectedTeam === 'Team HAR' ? selectedHar : '',
+      ROW: selectedTeam === 'Team ROW' ? selectedRow : ''
     };
     
     try {
@@ -201,6 +213,8 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
         setSelectedTeam('');
         setNamaYandal1('');
         setNamaYandal2('');
+        setSelectedHar('');
+        setSelectedRow('');
       }
     } catch (err) { alert("❌ Gagal menyimpan data eksekusi."); }
     finally { setIsSaving(false); }
@@ -559,6 +573,38 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
                       ))}
                     </select>
                   </div>
+                </div>
+              )}
+
+              {selectedTeam === 'Team HAR' && (
+                <div className="animate-slide-down">
+                  <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest ml-1">Pilih Personil HAR</label>
+                  <select 
+                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
+                    value={selectedHar} 
+                    onChange={(e) => setSelectedHar(e.target.value)}
+                  >
+                    <option value="">{availableHar.length === 0 ? '-- Data HAR Kosong --' : '-- Pilih Personil --'}</option>
+                    {availableHar.map(h => (
+                      <option key={h.id} value={h.name}>{h.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {selectedTeam === 'Team ROW' && (
+                <div className="animate-slide-down">
+                  <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-widest ml-1">Pilih Personil ROW</label>
+                  <select 
+                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
+                    value={selectedRow} 
+                    onChange={(e) => setSelectedRow(e.target.value)}
+                  >
+                    <option value="">{availableRow.length === 0 ? '-- Data ROW Kosong --' : '-- Pilih Personil --'}</option>
+                    {availableRow.map(r => (
+                      <option key={r.id} value={r.name}>{r.name}</option>
+                    ))}
+                  </select>
                 </div>
               )}
 
