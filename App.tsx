@@ -26,6 +26,14 @@ const App: React.FC = () => {
   const [connectionError, setConnectionError] = useState<boolean>(false);
   
   const [editingData, setEditingData] = useState<TemuanData | null>(null);
+  const [showUpdatePopup, setShowUpdatePopup] = useState<boolean>(false);
+
+  useEffect(() => {
+    const hasSeenUpdate = localStorage.getItem('seen_update_v205');
+    if (!hasSeenUpdate) {
+      setShowUpdatePopup(true);
+    }
+  }, []);
 
   // Derived state to cleanup and simplify variables
   const activeMarqueeMessages = marqueeMessages ? marqueeMessages.filter(m => m.isActive) : [];
@@ -548,6 +556,64 @@ const App: React.FC = () => {
           </div>
         </div>
       </footer>
+
+      {/* UPDATE NOTIFICATION POPUP */}
+      {showUpdatePopup && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-[2rem] border border-slate-100 shadow-2xl max-w-lg w-full overflow-hidden flex flex-col transform transition-all animate-scale-up">
+            <div className="p-6 bg-gradient-to-r from-blue-700 to-indigo-800 text-white flex items-center gap-3">
+              <div className="p-2.5 bg-white/10 rounded-xl">
+                <span className="text-2xl">📢</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-black tracking-widest uppercase opacity-75">Informasi Sistem</span>
+                <h3 className="text-sm sm:text-base font-black uppercase tracking-wide leading-tight">UPDATE APLIKASI TERBARU</h3>
+              </div>
+            </div>
+            
+            <div className="p-6 sm:p-8 space-y-4 max-h-[60vh] overflow-y-auto text-slate-700 text-xs sm:text-sm font-bold leading-relaxed">
+              <p className="text-blue-600 font-extrabold uppercase tracking-wide">Berikut adalah pembaruan pada versi terbaru ini:</p>
+              
+              <div className="space-y-3.5 pt-1">
+                <div className="flex gap-3 items-start">
+                  <div className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-[11px] font-black shrink-0">1</div>
+                  <p className="flex-1 text-slate-600 font-medium">
+                    Team Inspeksi langsung akan mengarahkan Temuan ke Team Eksekusi dengan menginputkan Team Tujuan dengan Memilih <span className="font-extrabold text-slate-800">Team Eksekusi Tujuan</span>.
+                    <span className="text-[11px] font-extrabold text-blue-600 block mt-1">Contoh : Jika Inspektor menemukan Temuan Pohon maka team Tujuannya akan di arahkan ke ROW</span>
+                  </p>
+                </div>
+
+                <div className="flex gap-3 items-start">
+                  <div className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-[11px] font-black shrink-0">2</div>
+                  <p className="flex-1 text-slate-600 font-medium">
+                    Team Eksekusi akan menginputkan Teamnya sesuai yang di Arahkan Team Inspektor.
+                    <span className="text-[11px] font-extrabold text-blue-600 block mt-1">Contoh: Jika diarahkan ke ROW, maka Team ROW akan memilih teamnya, seperti Team ROW 01, Team ROW 02 dst.</span>
+                  </p>
+                </div>
+
+                <div className="flex gap-3 items-start">
+                  <div className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-[11px] font-black shrink-0">3</div>
+                  <p className="flex-1 text-slate-600 font-medium">
+                    Pada <span className="font-extrabold text-slate-800">Dashboard Admin</span>, tersedia <span className="font-extrabold text-slate-800">Halaman Rekap HAR / ROW</span> yang dapat memantau team ROW atau Team Har mana yang sering melakukan Eksekusi.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => {
+                  localStorage.setItem('seen_update_v205', 'true');
+                  setShowUpdatePopup(false);
+                }}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-xs tracking-widest rounded-xl shadow-lg shadow-blue-200 transition-all hover:shadow-xl active:scale-95"
+              >
+                Paham & Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
