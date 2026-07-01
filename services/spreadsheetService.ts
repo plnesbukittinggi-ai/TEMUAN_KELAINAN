@@ -1,5 +1,5 @@
 
-import { TemuanData, Inspector, ULP, Feeder, Keterangan, Yandal, MarqueeMessage } from '../types';
+import { TemuanData, Inspector, ULP, Feeder, Keterangan, Yandal, Har, Row, Tujuan, MarqueeMessage } from '../types';
 import { SPREADSHEET_WEB_APP_URL } from '../constants';
 
 export interface AppConfig {
@@ -7,6 +7,9 @@ export interface AppConfig {
   ulpList: ULP[];
   feeders: Feeder[];
   yandalList: Yandal[];
+  harList?: Har[];
+  rowList?: Row[];
+  tujuanList?: Tujuan[];
   keteranganList: Keterangan[];
   marqueeMessages: MarqueeMessage[];
   allData: TemuanData[];
