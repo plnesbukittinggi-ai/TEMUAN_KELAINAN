@@ -1,5 +1,5 @@
 {
-  "name": "Input Temuan Gangguan dan Eksekusi",
+  "name": "I-MONEX : Inspeksi - Monitoring & Execution",
   "description": "A comprehensive system for reporting electricity distribution disturbances (Inspeksi) and tracking their resolution (Eksekusi). Features include geolocation, photo reporting, and an administrative dashboard.",
   "requestFramePermissions": [
     "camera",
