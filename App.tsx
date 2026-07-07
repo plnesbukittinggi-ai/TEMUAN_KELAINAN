@@ -42,7 +42,7 @@ const App: React.FC = () => {
     ? feeders.filter(f => f.ulpId === ulpList.find(u => u.name === session.ulp)?.id)
     : [];
 
-  const LOGO_URL = "https://lh3.googleusercontent.com/d/1W_q1EgEvSsFH0d1bc7QtzbeOozfW9DtR";
+  const LOGO_URL = "/logo.png";
 
   const refreshData = async () => {
     setIsLoading(true);
