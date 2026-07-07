@@ -35,6 +35,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
   const [logoError, setLogoError] = useState(false);
   const [headerLogoError, setHeaderLogoError] = useState(false);
 
+  // Original Drive Link: https://drive.google.com/file/d/1W_q1EgEvSsFH0d1bc7QtzbeOozfW9DtR/view?usp=drive_link
+  // Loaded as a local asset for high performance, CORS bypass, and PWA compatibility
   const LOGO_URL = "/logo.png";
 
   const handleSelectRole = (role: AppRole) => {
