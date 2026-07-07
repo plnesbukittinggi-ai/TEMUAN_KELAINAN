@@ -42,9 +42,19 @@ const App: React.FC = () => {
     ? feeders.filter(f => f.ulpId === ulpList.find(u => u.name === session.ulp)?.id)
     : [];
 
-  // Original Drive Link: https://drive.google.com/file/d/1W_q1EgEvSsFH0d1bc7QtzbeOozfW9DtR/view?usp=drive_link
-  // Loaded as a local asset for high performance, CORS bypass, and PWA compatibility
-  const LOGO_URL = "/logo.png";
+  const RAW_LOGO_URL = "https://drive.google.com/file/d/1W_q1EgEvSsFH0d1bc7QtzbeOozfW9DtR/view?usp=sharing";
+  
+  const getDirectImageUrl = (url: string) => {
+    if (url.includes('drive.google.com/file/d/')) {
+      const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        return `https://lh3.googleusercontent.com/d/${match[1]}`;
+      }
+    }
+    return url;
+  };
+
+  const LOGO_URL = getDirectImageUrl(RAW_LOGO_URL);
 
   const refreshData = async () => {
     setIsLoading(true);
