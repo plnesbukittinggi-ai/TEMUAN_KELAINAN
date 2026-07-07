@@ -268,7 +268,7 @@ export const ReportService = {
     worksheet.getCell('A1').alignment = { horizontal: 'center' };
 
     worksheet.mergeCells('A2:E2');
-    worksheet.getCell('A2').value = 'SISTEM INFORMASI TEMUAN KELAINAN';
+    worksheet.getCell('A2').value = 'I-MONEX : Inspeksi - Monitoring & Execution';
     worksheet.getCell('A2').font = { bold: true, size: 12 };
     worksheet.getCell('A2').alignment = { horizontal: 'center' };
 
@@ -378,7 +378,7 @@ export const ReportService = {
     worksheet.getCell('A1').alignment = { horizontal: 'center' };
 
     worksheet.mergeCells('A2:H2');
-    worksheet.getCell('A2').value = 'SISTEM INFORMASI TEMUAN KELAINAN';
+    worksheet.getCell('A2').value = 'I-MONEX : Inspeksi - Monitoring & Execution';
     worksheet.getCell('A2').font = { bold: true, size: 12 };
     worksheet.getCell('A2').alignment = { horizontal: 'center' };
 
