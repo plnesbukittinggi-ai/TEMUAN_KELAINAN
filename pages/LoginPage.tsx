@@ -35,9 +35,19 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
   const [logoError, setLogoError] = useState(false);
   const [headerLogoError, setHeaderLogoError] = useState(false);
 
-  // Original Drive Link: https://drive.google.com/file/d/1W_q1EgEvSsFH0d1bc7QtzbeOozfW9DtR/view?usp=drive_link
-  // Loaded as a local asset for high performance, CORS bypass, and PWA compatibility
-  const LOGO_URL = "/logo.png";
+  const RAW_LOGO_URL = "https://drive.google.com/file/d/1W_q1EgEvSsFH0d1bc7QtzbeOozfW9DtR/view?usp=sharing";
+  
+  const getDirectImageUrl = (url: string) => {
+    if (url.includes('drive.google.com/file/d/')) {
+      const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        return `https://lh3.googleusercontent.com/d/${match[1]}`;
+      }
+    }
+    return url;
+  };
+
+  const LOGO_URL = getDirectImageUrl(RAW_LOGO_URL);
 
   const handleSelectRole = (role: AppRole) => {
     setSelectedRole(role);
