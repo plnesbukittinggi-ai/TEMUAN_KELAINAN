@@ -35,7 +35,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
   const [logoError, setLogoError] = useState(false);
   const [headerLogoError, setHeaderLogoError] = useState(false);
 
-  const LOGO_URL = "https://lh3.googleusercontent.com/d/1W_q1EgEvSsFH0d1bc7QtzbeOozfW9DtR";
+  const LOGO_URL = "/logo.png";
 
   const handleSelectRole = (role: AppRole) => {
     setSelectedRole(role);
