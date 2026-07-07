@@ -42,6 +42,8 @@ const App: React.FC = () => {
     ? feeders.filter(f => f.ulpId === ulpList.find(u => u.name === session.ulp)?.id)
     : [];
 
+  // Original Drive Link: https://drive.google.com/file/d/1W_q1EgEvSsFH0d1bc7QtzbeOozfW9DtR/view?usp=drive_link
+  // Loaded as a local asset for high performance, CORS bypass, and PWA compatibility
   const LOGO_URL = "/logo.png";
 
   const refreshData = async () => {
