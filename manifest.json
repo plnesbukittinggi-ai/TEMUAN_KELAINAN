@@ -1,21 +1,21 @@
 
 {
-  "name": "Input Temuan Gangguan & Eksekusi",
-  "short_name": "Temuan PLN",
-  "description": "Sistem Monitoring Temuan Kelainan Jaringan PLN ES Bukittinggi",
+  "name": "INSPEKSI- MONITORING EXECUTION",
+  "short_name": "I-MONEX",
+  "description": "I-MONEX : INSPEKSI- MONITORING EXECUTION",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",
   "theme_color": "#003b71",
   "icons": [
     {
-      "src": "https://lh3.googleusercontent.com/d/1kpaHfckdo0GhhCXtANR_Q38KWuBc0T9u",
+      "src": "https://lh3.googleusercontent.com/d/1W_q1EgEvSsFH0d1bc7QtzbeOozfW9DtR",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "https://lh3.googleusercontent.com/d/1kpaHfckdo0GhhCXtANR_Q38KWuBc0T9u",
+      "src": "https://lh3.googleusercontent.com/d/1W_q1EgEvSsFH0d1bc7QtzbeOozfW9DtR",
       "sizes": "512x512",
       "type": "image/png"
     }
