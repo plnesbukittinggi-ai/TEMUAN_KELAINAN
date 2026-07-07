@@ -1,8 +1,8 @@
 
 {
-  "name": "INSPEKSI- MONITORING EXECUTION",
+  "name": "I-MONEX : Inspeksi - Monitoring & Execution",
   "short_name": "I-MONEX",
-  "description": "I-MONEX : INSPEKSI- MONITORING EXECUTION",
+  "description": "I-MONEX: Inspeksi - Monitoring & Execution PLN ES Bukittinggi",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",
