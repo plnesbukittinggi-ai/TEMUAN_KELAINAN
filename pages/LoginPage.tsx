@@ -35,7 +35,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
   const [logoError, setLogoError] = useState(false);
   const [headerLogoError, setHeaderLogoError] = useState(false);
 
-  const LOGO_URL = "https://lh3.googleusercontent.com/d/1kpaHfckdo0GhhCXtANR_Q38KWuBc0T9u";
+  const LOGO_URL = "https://lh3.googleusercontent.com/d/1W_q1EgEvSsFH0d1bc7QtzbeOozfW9DtR";
 
   const handleSelectRole = (role: AppRole) => {
     setSelectedRole(role);
@@ -571,16 +571,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
 
       {/* VIEW PANEL ROUTER */}
       {view === 'MENU' ? (
-        <div className="flex-1 flex flex-col justify-around items-center w-full max-w-6xl mx-auto py-2.5 sm:py-6 px-3 sm:px-4 relative z-20">
+        <div className="flex-1 flex flex-col justify-start items-center w-full max-w-6xl mx-auto py-1 sm:py-3 px-3 sm:px-4 relative z-20 gap-y-1 sm:gap-y-4">
           
           {/* CENTRAL EMBLEM BAR */}
-          <div className="text-center mb-1.5 sm:mb-6 animate-fade-in flex flex-col items-center">
-            <div className="inline-flex items-center justify-center bg-white w-28 h-28 xs:w-32 xs:h-32 sm:w-48 sm:h-48 rounded-2xl xs:rounded-[1.75rem] sm:rounded-[2.2rem] shadow-xl border border-blue-100/70 p-3 xs:p-4 sm:p-5 mb-2 sm:mb-3.5 transform hover:scale-[1.03] hover:rotate-1 transition-all duration-300 overflow-hidden">
+          <div className="text-center mb-0.5 sm:mb-2 animate-fade-in flex flex-col items-center">
+            <div className="inline-flex items-center justify-center w-[56rem] h-[56rem] xs:w-[64rem] xs:h-[64rem] sm:w-[96rem] sm:h-[96rem] max-w-[95vw] max-h-[38vh] rounded-2xl xs:rounded-[1.75rem] sm:rounded-[2.2rem] p-1 mb-1 sm:mb-1.5 transform hover:scale-[1.03] hover:rotate-1 transition-all duration-300 overflow-hidden">
               {!logoError ? (
                 <img 
                   src={LOGO_URL} 
                   alt="Logo" 
-                  className="w-full h-full object-contain" 
+                  className="w-full h-full object-contain filter drop-shadow-[0_25px_25px_rgba(0,0,0,0.35)] drop-shadow-[0_40px_40px_rgba(0,100,176,0.25)]" 
                   referrerPolicy="no-referrer" 
                   onError={() => setLogoError(true)}
                 />
@@ -594,7 +594,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
             </div>
 
             {/* PLN Unit Badge */}
-            <div className="bg-[#e3f2fd] border border-blue-200/80 px-2.5 xs:px-3.5 py-1 sm:py-1.5 rounded-full flex items-center gap-1.5 max-w-fit mx-auto mt-1.5 sm:mt-3 shadow-sm hover:bg-blue-100 transition-colors">
+            <div className="bg-[#e3f2fd] border border-blue-200/80 px-2.5 xs:px-3.5 py-0.5 sm:py-1 rounded-full flex items-center gap-1.5 max-w-fit mx-auto mt-0.5 sm:mt-1 shadow-sm hover:bg-blue-100 transition-colors">
               <Building className="text-blue-600 w-3 h-3 sm:w-3.5 sm:h-3.5" />
               <span className="text-blue-900 text-[8px] xs:text-[9px] sm:text-xs font-black tracking-wider uppercase">
                 PLN ES BUKITTINGGI
@@ -603,7 +603,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
           </div>
 
           {/* CHOOSE MENU GRID (2x2 ON MOBILE & DESKTOP) */}
-          <div className="grid grid-cols-2 gap-3.5 sm:gap-8 w-full max-w-4xl px-2.2 sm:px-6 mb-3 sm:mb-10">
+          <div className="grid grid-cols-2 gap-3.5 sm:gap-8 w-full max-w-4xl px-2.2 sm:px-6 mb-2 sm:mb-5">
             {menuItems.map((item) => (
               <button 
                 key={item.role}
@@ -625,7 +625,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
           </div>
 
           {/* HIGH POLISH GRAPHICS FOOTER COMPONENT - Cozy Card styled exactly like the provided reference image */}
-          <div className="w-full max-w-4xl bg-white/70 backdrop-blur-md border border-blue-100/80 rounded-[2rem] p-3.5 sm:p-6 shadow-xl relative overflow-hidden flex flex-row items-center gap-2.5 sm:gap-6 mt-4 z-20 animate-fade-in mb-8">
+          <div className="w-full max-w-4xl bg-white/70 backdrop-blur-md border border-blue-100/80 rounded-[2rem] p-3.5 sm:p-6 shadow-xl relative overflow-hidden flex flex-row items-center gap-2.5 sm:gap-6 mt-1 sm:mt-2 z-20 animate-fade-in mb-4">
             
             {/* Integrated Vector Transmission Tower Silhouette (Left side of card - now inline on mobile too!) */}
             <div className="w-12 h-9 xs:w-16 xs:h-11 sm:w-28 sm:h-14 md:w-32 md:h-20 flex-shrink-0 relative opacity-40 text-blue-600">
