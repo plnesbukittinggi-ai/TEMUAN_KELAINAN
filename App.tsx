@@ -42,7 +42,7 @@ const App: React.FC = () => {
     ? feeders.filter(f => f.ulpId === ulpList.find(u => u.name === session.ulp)?.id)
     : [];
 
-  const LOGO_URL = "https://lh3.googleusercontent.com/d/1kpaHfckdo0GhhCXtANR_Q38KWuBc0T9u";
+  const LOGO_URL = "https://lh3.googleusercontent.com/d/1W_q1EgEvSsFH0d1bc7QtzbeOozfW9DtR";
 
   const refreshData = async () => {
     setIsLoading(true);
@@ -379,8 +379,13 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#dfefe2]/30 via-[#e2f1fc] to-[#e4f6fc] flex flex-col justify-between items-center py-10 px-4">
         <div className="flex-1 flex flex-col items-center justify-center text-center animate-fade-in max-w-lg mx-auto">
-          <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center p-3 shadow-lg border border-slate-200/50 mb-6">
-            <img src={LOGO_URL} alt="Logo PLN" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+          <div className="w-[40rem] h-[40rem] max-w-[95vw] max-h-[45vh] flex items-center justify-center mb-6">
+            <img 
+              src={LOGO_URL} 
+              alt="Logo PLN" 
+              className="w-full h-full object-contain filter drop-shadow-[0_25px_25px_rgba(0,0,0,0.35)] drop-shadow-[0_40px_40px_rgba(0,100,176,0.25)]" 
+              referrerPolicy="no-referrer" 
+            />
           </div>
           <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center text-3xl mb-6 border border-red-100 shadow-md">⚠️</div>
           <h2 className="text-xl font-black text-slate-950 mb-2 uppercase tracking-tight">Koneksi Server Terputus</h2>
@@ -403,11 +408,11 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#dfefe2]/30 via-[#e2f1fc] to-[#e4f6fc] flex flex-col justify-between items-center py-12 px-4">
         <div className="flex-1 flex flex-col items-center justify-center text-center animate-fade-in">
-          <div className="inline-flex items-center justify-center bg-white w-28 h-28 sm:w-32 sm:h-32 rounded-3xl shadow-xl border border-blue-100/70 p-3.5 mb-6 animate-pulse">
+          <div className="inline-flex items-center justify-center w-[56rem] h-[56rem] sm:w-[64rem] sm:h-[64rem] max-w-[95vw] max-h-[55vh] p-3.5 mb-6 animate-pulse">
             <img 
               src={LOGO_URL} 
               alt="Logo PLN ES Bukittinggi" 
-              className="w-full h-full object-contain" 
+              className="w-full h-full object-contain filter drop-shadow-[0_25px_25px_rgba(0,0,0,0.35)] drop-shadow-[0_40px_40px_rgba(0,100,176,0.25)]" 
               referrerPolicy="no-referrer" 
             />
           </div>
@@ -428,23 +433,18 @@ const App: React.FC = () => {
   // 3. MAIN LAYOUT UNTUK PENGGUNA (LOGIN MAUPUN SESSION ACTIVE)
   return (
     <div className={`min-h-screen ${session ? 'bg-slate-50' : 'bg-[#edf6fc]'} pb-16 sm:pb-14 relative overflow-x-hidden flex flex-col`}>
-      <header className="bg-gradient-to-r from-[#003b71] to-[#005ba3] text-white py-3 px-4 sm:px-6 shadow-xl rounded-b-[2rem] border-b border-[#002b54]/50 relative z-50 sticky top-0">
+      <header className="bg-gradient-to-r from-[#e3f2fd] to-[#f0f8ff] text-slate-800 py-3 px-4 sm:px-6 shadow-xl rounded-b-[2rem] border-b border-blue-100/80 relative z-50 sticky top-0">
         <div className="max-w-full mx-auto flex items-center justify-between w-full px-2 sm:px-4">
           
           {/* Logo & title stack */}
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 bg-white rounded-2xl flex items-center justify-center p-1.5 shadow-lg border border-white/20 overflow-hidden flex-shrink-0 animate-fade-in">
+            <div className="h-12 sm:h-[60px] w-auto flex items-center justify-start overflow-hidden flex-shrink-0 animate-fade-in">
               <img 
                 src={LOGO_URL} 
                 alt="Logo PLN" 
-                className="w-full h-full object-contain" 
+                className="h-full w-auto object-contain filter drop-shadow-[0_8px_8px_rgba(0,0,0,0.2)]" 
                 referrerPolicy="no-referrer" 
               />
-            </div>
-            <div>
-              <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-blue-200">SISTEM INFORMASI</p>
-              <h1 className="text-sm sm:text-lg font-black uppercase tracking-tight text-white leading-none -mt-0.5">TEMUAN KELAINAN</h1>
-              <p className="text-[9px] sm:text-[10px] font-bold text-blue-200/90 leading-none mt-0.5 animate-pulse">PLN ES Bukittinggi</p>
             </div>
           </div>
 
@@ -453,12 +453,12 @@ const App: React.FC = () => {
             {session && (
               <button 
                 onClick={handleLogout} 
-                className="text-[9px] sm:text-[10px] font-black tracking-widest uppercase bg-[#002042] border border-[#001730] hover:bg-[#001730] active:scale-95 px-3 py-2 rounded-xl transition-all shadow-md animate-fade-in"
+                className="text-[9px] sm:text-[10px] font-black tracking-widest uppercase bg-[#002042] border border-[#001730] hover:bg-[#001730] active:scale-95 px-3 py-2 rounded-xl transition-all shadow-md animate-fade-in text-white"
               >
                 KELUAR
               </button>
             )}
-            <div className="w-11 h-11 bg-white rounded-2xl flex items-center justify-center p-1.5 shadow-lg border border-white/20 flex-shrink-0">
+            <div className="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center p-1.5 shadow-md border border-slate-100 flex-shrink-0">
               <svg viewBox="0 0 100 100" className="w-full h-full animate-[spin_20s_linear_infinite]" xmlns="http://www.w3.org/2000/svg">
                 <g transform="translate(50, 50)">
                   {/* 11 gear teeth */}
@@ -548,7 +548,7 @@ const App: React.FC = () => {
           </div>
 
           <div className="text-slate-300 font-extrabold truncate px-1 flex-1 text-center text-[6.5px] xs:text-[7.5px] sm:text-[8.5px] tracking-[0.05em]">
-            SISTEM INFORMASI TEMUAN KELAINAN V{APP_VERSION}
+            I-MONEX : Inspeksi - Monitoring & Execution V{APP_VERSION}
           </div>
 
           <div className="text-blue-200/70 flex-shrink-0 text-right text-[6.2px] xs:text-[7.2px] sm:text-[8.5px] font-black tracking-wider">
