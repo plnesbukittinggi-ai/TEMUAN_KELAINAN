@@ -4,7 +4,7 @@
  * @param maxWidth Lebar maksimal (default 1600px)
  * @param quality Kualitas JPEG (0.1 - 1.0, default 0.7)
  */
-export async function compressImage(base64Str: string, maxWidth = 1600, quality = 0.7): Promise<string> {
+export async function compressImage(base64Str: string, maxWidth = 1000, quality = 0.5): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.src = base64Str;
