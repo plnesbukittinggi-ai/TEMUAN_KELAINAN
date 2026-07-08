@@ -24,6 +24,7 @@ const App: React.FC = () => {
   const [marqueeMessages, setMarqueeMessages] = useState<MarqueeMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [connectionError, setConnectionError] = useState<boolean>(false);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
   
   const [editingData, setEditingData] = useState<TemuanData | null>(null);
   const [showUpdatePopup, setShowUpdatePopup] = useState<boolean>(false);
@@ -118,11 +119,22 @@ const App: React.FC = () => {
 
   const LOGO_URL = getDirectImageUrl(RAW_LOGO_URL);
 
-  const refreshData = async () => {
-    setIsLoading(true);
+  const refreshData = async (isBackground = false) => {
+    if (!isBackground) {
+      setIsLoading(true);
+    }
+    setIsSyncing(true);
     setConnectionError(false);
     try {
       const config = await SpreadsheetService.fetchAllData() as any;
+      
+      // Simpan data mentah ke localStorage agar bisa diload secara instan lain kali
+      try {
+        localStorage.setItem('imonex_cached_config', JSON.stringify(config));
+        localStorage.setItem('imonex_cache_timestamp', Date.now().toString());
+      } catch (cacheErr) {
+        console.warn('Gagal menyimpan cache ke localStorage:', cacheErr);
+      }
       
       const normalize = (input: any, label: string) => {
         if (!input) return [];
@@ -264,14 +276,152 @@ const App: React.FC = () => {
       
     } catch (err) {
       console.error("Connection failed:", err);
-      setConnectionError(true);
+      // Hanya tampilkan layar error koneksi jika kita benar-benar belum punya data sama sekali
+      if (!isBackground) {
+        setConnectionError(true);
+      }
     } finally {
       setIsLoading(false);
+      setIsSyncing(false);
     }
   };
 
   useEffect(() => {
-    refreshData();
+    // 1. Muat dari Cache Lokal Terlebih Dahulu agar Aplikasi Terbuka Instan
+    const cachedConfigStr = localStorage.getItem('imonex_cached_config');
+    let hasLoadedFromCache = false;
+    
+    if (cachedConfigStr) {
+      try {
+        const config = JSON.parse(cachedConfigStr);
+        
+        const normalize = (input: any, label: string) => {
+          if (!input) return [];
+          let arr: any[] = [];
+          if (input.headers && Array.isArray(input.values)) {
+            const headers = input.headers.map((h: string) => h.toLowerCase().replace(/_/g, '').replace(/\s/g, ''));
+            arr = input.values.map((row: any[]) => {
+              const obj: any = {};
+              row.forEach((cell, i) => {
+                const header = headers[i];
+                let mappedKey = input.headers[i];
+                if (header === 'ulpid' || header === 'idulp') mappedKey = 'ulpId';
+                else if (header === 'idpekerjaan') mappedKey = 'idPekerjaan';
+                else if (header === 'notiang') mappedKey = 'noTiang';
+                else if (header === 'nowo') mappedKey = 'noWO';
+                else if (header === 'fototemuan') mappedKey = 'fotoTemuan';
+                else if (header === 'fotoeksekusi') mappedKey = 'fotoEksekusi';
+                else if (header === 'timeksekusi') mappedKey = 'timEksekusi';
+                else if (header === 'tanggaleksekusi') mappedKey = 'tanggalEksekusi';
+                else if (header === 'namayandal1') mappedKey = 'namaYandal1';
+                else if (header === 'namayandal2') mappedKey = 'namaYandal2';
+                else if (header === 'nama' || header === 'name') mappedKey = 'name';
+                else if (header === 'isactive') mappedKey = 'isActive';
+                obj[mappedKey] = cell;
+              });
+              return obj;
+            });
+          } else if (Array.isArray(input)) {
+            arr = input;
+          } else if (input.data && Array.isArray(input.data)) {
+            arr = input.data;
+          } else {
+            return [];
+          }
+
+          return arr.map((item, index) => {
+            const newItem: any = {};
+            newItem.id = item.id || item.ID || `item-${index}`;
+            for (const key in item) {
+              const val = item[key];
+              const lowerKey = key.toLowerCase().replace(/_/g, '').replace(/\s/g, '');
+              let mappedKey = key;
+              if (lowerKey === 'ulpid' || lowerKey === 'idulp') mappedKey = 'ulpId';
+              else if (lowerKey === 'idpekerjaan') mappedKey = 'idPekerjaan';
+              else if (lowerKey === 'notiang') mappedKey = 'noTiang';
+              else if (lowerKey === 'nowo') mappedKey = 'noWO';
+              else if (lowerKey === 'fototemuan') mappedKey = 'fotoTemuan';
+              else if (lowerKey === 'fotoeksekusi') mappedKey = 'fotoEksekusi';
+              else if (lowerKey === 'timeksekusi') mappedKey = 'timEksekusi';
+              else if (lowerKey === 'tanggaleksekusi') mappedKey = 'tanggalEksekusi';
+              else if (lowerKey === 'namayandal1') mappedKey = 'namaYandal1';
+              else if (lowerKey === 'namayandal2') mappedKey = 'namaYandal2';
+              else if (lowerKey === 'nama' || lowerKey === 'name') mappedKey = 'name';
+              else if (lowerKey === 'isactive') mappedKey = 'isActive';
+              else if (lowerKey === 'har') mappedKey = 'HAR';
+              else if (lowerKey === 'row') mappedKey = 'ROW';
+              else if (lowerKey === 'teamtujuan') mappedKey = 'Team_Tujuan';
+              
+              let finalVal = val;
+              if (mappedKey === 'isActive') {
+                finalVal = val === true || val === 'TRUE' || val === 'true';
+              }
+              newItem[mappedKey] = finalVal;
+            }
+            return newItem;
+          });
+        };
+
+        const findDataInConfig = (obj: any, targetKey: string): any => {
+          if (!obj || typeof obj !== 'object') return undefined;
+          const lowerTarget = targetKey.toLowerCase().replace(/list$/, '');
+          const keys = Object.keys(obj);
+          let foundKey = keys.find(k => k.toLowerCase().replace(/list$/, '') === lowerTarget);
+          if (foundKey) return obj[foundKey];
+          foundKey = keys.find(k => k.toLowerCase().includes(lowerTarget));
+          if (foundKey) return obj[foundKey];
+          for (const k of keys) {
+            if (obj[k] && typeof obj[k] === 'object' && !Array.isArray(obj[k])) {
+              const deepResult: any = findDataInConfig(obj[k], targetKey);
+              if (deepResult) return deepResult;
+            }
+          }
+          return undefined;
+        };
+
+        const inspectorsData = findDataInConfig(config, 'inspectors');
+        if (inspectorsData) setInspectors(normalize(inspectorsData, 'Inspectors'));
+        
+        const ulpData = findDataInConfig(config, 'ulpList');
+        if (ulpData) setUlpList(normalize(ulpData, 'ULP'));
+        
+        const feedersData = findDataInConfig(config, 'feeders');
+        if (feedersData) setFeeders(normalize(feedersData, 'Feeders'));
+        
+        const yandalData = findDataInConfig(config, 'yandalList');
+        if (yandalData) setYandalList(normalize(yandalData, 'Yandal'));
+
+        const harData = findDataInConfig(config, 'harList');
+        if (harData) setHarList(normalize(harData, 'HAR'));
+
+        const rowData = findDataInConfig(config, 'rowList');
+        if (rowData) setRowList(normalize(rowData, 'ROW'));
+
+        const tujuanData = findDataInConfig(config, 'tujuanList');
+        if (tujuanData) setTujuanList(normalize(tujuanData, 'Tujuan'));
+        
+        const pekerjaanData = findDataInConfig(config, 'pekerjaanList');
+        if (pekerjaanData) setPekerjaanList(normalize(pekerjaanData, 'Pekerjaan'));
+        
+        const keteranganData = findDataInConfig(config, 'keteranganList');
+        if (keteranganData) setKeteranganList(normalize(keteranganData, 'Keterangan'));
+        
+        const marqueeData = findDataInConfig(config, 'marqueeMessages');
+        if (marqueeData) setMarqueeMessages(normalize(marqueeData, 'MarqueeMessages'));
+        
+        const allDataItems = findDataInConfig(config, 'allData');
+        if (allDataItems) setAllData(normalize(allDataItems, 'AllData'));
+
+        setIsLoading(false);
+        hasLoadedFromCache = true;
+        console.log("Aplikasi berhasil memuat cache lokal secara instan!");
+      } catch (e) {
+        console.error("Gagal membaca cache lokal:", e);
+      }
+    }
+
+    // 2. Lakukan Sinkronisasi Aktual dari Google Spreadsheet di Background
+    refreshData(hasLoadedFromCache);
   }, []);
 
   const handleLogout = () => {
@@ -466,7 +616,7 @@ const App: React.FC = () => {
           <p className="text-slate-500 text-sm mb-8 leading-relaxed font-semibold">
             Tidak dapat sinkronisasi dengan database cloud. <br/>Periksa koneksi jaringan atau pengaturan spreadsheet Anda.
           </p>
-          <button onClick={refreshData} className="w-full bg-[#003b71] hover:bg-[#002b54] text-white font-extrabold py-3.5 rounded-xl shadow-lg active:scale-95 transition-all text-xs uppercase tracking-widest">
+          <button onClick={() => refreshData(false)} className="w-full bg-[#003b71] hover:bg-[#002b54] text-white font-extrabold py-3.5 rounded-xl shadow-lg active:scale-95 transition-all text-xs uppercase tracking-widest">
             HUBUNGKAN ULANG
           </button>
         </div>
@@ -615,9 +765,9 @@ const App: React.FC = () => {
       <footer className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a3a60] text-blue-100 py-3 px-4 sm:px-6 shadow-2xl border-t border-blue-900/30 animate-fade-in">
         <div className="max-w-full mx-auto flex flex-row items-center justify-between gap-2 text-[6.5px] xs:text-[7.5px] sm:text-[8.5px] font-bold uppercase tracking-wider">
           <div className="flex items-center gap-1 flex-shrink-0">
-            <span className={`w-1 h-1 sm:w-1.5 rounded-full ${connectionError ? 'bg-red-400' : 'bg-emerald-400'} inline-block animate-pulse`}></span>
-            <span className={`${connectionError ? 'text-red-400' : 'text-emerald-400'} font-black tracking-widest text-[6.5px] xs:text-[7.5px] sm:text-[8.5px]`}>
-              {connectionError ? 'OFFLINE' : 'ONLINE'}
+            <span className={`w-1 h-1 sm:w-1.5 rounded-full ${connectionError ? 'bg-red-400' : isSyncing ? 'bg-amber-400' : 'bg-emerald-400'} inline-block animate-pulse`}></span>
+            <span className={`${connectionError ? 'text-red-400' : isSyncing ? 'text-amber-400' : 'text-emerald-400'} font-black tracking-widest text-[6.5px] xs:text-[7.5px] sm:text-[8.5px]`}>
+              {connectionError ? 'OFFLINE' : isSyncing ? 'SYNCING...' : 'ONLINE'}
             </span>
           </div>
 
