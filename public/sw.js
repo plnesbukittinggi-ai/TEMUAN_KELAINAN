@@ -1,8 +1,8 @@
-const CACHE_NAME = 'imonex-cache-v2.0.5';
+const CACHE_NAME = 'imonex-cache-v2.0.6';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/public/manifest.json'
+  '/manifest.json'
 ];
 
 // Install Event
@@ -33,8 +33,13 @@ self.addEventListener('activate', (event) => {
 
 // Fetch Event with network-first strategy
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests and skip browser extensions or chrome:// URLs
-  if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin)) {
+  // Only handle GET requests and skip browser extensions, chrome://, and external Google APIs
+  if (
+    event.request.method !== 'GET' || 
+    !event.request.url.startsWith(self.location.origin) ||
+    event.request.url.includes('script.google.com') ||
+    event.request.url.includes('googleusercontent.com')
+  ) {
     return;
   }
 
