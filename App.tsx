@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppRole, TemuanData, LoginSession, Inspector, ULP, Feeder, Pekerjaan, Keterangan, Yandal, Har, Row, Tujuan, MarqueeMessage } from './types';
 import { INITIAL_INSPECTORS, INITIAL_ULP, INITIAL_FEEDERS, INITIAL_KETERANGAN, INITIAL_PEKERJAAN, INITIAL_YANDAL, INITIAL_HAR, INITIAL_ROW, INITIAL_TUJUAN, APP_VERSION } from './constants';
-import { Shield } from 'lucide-react';
+import { Shield, Download, X, Smartphone } from 'lucide-react';
 import { SpreadsheetService } from './services/spreadsheetService';
 import LoginPage from './pages/LoginPage';
 import InspeksiPage from './pages/InspeksiPage';
@@ -28,12 +28,74 @@ const App: React.FC = () => {
   const [editingData, setEditingData] = useState<TemuanData | null>(null);
   const [showUpdatePopup, setShowUpdatePopup] = useState<boolean>(false);
 
+  // PWA states
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBtn, setShowInstallBtn] = useState<boolean>(false);
+  const [isIOS, setIsIOS] = useState<boolean>(false);
+  const [showIOSGuide, setShowIOSGuide] = useState<boolean>(false);
+
   useEffect(() => {
     const hasSeenUpdate = localStorage.getItem('seen_update_v205');
     if (!hasSeenUpdate) {
       setShowUpdatePopup(true);
     }
+
+    // PWA Installation Detection
+    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    setIsIOS(isIOSDevice);
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      
+      const isDismissed = localStorage.getItem('dismissed_install_banner');
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+      
+      if (!isDismissed && !isStandalone) {
+        setShowInstallBtn(true);
+      }
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Initial check for standalone mode or iOS manual guidance
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+    if (!isStandalone) {
+      const isDismissed = localStorage.getItem('dismissed_install_banner');
+      if (!isDismissed) {
+        if (isIOSDevice) {
+          setShowInstallBtn(true);
+        }
+      }
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
   }, []);
+
+  const handleInstallApp = async () => {
+    if (isIOS) {
+      setShowIOSGuide(true);
+      return;
+    }
+
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      console.log('User accepted the install prompt');
+      setShowInstallBtn(false);
+    } else {
+      console.log('User dismissed the install prompt');
+    }
+    setDeferredPrompt(null);
+  };
+
+  const dismissInstallBanner = () => {
+    localStorage.setItem('dismissed_install_banner', 'true');
+    setShowInstallBtn(false);
+  };
 
   // Derived state to cleanup and simplify variables
   const activeMarqueeMessages = marqueeMessages ? marqueeMessages.filter(m => m.isActive) : [];
@@ -621,6 +683,102 @@ const App: React.FC = () => {
                 className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-xs tracking-widest rounded-xl shadow-lg shadow-blue-200 transition-all hover:shadow-xl active:scale-95"
               >
                 Paham & Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PWA INSTALL BANNER */}
+      {showInstallBtn && (
+        <div id="pwa-install-banner" className="fixed bottom-16 sm:bottom-16 left-4 right-4 md:left-auto md:right-6 md:max-w-md z-[60] bg-white rounded-3xl border border-blue-100 shadow-[0_20px_50px_rgba(0,59,113,0.15)] p-4 sm:p-5 flex flex-col gap-3.5 animate-slide-up">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl flex-shrink-0 border border-blue-100/50">
+                <Smartphone className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[9px] font-black tracking-widest text-[#005ba3] uppercase block">Pasang Aplikasi</span>
+                <h4 className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-tight leading-tight">INSTALL I-MONEX DI DEVICE</h4>
+              </div>
+            </div>
+            <button 
+              onClick={dismissInstallBanner} 
+              className="p-1.5 hover:bg-slate-100 active:scale-95 rounded-lg text-slate-400 hover:text-slate-600 transition-all"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          
+          <p className="text-[11px] sm:text-xs text-slate-500 font-medium leading-relaxed">
+            Instal aplikasi untuk akses lebih cepat, ringan, stabil langsung dari layar utama perangkat Anda tanpa perlu membuka browser.
+          </p>
+          
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={dismissInstallBanner}
+              className="flex-1 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black text-[10px] tracking-wider uppercase rounded-xl transition-all text-center"
+            >
+              Nanti Saja
+            </button>
+            <button
+              onClick={handleInstallApp}
+              className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-[10px] tracking-widest uppercase rounded-xl shadow-lg shadow-blue-500/10 transition-all flex items-center justify-center gap-1.5"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>INSTALL SEKARANG</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* iOS INSTALL GUIDE MODAL */}
+      {showIOSGuide && (
+        <div id="ios-install-guide" className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-[2rem] border border-slate-100 shadow-2xl max-w-sm w-full overflow-hidden flex flex-col transform transition-all animate-scale-up">
+            <div className="p-5 bg-gradient-to-r from-blue-700 to-indigo-800 text-white flex items-center gap-3">
+              <div className="p-2.5 bg-white/10 rounded-xl">
+                <Smartphone className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <span className="text-[9px] font-black tracking-widest uppercase opacity-75">Panduan iOS</span>
+                <h3 className="text-xs sm:text-sm font-black uppercase tracking-wide leading-tight">Pasang Aplikasi di iPhone</h3>
+              </div>
+            </div>
+            
+            <div className="p-6 space-y-4 text-slate-700 text-[11px] sm:text-xs font-bold leading-relaxed">
+              <p className="text-blue-600 font-extrabold uppercase tracking-wide">Ikuti langkah mudah berikut:</p>
+              
+              <div className="space-y-3 pt-1">
+                <div className="flex gap-2.5 items-start">
+                  <div className="w-5 h-5 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-[10px] font-black shrink-0">1</div>
+                  <p className="flex-1 text-slate-600 font-semibold">
+                    Ketuk tombol <span className="font-extrabold text-blue-600 uppercase">Share (Bagikan)</span> di toolbar bawah Safari browser Anda (ikon kotak dengan panah ke atas).
+                  </p>
+                </div>
+
+                <div className="flex gap-2.5 items-start">
+                  <div className="w-5 h-5 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-[10px] font-black shrink-0">2</div>
+                  <p className="flex-1 text-slate-600 font-semibold">
+                    Gulir ke bawah dan ketuk opsi <span className="font-extrabold text-slate-800">'Add to Home Screen' / 'Tambahkan ke Layar Utama'</span>.
+                  </p>
+                </div>
+
+                <div className="flex gap-2.5 items-start">
+                  <div className="w-5 h-5 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-[10px] font-black shrink-0">3</div>
+                  <p className="flex-1 text-slate-600 font-semibold">
+                    Berikan nama aplikasi (default: <span className="font-extrabold text-[#005ba3]">I-MONEX</span>) lalu ketuk <span className="font-extrabold text-blue-600">'Add' / 'Tambah'</span> di kanan atas.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setShowIOSGuide(false)}
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-[10px] tracking-widest rounded-xl shadow-lg transition-all active:scale-95"
+              >
+                Saya Mengerti
               </button>
             </div>
           </div>
