@@ -332,6 +332,16 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                           👤 {item.namaYandal1} & {item.namaYandal2}
                         </p>
                       )}
+                      {item.timEksekusi === 'Team ROW' && item.ROW && (
+                        <p className="text-[6px] font-black text-slate-400 uppercase tracking-tighter mt-0.5">
+                          👤 {item.ROW}
+                        </p>
+                      )}
+                      {item.timEksekusi === 'Team HAR' && item.HAR && (
+                        <p className="text-[6px] font-black text-slate-400 uppercase tracking-tighter mt-0.5">
+                          👤 {item.HAR}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -407,11 +417,21 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
                  <p className="text-[8px] font-bold text-slate-400 uppercase italic">
                    Input oleh: {item.inspektor1}{item.inspektor2 ? ` & ${item.inspektor2}` : ''}
                  </p>
-                 {item.status === 'SUDAH EKSEKUSI' && item.timEksekusi === 'Team Yandal' && (item.namaYandal1 || item.namaYandal2) && (
-                   <p className="text-[8px] font-bold text-emerald-600 uppercase italic">
-                     Petugas Yandal Eksekusi : {item.namaYandal1} - {item.namaYandal2}
-                   </p>
-                 )}
+                  {item.status === 'SUDAH EKSEKUSI' && (
+                    item.timEksekusi === 'Team Yandal' && (item.namaYandal1 || item.namaYandal2) ? (
+                      <p className="text-[8px] font-bold text-emerald-600 uppercase italic">
+                        Petugas Yandal Eksekusi : {item.namaYandal1} - {item.namaYandal2}
+                      </p>
+                    ) : item.timEksekusi === 'Team ROW' && item.ROW ? (
+                      <p className="text-[8px] font-bold text-emerald-600 uppercase italic">
+                        Tim ROW Eksekusi : {item.ROW}
+                      </p>
+                    ) : item.timEksekusi === 'Team HAR' && item.HAR ? (
+                      <p className="text-[8px] font-bold text-emerald-600 uppercase italic">
+                        Tim HAR Eksekusi : {item.HAR}
+                      </p>
+                    ) : null
+                  )}
                  {item.catatan && (
                    <div className="mt-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
                      <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">📝 Catatan:</p>
