@@ -34,8 +34,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
   const [password, setPassword] = useState('');
   const [logoError, setLogoError] = useState(false);
   const [headerLogoError, setHeaderLogoError] = useState(false);
+  const [topRightImageError, setTopRightImageError] = useState(false);
 
   const RAW_LOGO_URL = "https://drive.google.com/file/d/1W_q1EgEvSsFH0d1bc7QtzbeOozfW9DtR/view?usp=sharing";
+  const RAW_TOP_RIGHT_IMAGE_URL = "https://drive.google.com/file/d/134vKMK9ORFocqB8E1LNY9AI9y92AKPG4/view?usp=drive_link";
   
   const getDirectImageUrl = (url: string) => {
     if (url.includes('drive.google.com/file/d/')) {
@@ -48,6 +50,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
   };
 
   const LOGO_URL = getDirectImageUrl(RAW_LOGO_URL);
+  const TOP_RIGHT_IMAGE_URL = getDirectImageUrl(RAW_TOP_RIGHT_IMAGE_URL);
 
   const handleSelectRole = (role: AppRole) => {
     setSelectedRole(role);
@@ -586,7 +589,20 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
         <div className="flex-1 flex flex-col justify-start items-center w-full max-w-6xl mx-auto py-1 sm:py-3 px-3 sm:px-4 relative z-20 gap-y-1 sm:gap-y-4">
           
           {/* CENTRAL EMBLEM BAR */}
-          <div className="text-center mb-0.5 sm:mb-2 animate-fade-in flex flex-col items-center">
+          <div className="text-center mb-0.5 sm:mb-2 animate-fade-in flex flex-col items-center w-full relative">
+            {/* Gambar di atas logo sebelah kanan */}
+            <div className="w-full max-w-4xl flex justify-end px-2 sm:px-4 mb-1">
+              {!topRightImageError && (
+                <img 
+                  src={TOP_RIGHT_IMAGE_URL} 
+                  alt="Top Right Header Logo" 
+                  className="h-10 xs:h-12 sm:h-16 md:h-20 w-auto object-contain filter drop-shadow-md hover:scale-105 transition-transform duration-300" 
+                  referrerPolicy="no-referrer" 
+                  onError={() => setTopRightImageError(true)}
+                />
+              )}
+            </div>
+
             <div className="inline-flex items-center justify-center w-[56rem] h-[56rem] xs:w-[64rem] xs:h-[64rem] sm:w-[96rem] sm:h-[96rem] max-w-[95vw] max-h-[38vh] rounded-2xl xs:rounded-[1.75rem] sm:rounded-[2.2rem] p-1 mb-1 sm:mb-1.5 transform hover:scale-[1.03] hover:rotate-1 transition-all duration-300 overflow-hidden">
               {!logoError ? (
                 <img 
