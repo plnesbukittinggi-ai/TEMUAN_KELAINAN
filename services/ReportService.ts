@@ -64,22 +64,22 @@ export const ReportService = {
       footer: 0.3
     };
 
-    worksheet.mergeCells('A1:K1');
+    worksheet.mergeCells('A1:L1');
     worksheet.getCell('A1').value = 'LAPORAN BULANAN';
     worksheet.getCell('A1').font = { bold: true, size: 14 };
     worksheet.getCell('A1').alignment = { horizontal: 'center' };
 
-    worksheet.mergeCells('A2:K2');
+    worksheet.mergeCells('A2:L2');
     worksheet.getCell('A2').value = `FOTO INSPEKSI TEMUAN KELAINAN KONTRUKSI ${String(filters.pekerjaan || 'SEMUA').replace(/Tier/g, 'TIER')}`;
     worksheet.getCell('A2').font = { bold: true, size: 14 };
     worksheet.getCell('A2').alignment = { horizontal: 'center' };
 
-    worksheet.mergeCells('A3:K3');
+    worksheet.mergeCells('A3:L3');
     worksheet.getCell('A3').value = 'TIM DIVISI INSPEKSI PLN ELECTRICITY SERVICES UL BUKITTINGGI';
     worksheet.getCell('A3').font = { bold: true, size: 14 };
     worksheet.getCell('A3').alignment = { horizontal: 'center' };
 
-    worksheet.mergeCells('A4:K4');
+    worksheet.mergeCells('A4:L4');
     worksheet.getCell('A4').value = `ULP ${filters.ulp || 'SEMUA'}`;
     worksheet.getCell('A4').font = { bold: true, size: 14 };
     worksheet.getCell('A4').alignment = { horizontal: 'center' };
@@ -125,7 +125,11 @@ export const ReportService = {
       if (item.status === 'SUDAH EKSEKUSI') {
         let teamInfo = item.timEksekusi || '-';
         if (item.timEksekusi === 'Team Yandal' && (item.namaYandal1 || item.namaYandal2)) {
-          teamInfo += ` (${item.namaYandal1} & ${item.namaYandal2})`;
+          teamInfo += ` (${[item.namaYandal1, item.namaYandal2].filter(Boolean).join(' & ')})`;
+        } else if (item.timEksekusi === 'Team ROW' && item.ROW) {
+          teamInfo += ` (${item.ROW})`;
+        } else if (item.timEksekusi === 'Team HAR' && item.HAR) {
+          teamInfo += ` (${item.HAR})`;
         }
         displayStatus = `SUDAH EKSEKUSI oleh ${teamInfo} pada ${cleanEksekusiDate}`;
       }
@@ -170,18 +174,20 @@ export const ReportService = {
     }
 
     worksheet.addRow([]);
-    const rowSig1 = worksheet.addRow(['', '', '', '', '', '', '', '', '', 'DILAKSANAKAN', `: ${(filters.bulan || '-').toUpperCase()}`]);
-    const rowSig2 = worksheet.addRow(['', '', '', '', '', '', '', '', '', 'JAM', ': 07.30 S/D 17.00 WIB']);
-    const rowSig3 = worksheet.addRow(['', '', '', '', '', '', '', '', '', 'PETUGAS', `: ${filters.inspektor1 || '-'}`]);
-    const rowSig4 = worksheet.addRow(['', '', '', '', '', '', '', '', '', '', `: ${filters.inspektor2 || '-'}`]);
-    const rowSig5 = worksheet.addRow(['', '', '', '', '', '', '', '', '', 'ADM INSPEKSI', `: ENDANG WINARNINGSIH`]);
+    const rowSig1 = worksheet.addRow(['', '', '', '', '', '', '', '', '', '', 'DILAKSANAKAN', `: ${(filters.bulan || '-').toUpperCase()}`]);
+    const rowSig2 = worksheet.addRow(['', '', '', '', '', '', '', '', '', '', 'JAM', ': 07.30 S/D 17.00 WIB']);
+    const rowSig3 = worksheet.addRow(['', '', '', '', '', '', '', '', '', '', 'PETUGAS', `: ${filters.inspektor1 || '-'}`]);
+    const rowSig4 = worksheet.addRow(['', '', '', '', '', '', '', '', '', '', '', `: ${filters.inspektor2 || '-'}`]);
+    const rowSig5 = worksheet.addRow(['', '', '', '', '', '', '', '', '', '', 'ADM INSPEKSI', `: ENDANG WINARNINGSIH`]);
 
     [rowSig1, rowSig2, rowSig3, rowSig4, rowSig5].forEach(row => {
-      const cellJ = row.getCell(10);
       const cellK = row.getCell(11);
+      const cellL = row.getCell(12);
       const borderStyle: Partial<ExcelJS.Border> = { style: 'thin' };
-      cellJ.border = { top: borderStyle, left: borderStyle, bottom: borderStyle, right: borderStyle };
       cellK.border = { top: borderStyle, left: borderStyle, bottom: borderStyle, right: borderStyle };
+      cellL.border = { top: borderStyle, left: borderStyle, bottom: borderStyle, right: borderStyle };
+      cellK.font = { bold: true, size: 9, name: 'Arial' };
+      cellL.font = { bold: true, size: 9, name: 'Arial' };
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
@@ -211,7 +217,11 @@ export const ReportService = {
         const cleanEksekusiDate = item.tanggalEksekusi ? item.tanggalEksekusi.split(/[ T,]/)[0] : '-';
         let teamInfo = item.timEksekusi || '-';
         if (item.timEksekusi === 'Team Yandal' && (item.namaYandal1 || item.namaYandal2)) {
-          teamInfo += ` (${item.namaYandal1} & ${item.namaYandal2})`;
+          teamInfo += ` (${[item.namaYandal1, item.namaYandal2].filter(Boolean).join(' & ')})`;
+        } else if (item.timEksekusi === 'Team ROW' && item.ROW) {
+          teamInfo += ` (${item.ROW})`;
+        } else if (item.timEksekusi === 'Team HAR' && item.HAR) {
+          teamInfo += ` (${item.HAR})`;
         }
         displayStatus = `SUDAH EKSEKUSI oleh ${teamInfo} pada ${cleanEksekusiDate}`;
       }
