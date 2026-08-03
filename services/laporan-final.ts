@@ -49,17 +49,17 @@ export const ReportService = {
     const worksheet = workbook.addWorksheet('Laporan');
     worksheet.pageSetup = { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
 
-    worksheet.mergeCells('A1:K1');
+    worksheet.mergeCells('A1:L1');
     worksheet.getCell('A1').value = 'LAPORAN BULANAN';
     worksheet.getCell('A1').font = { bold: true, size: 14 };
     worksheet.getCell('A1').alignment = { horizontal: 'center' };
 
-    worksheet.mergeCells('A2:K2');
+    worksheet.mergeCells('A2:L2');
     worksheet.getCell('A2').value = `FOTO INSPEKSI TEMUAN KELAINAN KONTRUKSI ${String(filters.pekerjaan || 'SEMUA').replace(/Tier/g, 'TIER')}`;
     worksheet.getCell('A2').font = { bold: true, size: 12 };
     worksheet.getCell('A2').alignment = { horizontal: 'center' };
 
-    worksheet.mergeCells('A3:K3');
+    worksheet.mergeCells('A3:L3');
     worksheet.getCell('A3').value = 'TIM DIVISI INSPEKSI PLN ELECTRICITY SERVICES UL BUKITTINGGI';
     worksheet.getCell('A3').font = { bold: true, size: 11 };
     worksheet.getCell('A3').alignment = { horizontal: 'center' };
@@ -69,7 +69,7 @@ export const ReportService = {
     worksheet.addRow(['', 'BULAN', `: ${(filters.bulan || '-').toUpperCase()}`]);
     worksheet.addRow([]);
 
-    const headers = ['NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEBELUM', 'FOTO SESUDAH', 'KETERANGAN', 'SARAN'];
+    const headers = ['NO', 'TANGGAL', 'NO TIANG', 'NO WO', 'FEEDER', 'ALAMAT', 'GEOTAG', 'FOTO SEBELUM', 'FOTO SESUDAH', 'KETERANGAN', 'SARAN', 'CATATAN'];
     const headerRow = worksheet.addRow(headers);
     headerRow.eachCell((cell) => {
       cell.font = { bold: true, color: { argb: 'FF000000' } };
@@ -79,7 +79,7 @@ export const ReportService = {
     });
 
     // Mengembalikan lebar kolom ke versi stabil (22 unit untuk foto)
-    const colWidths = [5, 15, 15, 10, 20, 35, 25, 22, 22, 25, 45];
+    const colWidths = [5, 15, 15, 10, 20, 35, 25, 22, 22, 25, 45, 30];
     colWidths.forEach((w, i) => { 
       worksheet.getColumn(i + 1).width = w; 
     });
@@ -95,7 +95,7 @@ export const ReportService = {
       }
 
       const row = worksheet.addRow([
-        i + 1, cleanInspeksiDate, item.noTiang, item.noWO, item.feeder, item.lokasi || "-", extractCoordinates(item.geotag || ""), "", "", item.keterangan, statusText
+        i + 1, cleanInspeksiDate, item.noTiang, item.noWO, item.feeder, item.lokasi || "-", extractCoordinates(item.geotag || ""), "", "", item.keterangan, statusText, item.catatan || "-"
       ]);
       
       // Mengembalikan tinggi baris ke versi stabil (110 poin)
@@ -145,10 +145,10 @@ export const ReportService = {
     ];
 
     footerData.forEach(f => {
-      const row = worksheet.addRow(['', '', '', '', '', '', '', '', '', f[0], f[1]]);
-      const cJ = row.getCell(10);
+      const row = worksheet.addRow(['', '', '', '', '', '', '', '', '', '', f[0], f[1]]);
       const cK = row.getCell(11);
-      [cJ, cK].forEach(c => {
+      const cL = row.getCell(12);
+      [cK, cL].forEach(c => {
         c.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
         c.font = { bold: true, size: 9 };
       });
