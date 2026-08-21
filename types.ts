@@ -34,6 +34,23 @@ export interface Yandal {
   ulpId: string;
 }
 
+export interface Har {
+  id: string;
+  name: string;
+  ulpId: string;
+}
+
+export interface Row {
+  id: string;
+  name: string;
+  ulpId: string;
+}
+
+export interface Tujuan {
+  id: string;
+  name: string;
+}
+
 export interface Keterangan {
   id: string;
   text: string; // Diambil dari kolom 'name' di sheet
@@ -69,6 +86,9 @@ export interface TemuanData {
   timEksekusi?: string;
   namaYandal1?: string;
   namaYandal2?: string;
+  HAR?: string;
+  ROW?: string;
+  Team_Tujuan?: string;
 }
 
 export interface LoginSession {
@@ -79,4 +99,13 @@ export interface LoginSession {
   inspektor1?: string;
   inspektor2?: string;
   team?: string;
+}
+
+export interface InisiasiUnit {
+  id: string;
+  kodeUL: string;
+  namaUL: string;
+  idSpreadsheet: string;
+  urlGAS: string;
+  folderIdFoto: string;
 }
