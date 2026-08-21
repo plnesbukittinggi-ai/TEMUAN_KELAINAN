@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AppRole, LoginSession, Inspector, ULP, Pekerjaan, MarqueeMessage } from '../types';
-import { ADMIN_PASSWORD } from '../constants';
+import { ADMIN_PASSWORD, getAdminPasswordForUnit } from '../constants';
 import { 
   ClipboardList, 
   Wrench, 
@@ -25,9 +25,18 @@ interface LoginPageProps {
   pekerjaanList: Pekerjaan[];
   isLoading?: boolean;
   marqueeMessages?: MarqueeMessage[];
+  activeUnitName?: string;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pekerjaanList, isLoading, marqueeMessages }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ 
+  onLogin, 
+  inspectors, 
+  ulpList, 
+  pekerjaanList, 
+  isLoading, 
+  marqueeMessages,
+  activeUnitName
+}) => {
   const [view, setView] = useState<'MENU' | 'CONFIG'>('MENU');
   const [selectedRole, setSelectedRole] = useState<AppRole | null>(null);
   const [formData, setFormData] = useState<Partial<LoginSession>>({});
@@ -73,12 +82,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
 
   const handleFinalLogin = () => {
     if (selectedRole === AppRole.ADMIN) {
-      if (password === ADMIN_PASSWORD) {
+      const expectedPassword = getAdminPasswordForUnit(activeUnitName);
+      const trimmed = password.trim();
+
+      if (trimmed === expectedPassword) {
         onLogin({ role: AppRole.ADMIN });
-      } else if (password === 'SuperAdmin') {
+      } else if (trimmed === 'SuperAdmin') {
         onLogin({ role: AppRole.SUPER_ADMIN });
       } else {
-        alert('Password Admin Salah!');
+        alert(`Password Admin Salah untuk ${activeUnitName || 'Unit ini'}!`);
       }
       return;
     }
@@ -606,10 +618,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, inspectors, ulpList, pek
             </div>
 
             {/* PLN Unit Badge */}
-            <div className="bg-[#e3f2fd] border border-blue-200/80 px-2.5 xs:px-3.5 py-0.5 sm:py-1 rounded-full flex items-center gap-1.5 max-w-fit mx-auto mt-0.5 sm:mt-1 shadow-sm hover:bg-blue-100 transition-colors">
+            <div className="bg-[#e3f2fd] border border-blue-200/80 px-2.5 xs:px-3.5 py-0.5 sm:py-1 rounded-full flex items-center gap-1.5 max-w-fit mx-auto mt-0.5 sm:mt-1 shadow-sm">
               <Building className="text-blue-600 w-3 h-3 sm:w-3.5 sm:h-3.5" />
               <span className="text-blue-900 text-[8px] xs:text-[9px] sm:text-xs font-black tracking-wider uppercase">
-                PLN ES BUKITTINGGI
+                {activeUnitName || 'PLN ES BUKITTINGGI'}
               </span>
             </div>
           </div>
