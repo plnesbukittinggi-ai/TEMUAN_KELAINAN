@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { AppRole, TemuanData, LoginSession, Inspector, ULP, Feeder, Pekerjaan, Keterangan, Yandal, Har, Row, Tujuan, MarqueeMessage } from './types';
+import { AppRole, TemuanData, LoginSession, Inspector, ULP, Feeder, Pekerjaan, Keterangan, Yandal, Har, Row, Tujuan, MarqueeMessage, InisiasiUnit } from './types';
 import { INITIAL_INSPECTORS, INITIAL_ULP, INITIAL_FEEDERS, INITIAL_KETERANGAN, INITIAL_PEKERJAAN, INITIAL_YANDAL, INITIAL_HAR, INITIAL_ROW, INITIAL_TUJUAN, APP_VERSION } from './constants';
-import { Shield, Download, X, Smartphone } from 'lucide-react';
-import { SpreadsheetService } from './services/spreadsheetService';
+import { Shield, Download, X, Smartphone, Settings, RefreshCw, AlertTriangle, CheckCircle2, Wifi, WifiOff, Globe, Database, Link, ExternalLink, Building2 } from 'lucide-react';
+import { 
+  SpreadsheetService, 
+  getSpreadsheetUrl, 
+  setSpreadsheetUrl, 
+  isAppInitialized, 
+  getInisiasiUnit, 
+  saveInisiasiUnit, 
+  resetInisiasi 
+} from './services/spreadsheetService';
+import InisiasiPage from './pages/InisiasiPage';
 import LoginPage from './pages/LoginPage';
 import InspeksiPage from './pages/InspeksiPage';
 import EksekusiPage from './pages/EksekusiPage';
@@ -10,6 +19,9 @@ import AdminPage from './pages/AdminPage';
 import DataViewPage from './pages/DataViewPage';
 
 const App: React.FC = () => {
+  const [isInitialized, setIsInitialized] = useState<boolean>(() => isAppInitialized());
+  const [showInisiasiPage, setShowInisiasiPage] = useState<boolean>(false);
+  const [activeUnit, setActiveUnit] = useState<InisiasiUnit | null>(() => getInisiasiUnit());
   const [session, setSession] = useState<LoginSession | null>(null);
   const [allData, setAllData] = useState<TemuanData[]>([]);
   const [inspectors, setInspectors] = useState<Inspector[]>(INITIAL_INSPECTORS);
@@ -24,6 +36,12 @@ const App: React.FC = () => {
   const [marqueeMessages, setMarqueeMessages] = useState<MarqueeMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [connectionError, setConnectionError] = useState<boolean>(false);
+  const [connectionErrorMessage, setConnectionErrorMessage] = useState<string>('');
+  const [isOfflineMode, setIsOfflineMode] = useState<boolean>(false);
+  const [showUrlConfigModal, setShowUrlConfigModal] = useState<boolean>(false);
+  const [customUrlInput, setCustomUrlInput] = useState<string>(getSpreadsheetUrl());
+  const [isSavingUrl, setIsSavingUrl] = useState<boolean>(false);
+  const [urlSaveSuccess, setUrlSaveSuccess] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   
   const [editingData, setEditingData] = useState<TemuanData | null>(null);
@@ -276,9 +294,26 @@ const App: React.FC = () => {
       const allDataItems = findDataInConfig(config, 'allData');
       if (allDataItems) setAllData(normalize(allDataItems, 'AllData'));
       
-    } catch (err) {
+      setIsOfflineMode(false);
+      setConnectionErrorMessage('');
+    } catch (err: any) {
       console.error("Connection failed:", err);
-      // Hanya tampilkan layar error koneksi jika kita benar-benar belum punya data sama sekali
+      const errMsg = err?.message || 'Server Merespon: 404';
+      setConnectionErrorMessage(errMsg);
+      setIsOfflineMode(true);
+      
+      // Pastikan data awal lokal tersedia agar aplikasi tetap fungsional
+      setInspectors(prev => prev && prev.length > 0 ? prev : INITIAL_INSPECTORS);
+      setUlpList(prev => prev && prev.length > 0 ? prev : INITIAL_ULP);
+      setFeeders(prev => prev && prev.length > 0 ? prev : INITIAL_FEEDERS);
+      setYandalList(prev => prev && prev.length > 0 ? prev : INITIAL_YANDAL);
+      setHarList(prev => prev && prev.length > 0 ? prev : INITIAL_HAR);
+      setRowList(prev => prev && prev.length > 0 ? prev : INITIAL_ROW);
+      setTujuanList(prev => prev && prev.length > 0 ? prev : INITIAL_TUJUAN);
+      setPekerjaanList(prev => prev && prev.length > 0 ? prev : INITIAL_PEKERJAAN);
+      setKeteranganList(prev => prev && prev.length > 0 ? prev : INITIAL_KETERANGAN);
+
+      // Tampilkan layar konfigurasi error jika belum ada data dan bukan background sync
       if (!isBackground) {
         setConnectionError(true);
       }
@@ -289,6 +324,12 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
+    // 0. Jika belum diinisiasi, hentikan loading dan tunggu user menyelesaikan inisiasi
+    if (!isInitialized) {
+      setIsLoading(false);
+      return;
+    }
+
     // 1. Muat dari Cache Lokal Terlebih Dahulu agar Aplikasi Terbuka Instan
     const cachedConfigStr = localStorage.getItem('imonex_cached_config');
     let hasLoadedFromCache = false;
@@ -424,7 +465,33 @@ const App: React.FC = () => {
 
     // 2. Lakukan Sinkronisasi Aktual dari Google Spreadsheet di Background
     refreshData(hasLoadedFromCache);
-  }, []);
+  }, [isInitialized]);
+
+  const handleInisiasiComplete = async (unit: InisiasiUnit) => {
+    setActiveUnit(unit);
+    setIsInitialized(true);
+    setShowInisiasiPage(false);
+    setCustomUrlInput(unit.urlGAS);
+    setSpreadsheetUrl(unit.urlGAS);
+    setConnectionError(false);
+    setIsLoading(true);
+    try {
+      await refreshData(false);
+    } catch (err) {
+      console.error("Error refreshing data after inisiasi:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOpenInisiasi = () => {
+    setShowUrlConfigModal(false);
+    setShowInisiasiPage(true);
+  };
+
+  const handleReInisiasi = () => {
+    handleOpenInisiasi();
+  };
 
   const handleLogout = () => {
     setSession(null);
@@ -520,6 +587,7 @@ const App: React.FC = () => {
           pekerjaanList={pekerjaanList} 
           isLoading={isLoading}
           marqueeMessages={marqueeMessages}
+          activeUnitName={activeUnit ? activeUnit.namaUL : undefined}
         />
       );
     }
@@ -571,6 +639,7 @@ const App: React.FC = () => {
               keteranganList={keteranganList}
               marqueeMessages={marqueeMessages}
               onBack={handleLogout}
+              onInisiasi={handleReInisiasi}
               onUpdateInspectors={setInspectors}
               onUpdateUlp={setUlpList}
               onUpdateFeeders={setFeeders}
@@ -600,29 +669,193 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSaveCustomUrl = async () => {
+    setIsSavingUrl(true);
+    try {
+      setSpreadsheetUrl(customUrlInput.trim());
+      setUrlSaveSuccess(true);
+      setTimeout(() => setUrlSaveSuccess(false), 2500);
+      setShowUrlConfigModal(false);
+      await refreshData(false);
+    } catch (e) {
+      console.error("Gagal menyimpan URL:", e);
+    } finally {
+      setIsSavingUrl(false);
+    }
+  };
+
+  const handleContinueOffline = () => {
+    setConnectionError(false);
+    setIsLoading(false);
+    setIsOfflineMode(true);
+  };
+
+  // 0. INISIASI AWAL ATAU INISIASI DARI HALAMAN ADMIN
+  if (!isInitialized || showInisiasiPage) {
+    return (
+      <InisiasiPage 
+        onComplete={handleInisiasiComplete} 
+        onBack={session ? () => setShowInisiasiPage(false) : undefined}
+      />
+    );
+  }
+
   // 1. SINKRONISASI KONEKSI PUTUS (KONDISI BELUM LOGIN)
   if (connectionError && !session) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#dfefe2]/30 via-[#e2f1fc] to-[#e4f6fc] flex flex-col justify-between items-center py-10 px-4">
-        <div className="flex-1 flex flex-col items-center justify-center text-center animate-fade-in max-w-lg mx-auto">
-          <div className="w-[40rem] h-[40rem] max-w-[95vw] max-h-[45vh] flex items-center justify-center mb-6">
+      <div className="min-h-screen bg-gradient-to-br from-[#dfefe2]/30 via-[#e2f1fc] to-[#e4f6fc] flex flex-col justify-between items-center py-8 px-4">
+        <div className="flex-1 flex flex-col items-center justify-center text-center animate-fade-in max-w-lg w-full mx-auto">
+          <div className="w-[32rem] h-[32rem] max-w-[85vw] max-h-[35vh] flex items-center justify-center mb-4">
             <img 
               src={LOGO_URL} 
               alt="Logo PLN" 
-              className="w-full h-full object-contain filter drop-shadow-[0_25px_25px_rgba(0,0,0,0.35)] drop-shadow-[0_40px_40px_rgba(0,100,176,0.25)]" 
+              className="w-full h-full object-contain filter drop-shadow-[0_20px_20px_rgba(0,0,0,0.25)]" 
               referrerPolicy="no-referrer" 
             />
           </div>
-          <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center text-3xl mb-6 border border-red-100 shadow-md">⚠️</div>
-          <h2 className="text-xl font-black text-slate-950 mb-2 uppercase tracking-tight">Koneksi Server Terputus</h2>
-          <p className="text-slate-500 text-sm mb-8 leading-relaxed font-semibold">
-            Tidak dapat sinkronisasi dengan database cloud. <br/>Periksa koneksi jaringan atau pengaturan spreadsheet Anda.
-          </p>
-          <button onClick={() => refreshData(false)} className="w-full bg-[#003b71] hover:bg-[#002b54] text-white font-extrabold py-3.5 rounded-xl shadow-lg active:scale-95 transition-all text-xs uppercase tracking-widest">
-            HUBUNGKAN ULANG
-          </button>
+          
+          <div className="bg-white/90 backdrop-blur-md rounded-2xl border border-red-100 shadow-xl p-6 w-full text-center mb-4">
+            <div className="w-14 h-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-3 border border-red-100 shadow-sm">
+              <WifiOff className="w-7 h-7" />
+            </div>
+            
+            <h2 className="text-lg font-black text-slate-900 mb-1 uppercase tracking-tight">Koneksi Database Terputus</h2>
+            
+            <div className="bg-red-50/80 border border-red-100 rounded-xl p-2.5 my-3 text-left">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                <div className="text-[11px] text-red-800 font-semibold leading-relaxed">
+                  <span className="font-bold block">{connectionErrorMessage || 'Server Merespon: 404 (Not Found)'}</span>
+                  Google Apps Script Web App tidak dapat dijangkau. Pastikan URL benar dan izin deployment diatur ke <b>"Anyone" (Siapa saja)</b>.
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2.5 pt-2">
+              <button 
+                onClick={() => refreshData(false)} 
+                disabled={isSyncing}
+                className="w-full bg-[#003b71] hover:bg-[#002b54] text-white font-extrabold py-3 rounded-xl shadow-md active:scale-95 transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span>{isSyncing ? 'MENGHUBUNGKAN...' : 'HUBUNGKAN ULANG'}</span>
+              </button>
+
+              <button 
+                onClick={handleReInisiasi} 
+                className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl shadow-xs active:scale-95 transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>PILIH / GANTI UNIT LAYANAN (INISIASI)</span>
+              </button>
+
+              <button 
+                onClick={() => setShowUrlConfigModal(true)} 
+                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2 border border-slate-200"
+              >
+                <Settings className="w-4 h-4 text-slate-500" />
+                <span>ATUR URL GOOGLE APPS SCRIPT</span>
+              </button>
+
+              <button 
+                onClick={handleContinueOffline} 
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl shadow-md active:scale-95 transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2"
+              >
+                <Database className="w-4 h-4" />
+                <span>LANJUTKAN KE APLIKASI (MODE OFFLINE)</span>
+              </button>
+            </div>
+          </div>
         </div>
-        <footer className="text-center text-[10px] font-extrabold text-slate-400 uppercase tracking-wider pb-4">
+        
+        {/* URL CONFIG MODAL IN ERROR SCREEN */}
+        {showUrlConfigModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in text-left">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl max-w-md w-full overflow-hidden flex flex-col">
+              <div className="p-4 bg-[#003b71] text-white flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Database className="w-5 h-5" />
+                  <h3 className="font-extrabold text-sm uppercase tracking-wide">Konfigurasi Database Spreadsheet</h3>
+                </div>
+                <button onClick={() => setShowUrlConfigModal(false)} className="text-white/80 hover:text-white p-1 rounded-lg">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4 text-xs text-slate-700">
+                {activeUnit && (
+                  <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 text-xs space-y-1.5">
+                    <div className="flex items-center justify-between font-bold text-slate-800">
+                      <span className="text-[11px] text-slate-500 uppercase tracking-wider">Unit Layanan Aktif:</span>
+                      <span className="text-[#003b71] font-black uppercase text-xs">{activeUnit.namaUL} ({activeUnit.kodeUL})</span>
+                    </div>
+                    {activeUnit.idSpreadsheet && (
+                      <div className="text-[10px] text-slate-500 font-mono break-all">
+                        <span className="font-bold">ID Sheet:</span> {activeUnit.idSpreadsheet}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleReInisiasi}
+                      className="mt-2 w-full py-2 bg-white hover:bg-amber-50 text-amber-800 border border-amber-200 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-xs"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Ganti Unit Layanan (Inisiasi Ulang)</span>
+                    </button>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block font-black uppercase text-[10px] text-slate-500 tracking-wider mb-1">
+                    URL Google Apps Script (Web App Exec URL):
+                  </label>
+                  <input
+                    type="text"
+                    value={customUrlInput}
+                    onChange={(e) => setCustomUrlInput(e.target.value)}
+                    placeholder="https://script.google.com/macros/s/.../exec"
+                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#003b71] font-mono break-all"
+                  />
+                </div>
+
+                <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-3 text-[11px] text-blue-900 space-y-1.5 leading-relaxed">
+                  <p className="font-extrabold uppercase text-blue-700 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Panduan Deployment Google Apps Script:
+                  </p>
+                  <ol className="list-decimal pl-4 space-y-1 text-slate-600 font-semibold">
+                    <li>Buka spreadsheet & buka menu <b>Extensions &gt; Apps Script</b>.</li>
+                    <li>Klik tombol <b>Deploy &gt; New deployment</b>.</li>
+                    <li>Pilih jenis <b>Web app</b>.</li>
+                    <li>Atur <b>Execute as: Me</b> dan <b>Who has access: Anyone</b>.</li>
+                    <li>Klik <b>Deploy</b>, lalu salin Web App URL (berakhiran <code>/exec</code>) ke kotak di atas.</li>
+                  </ol>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    onClick={() => {
+                      setCustomUrlInput('');
+                      setSpreadsheetUrl('');
+                    }}
+                    className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs uppercase"
+                  >
+                    Reset Default
+                  </button>
+                  <button
+                    onClick={handleSaveCustomUrl}
+                    disabled={isSavingUrl}
+                    className="flex-1 py-2.5 bg-[#003b71] hover:bg-[#002b54] text-white font-extrabold rounded-xl text-xs uppercase tracking-wider shadow-md transition-all flex items-center justify-center gap-2"
+                  >
+                    {isSavingUrl ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    <span>{isSavingUrl ? 'Menyimpan...' : 'Simpan & Hubungkan'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <footer className="text-center text-[10px] font-extrabold text-slate-400 uppercase tracking-wider pb-2">
           © DO : 2026 - IT PLN ES BKT
         </footer>
       </div>
@@ -672,6 +905,36 @@ const App: React.FC = () => {
                 referrerPolicy="no-referrer" 
               />
             </div>
+            
+            {/* Status Sync Badge */}
+            <button
+              onClick={() => setShowUrlConfigModal(true)}
+              className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border transition-all ${
+                isOfflineMode 
+                  ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100' 
+                  : isSyncing
+                  ? 'bg-blue-50 border-blue-200 text-blue-700'
+                  : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+              }`}
+              title="Klik untuk konfigurasi database cloud"
+            >
+              {isOfflineMode ? (
+                <>
+                  <WifiOff className="w-3 h-3 text-amber-600" />
+                  <span>Mode Offline</span>
+                </>
+              ) : isSyncing ? (
+                <>
+                  <RefreshCw className="w-3 h-3 animate-spin text-blue-600" />
+                  <span>Sinkronisasi...</span>
+                </>
+              ) : (
+                <>
+                  <Wifi className="w-3 h-3 text-emerald-600" />
+                  <span>Cloud Aktif</span>
+                </>
+              )}
+            </button>
           </div>
 
           {/* Action buttons (Gear and KELUAR button if logged in) */}
@@ -692,7 +955,11 @@ const App: React.FC = () => {
                 KELUAR
               </button>
             )}
-            <div className="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center p-1.5 shadow-md border border-slate-100 flex-shrink-0">
+            <button
+              onClick={() => setShowUrlConfigModal(true)}
+              title="Pengaturan Database"
+              className="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center p-1.5 shadow-md border border-slate-100 flex-shrink-0 hover:scale-105 transition-transform"
+            >
               <svg viewBox="0 0 100 100" className="w-full h-full animate-[spin_20s_linear_infinite]" xmlns="http://www.w3.org/2000/svg">
                 <g transform="translate(50, 50)">
                   {/* 11 gear teeth */}
@@ -718,7 +985,7 @@ const App: React.FC = () => {
                   />
                 </g>
               </svg>
-            </div>
+            </button>
           </div>
 
         </div>
@@ -940,6 +1207,105 @@ const App: React.FC = () => {
               >
                 Saya Mengerti
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* URL CONFIG MODAL (ACCESSIBLE FROM HEADER / GEAR) */}
+      {showUrlConfigModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in text-left">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl max-w-md w-full overflow-hidden flex flex-col">
+            <div className="p-4 bg-[#003b71] text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Database className="w-5 h-5" />
+                <h3 className="font-extrabold text-sm uppercase tracking-wide">Konfigurasi Database Spreadsheet</h3>
+              </div>
+              <button onClick={() => setShowUrlConfigModal(false)} className="text-white/80 hover:text-white p-1 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs text-slate-700">
+              {activeUnit && (
+                <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 text-xs space-y-1.5">
+                  <div className="flex items-center justify-between font-bold text-slate-800">
+                    <span className="text-[11px] text-slate-500 uppercase tracking-wider">Unit Layanan Aktif:</span>
+                    <span className="text-[#003b71] font-black uppercase text-xs">{activeUnit.namaUL} ({activeUnit.kodeUL})</span>
+                  </div>
+                  {activeUnit.idSpreadsheet && (
+                    <div className="text-[10px] text-slate-500 font-mono break-all">
+                      <span className="font-bold">ID Sheet:</span> {activeUnit.idSpreadsheet}
+                    </div>
+                  )}
+                  {activeUnit.folderIdFoto && (
+                    <div className="text-[10px] text-slate-500 font-mono break-all">
+                      <span className="font-bold">Folder Foto:</span> {activeUnit.folderIdFoto}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleReInisiasi}
+                    className="mt-2 w-full py-2 bg-white hover:bg-amber-50 text-amber-800 border border-amber-200 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-xs"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Ganti Unit Layanan (Inisiasi Ulang)</span>
+                  </button>
+                </div>
+              )}
+
+              <div>
+                <label className="block font-black uppercase text-[10px] text-slate-500 tracking-wider mb-1">
+                  URL Google Apps Script (Web App Exec URL):
+                </label>
+                <input
+                  type="text"
+                  value={customUrlInput}
+                  onChange={(e) => setCustomUrlInput(e.target.value)}
+                  placeholder="https://script.google.com/macros/s/.../exec"
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#003b71] font-mono break-all"
+                />
+              </div>
+
+              <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-3 text-[11px] text-blue-900 space-y-1.5 leading-relaxed">
+                <p className="font-extrabold uppercase text-blue-700 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Panduan Deployment Google Apps Script:
+                </p>
+                <ol className="list-decimal pl-4 space-y-1 text-slate-600 font-semibold">
+                  <li>Buka spreadsheet & buka menu <b>Extensions &gt; Apps Script</b>.</li>
+                  <li>Klik tombol <b>Deploy &gt; New deployment</b>.</li>
+                  <li>Pilih jenis <b>Web app</b>.</li>
+                  <li>Atur <b>Execute as: Me</b> dan <b>Who has access: Anyone</b>.</li>
+                  <li>Klik <b>Deploy</b>, lalu salin Web App URL (berakhiran <code>/exec</code>) ke kotak di atas.</li>
+                </ol>
+              </div>
+
+              {urlSaveSuccess && (
+                <div className="p-2.5 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-200 text-[11px] font-bold flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>URL berhasil disimpan! Mencoba menghubungkan...</span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  onClick={() => {
+                    setCustomUrlInput('');
+                    setSpreadsheetUrl('');
+                  }}
+                  className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs uppercase"
+                >
+                  Reset Default
+                </button>
+                <button
+                  onClick={handleSaveCustomUrl}
+                  disabled={isSavingUrl}
+                  className="flex-1 py-2.5 bg-[#003b71] hover:bg-[#002b54] text-white font-extrabold rounded-xl text-xs uppercase tracking-wider shadow-md transition-all flex items-center justify-center gap-2"
+                >
+                  {isSavingUrl ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  <span>{isSavingUrl ? 'Menyimpan...' : 'Simpan & Hubungkan'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
