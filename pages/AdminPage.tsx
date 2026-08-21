@@ -8,6 +8,7 @@ import {
   Tooltip 
 } from 'recharts';
 import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan, Yandal, Har, Row, MarqueeMessage } from '../types';
+import { Database, Sparkles } from 'lucide-react';
 import { getDashboardInsights } from '../services/geminiService';
 // Fixed casing: Using ReportService (PascalCase) to match consolidated file.
 import { ReportService } from '../services/ReportService';
@@ -27,6 +28,7 @@ interface AdminPageProps {
   marqueeMessages: MarqueeMessage[];
   currentRole?: string;
   onBack: () => void;
+  onInisiasi?: () => void;
   onUpdateInspectors: (data: Inspector[]) => void;
   onUpdateUlp: (data: ULP[]) => void;
   onUpdateFeeders: (data: Feeder[]) => void;
@@ -67,7 +69,7 @@ const getDefaultRekapDates = () => {
 
 const AdminPage: React.FC<AdminPageProps> = ({ 
   data, ulpList, inspectors, feeders, yandalList, harList = [], rowList = [], pekerjaanList, keteranganList, marqueeMessages, currentRole, onBack,
-  onUpdateInspectors, onUpdateUlp, onUpdateFeeders, onUpdateYandal, onUpdateMessages, onDeleteTemuans
+  onInisiasi, onUpdateInspectors, onUpdateUlp, onUpdateFeeders, onUpdateYandal, onUpdateMessages, onDeleteTemuans
 }) => {
   const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP' | 'REKAP_JENIS' | 'REKAP_YANDAL' | 'REKAP_HAR_ROW' | 'HAPUS_REALISASI'>('DASHBOARD');
   const [dataSubTab, setDataSubTab] = useState<'PLN_ES' | 'PLN'>('PLN_ES');
@@ -773,14 +775,26 @@ const AdminPage: React.FC<AdminPageProps> = ({
 
   return (
     <div className="pb-10">
-      <div className="flex items-center gap-4 mb-8">
-        <button onClick={onBack} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 active:scale-95 transition-all group">
-          <span className="text-sm font-black text-slate-900 group-hover:-translate-x-1 transition-transform">←</span>
-          <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Logout</span>
-        </button>
-        <div className="flex-1">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 mb-8">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button onClick={onBack} className="flex items-center gap-2 px-3.5 sm:px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 active:scale-95 transition-all group">
+            <span className="text-sm font-black text-slate-900 group-hover:-translate-x-1 transition-transform">←</span>
+            <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Logout</span>
+          </button>
+          {onInisiasi && (
+            <button 
+              onClick={onInisiasi}
+              title="Buka Halaman Inisiasi Unit Layanan / Ganti Spreadsheet Database"
+              className="flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 py-2.5 bg-[#003b71] hover:bg-[#002b54] text-white border border-[#003b71] rounded-xl shadow-sm active:scale-95 transition-all group cursor-pointer"
+            >
+              <Database className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform" />
+              <span className="text-[9px] font-black uppercase tracking-widest">Inisiasi</span>
+            </button>
+          )}
+        </div>
+        <div className="flex-1 min-w-[200px] text-right sm:text-left">
           <h2 className="text-xl font-black text-slate-900 tracking-tight">Panel Admin</h2>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Kontrol & Rekapitulasi Analitik</p>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Kontrol &amp; Rekapitulasi Analitik</p>
         </div>
       </div>
 
@@ -1647,10 +1661,26 @@ const AdminPage: React.FC<AdminPageProps> = ({
                       <p className="text-[9px] font-bold text-red-500 mt-0.5 truncate uppercase">{item.keterangan}</p>
                       <p className="text-[8px] text-slate-400 mt-1 font-bold uppercase tracking-widest">
                         {itemDate.toLocaleDateString('id-ID')} | {item.ulp}
-                        {item.status === 'SUDAH EKSEKUSI' && item.timEksekusi === 'Team Yandal' && (item.namaYandal1 || item.namaYandal2) && (
-                          <span className="text-emerald-600 ml-2">
-                             👤 {item.namaYandal1} - {item.namaYandal2}
-                          </span>
+                        {item.status === 'SUDAH EKSEKUSI' && (
+                          item.timEksekusi === 'Team Yandal' ? (
+                            (item.namaYandal1 || item.namaYandal2) && (
+                              <span className="text-emerald-600 ml-2 font-black">
+                                 👤 {[item.namaYandal1, item.namaYandal2].filter(Boolean).join(' & ')}
+                              </span>
+                            )
+                          ) : item.timEksekusi === 'Team ROW' ? (
+                            item.ROW && (
+                              <span className="text-emerald-600 ml-2 font-black">
+                                 👤 {item.ROW}
+                              </span>
+                            )
+                          ) : item.timEksekusi === 'Team HAR' ? (
+                            item.HAR && (
+                              <span className="text-emerald-600 ml-2 font-black">
+                                 👤 {item.HAR}
+                              </span>
+                            )
+                          ) : null
                         )}
                       </p>
                       {item.catatan && (
@@ -2118,11 +2148,27 @@ const AdminPage: React.FC<AdminPageProps> = ({
                                 <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">Team:</span>
                                 <p className="text-[9px] font-black text-slate-700 uppercase">{item.timEksekusi || '-'}</p>
                               </div>
-                              {(item.namaYandal1 || item.namaYandal2) && (
+                              {item.timEksekusi === 'Team Yandal' && (item.namaYandal1 || item.namaYandal2) && (
                                 <div className="flex items-center gap-1.5">
                                   <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">Petugas:</span>
                                   <p className="text-[9px] font-black text-emerald-600 uppercase">
                                     {[item.namaYandal1, item.namaYandal2].filter(Boolean).join(' & ')}
+                                  </p>
+                                </div>
+                              )}
+                              {item.timEksekusi === 'Team ROW' && item.ROW && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">Team:</span>
+                                  <p className="text-[9px] font-black text-emerald-600 uppercase">
+                                    {item.ROW}
+                                  </p>
+                                </div>
+                              )}
+                              {item.timEksekusi === 'Team HAR' && item.HAR && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">Team:</span>
+                                  <p className="text-[9px] font-black text-emerald-600 uppercase">
+                                    {item.HAR}
                                   </p>
                                 </div>
                               )}
