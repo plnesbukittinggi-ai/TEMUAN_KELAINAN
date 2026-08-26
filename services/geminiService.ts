@@ -4,14 +4,22 @@ import { GoogleGenAI } from "@google/genai";
 import { TemuanData } from "../types";
 
 /**
+ * Utility to wait for a specified duration.
+ */
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
  * Analisis data menggunakan Gemini API untuk memberikan insight dashboard.
  * Menggunakan gemini-3-flash-preview karena tugas utama adalah perangkuman (summarization)
  * dan analisis data sederhana, yang merupakan kategori Basic Text Task.
  */
-export const getDashboardInsights = async (data: TemuanData[]): Promise<string> => {
+export const getDashboardInsights = async (data: TemuanData[], retryCount = 0): Promise<string> => {
+  if (!data || data.length === 0) return "Tidak ada data untuk dianalisis.";
+
   try {
-    // CRITICAL: Initialization with named parameter and process.env.API_KEY
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // CRITICAL: Initialization with named parameter and process.env.GEMINI_API_KEY.
+    // Create a new instance right before the call to ensure up-to-date configuration.
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     
     const summary = data.reduce((acc: any, curr) => {
       const key = curr.ulp || 'Tanpa Unit';
@@ -33,12 +41,30 @@ export const getDashboardInsights = async (data: TemuanData[]): Promise<string> 
       contents: prompt,
     });
 
-    // CRITICAL: Accessing .text property directly (not a method call text()) as per guidelines.
+    // CRITICAL: Accessing the .text property directly (do not call text()).
     return response.text || "AI memberikan respons kosong.";
   } catch (error: any) {
-    console.error("Gemini Error:", error);
-    // Robust error handling for common API issues
-    if (error.message?.includes('403')) return "Error AI: API Key ditolak atau tidak valid.";
-    return "Gagal memuat analisis cerdas saat ini.";
+    console.error("Gemini Error Detail:", error);
+    
+    // Check for 429 (Resource Exhausted) errors and implement retry logic.
+    const is429 = 
+      error.status === 429 || 
+      error.code === 429 ||
+      (error.message && (error.message.includes('429') || error.message.includes('RESOURCE_EXHAUSTED')));
+
+    if (is429) {
+      if (retryCount < 2) {
+        console.log(`Rate limited. Retrying in ${2000 * (retryCount + 1)}ms...`);
+        await sleep(2000 * (retryCount + 1));
+        return getDashboardInsights(data, retryCount + 1);
+      }
+      return "⚠️ KUOTA TERLAMPAUI (429): Batas penggunaan API Gemini tercapai. Mohon tunggu 1 menit.";
+    }
+    
+    if (error.status === 403 || error.code === 403) {
+      return "⚠️ AKSES DITOLAK (403): API Key tidak valid atau tidak memiliki izin akses.";
+    }
+
+    return "Gagal memuat analisis cerdas karena kendala teknis pada server AI.";
   }
 };
