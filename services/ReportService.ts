@@ -4,6 +4,56 @@ import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { TemuanData } from '../types';
+import { getInisiasiUnit } from './spreadsheetService';
+
+/**
+ * Returns 'ENDANG WINARNINGSIH' if inisiasi is Bukittinggi (or default),
+ * otherwise returns empty string ('') if inisiasi is other than Bukittinggi.
+ */
+const getAdmInspeksiSignature = (): string => {
+  const activeUnit = getInisiasiUnit();
+  const selectedUl = (activeUnit?.namaUL || (typeof window !== 'undefined' ? localStorage.getItem('imonex_selected_ul') : '') || '').toUpperCase();
+  const selectedKode = (activeUnit?.kodeUL || (typeof window !== 'undefined' ? localStorage.getItem('imonex_selected_kode_ul') : '') || '').toUpperCase();
+  
+  if (!selectedUl && !selectedKode) {
+    return 'ENDANG WINARNINGSIH';
+  }
+  
+  if (selectedUl.includes('BUKITTINGGI') || selectedKode === 'BKT') {
+    return 'ENDANG WINARNINGSIH';
+  }
+  
+  return '';
+};
+
+/**
+ * Returns the active Unit Layanan name (e.g. 'UL BUKITTINGGI', 'UL PAYAKUMBUH', 'UL PADANG').
+ * Defaults to 'UL BUKITTINGGI'.
+ */
+const getInisiasiHeaderUL = (): string => {
+  const activeUnit = getInisiasiUnit();
+  let selectedUl = (activeUnit?.namaUL || (typeof window !== 'undefined' ? localStorage.getItem('imonex_selected_ul') : '') || '').trim().toUpperCase();
+  
+  if (!selectedUl) {
+    return 'UL BUKITTINGGI';
+  }
+  
+  if (selectedUl.startsWith('UL ')) {
+    return selectedUl;
+  }
+  
+  return `UL ${selectedUl}`;
+};
+
+/**
+ * Returns the city name for signature date (e.g. 'Bukittinggi', 'Payakumbuh', 'Padang').
+ */
+const getInisiasiCityName = (): string => {
+  const ul = getInisiasiHeaderUL();
+  const cityName = ul.replace(/^UL\s+/i, '').trim();
+  if (!cityName) return 'Bukittinggi';
+  return cityName.charAt(0).toUpperCase() + cityName.slice(1).toLowerCase();
+};
 
 /**
  * Utility to format Google Drive URLs for direct image access.
@@ -75,7 +125,7 @@ export const ReportService = {
     worksheet.getCell('A2').alignment = { horizontal: 'center' };
 
     worksheet.mergeCells('A3:L3');
-    worksheet.getCell('A3').value = 'TIM DIVISI INSPEKSI PLN ELECTRICITY SERVICES UL BUKITTINGGI';
+    worksheet.getCell('A3').value = `TIM DIVISI INSPEKSI PLN ELECTRICITY SERVICES ${getInisiasiHeaderUL()}`;
     worksheet.getCell('A3').font = { bold: true, size: 14 };
     worksheet.getCell('A3').alignment = { horizontal: 'center' };
 
@@ -178,7 +228,7 @@ export const ReportService = {
     const rowSig2 = worksheet.addRow(['', '', '', '', '', '', '', '', '', '', 'JAM', ': 07.30 S/D 17.00 WIB']);
     const rowSig3 = worksheet.addRow(['', '', '', '', '', '', '', '', '', '', 'PETUGAS', `: ${filters.inspektor1 || '-'}`]);
     const rowSig4 = worksheet.addRow(['', '', '', '', '', '', '', '', '', '', '', `: ${filters.inspektor2 || '-'}`]);
-    const rowSig5 = worksheet.addRow(['', '', '', '', '', '', '', '', '', '', 'ADM INSPEKSI', `: ENDANG WINARNINGSIH`]);
+    const rowSig5 = worksheet.addRow(['', '', '', '', '', '', '', '', '', '', 'ADM INSPEKSI', `: ${getAdmInspeksiSignature()}`]);
 
     [rowSig1, rowSig2, rowSig3, rowSig4, rowSig5].forEach(row => {
       const cellK = row.getCell(11);
@@ -207,7 +257,7 @@ export const ReportService = {
     doc.setFontSize(12);
     doc.text(`FOTO INSPEKSI TEMUAN KELAINAN KONTRUKSI ${String(filters.pekerjaan || 'SEMUA').replace(/Tier/g, 'TIER')}`, 148, 22, { align: 'center' });
     doc.setFontSize(10);
-    doc.text('TIM DIVISI INSPEKSI PLN ELECTRICITY SERVICES UL BUKITTINGGI', 148, 28, { align: 'center' });
+    doc.text(`TIM DIVISI INSPEKSI PLN ELECTRICITY SERVICES ${getInisiasiHeaderUL()}`, 148, 28, { align: 'center' });
     doc.text(`NAMA FEEDER : ${filters.feeder || 'SEMUA'}`, 15, 38);
     doc.text(`BULAN       : ${filters.bulan || '-'}`, 15, 43);
 
@@ -246,7 +296,7 @@ export const ReportService = {
     doc.text(`JAM          : 07.30 S/D 17.00 WIB`, 220, finalY + 15);
     doc.text(`PETUGAS      : ${filters.inspektor1 || '-'}`, 220, finalY + 20);
     doc.text(`               ${filters.inspektor2 || '-'}`, 220, finalY + 25);
-    doc.text(`ADMINSPEKSI  : ENDANG WINARNINGSIH`, 220, finalY + 30);
+    doc.text(`ADMINSPEKSI  : ${getAdmInspeksiSignature()}`, 220, finalY + 30);
     doc.save(`Laporan_${filters.pekerjaan || 'PLN'}.pdf`);
   },
 
@@ -283,7 +333,7 @@ export const ReportService = {
     worksheet.getCell('A2').alignment = { horizontal: 'center' };
 
     worksheet.mergeCells('A3:E3');
-    worksheet.getCell('A3').value = 'PLN ELECTRICITY SERVICES UL BUKITTINGGI';
+    worksheet.getCell('A3').value = `PLN ELECTRICITY SERVICES ${getInisiasiHeaderUL()}`;
     worksheet.getCell('A3').font = { bold: true, size: 12 };
     worksheet.getCell('A3').alignment = { horizontal: 'center' };
 
@@ -338,12 +388,12 @@ export const ReportService = {
     
     // Add signature space
     const dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-    const sigRow1 = worksheet.addRow(['', '', '', 'Bukittinggi, ' + dateStr]);
+    const sigRow1 = worksheet.addRow(['', '', '', getInisiasiCityName() + ', ' + dateStr]);
     const sigRow2 = worksheet.addRow(['', '', '', 'ADM INSPEKSI']);
     worksheet.addRow([]);
     worksheet.addRow([]);
     worksheet.addRow([]);
-    const sigRow6 = worksheet.addRow(['', '', '', 'ENDANG WINARNINGSIH']);
+    const sigRow6 = worksheet.addRow(['', '', '', getAdmInspeksiSignature()]);
     
     [sigRow1, sigRow2, sigRow6].forEach(row => {
       row.getCell(4).font = { bold: true, name: 'Arial', size: 10 };
@@ -393,7 +443,7 @@ export const ReportService = {
     worksheet.getCell('A2').alignment = { horizontal: 'center' };
 
     worksheet.mergeCells('A3:H3');
-    worksheet.getCell('A3').value = 'PLN ELECTRICITY SERVICES UL BUKITTINGGI';
+    worksheet.getCell('A3').value = `PLN ELECTRICITY SERVICES ${getInisiasiHeaderUL()}`;
     worksheet.getCell('A3').font = { bold: true, size: 12 };
     worksheet.getCell('A3').alignment = { horizontal: 'center' };
 
@@ -484,12 +534,12 @@ export const ReportService = {
     
     // Add signature space
     const dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-    const sigRow1 = worksheet.addRow(['', '', '', '', '', '', 'Bukittinggi, ' + dateStr]);
+    const sigRow1 = worksheet.addRow(['', '', '', '', '', '', getInisiasiCityName() + ', ' + dateStr]);
     const sigRow2 = worksheet.addRow(['', '', '', '', '', '', 'ADM INSPEKSI']);
     worksheet.addRow([]);
     worksheet.addRow([]);
     worksheet.addRow([]);
-    const sigRow6 = worksheet.addRow(['', '', '', '', '', '', 'ENDANG WINARNINGSIH']);
+    const sigRow6 = worksheet.addRow(['', '', '', '', '', '', getAdmInspeksiSignature()]);
     
     [sigRow1, sigRow2, sigRow6].forEach(row => {
       row.getCell(7).font = { bold: true, name: 'Arial', size: 10 };
