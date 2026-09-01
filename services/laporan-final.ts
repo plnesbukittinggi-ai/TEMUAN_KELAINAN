@@ -3,6 +3,42 @@ import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { TemuanData } from '../types';
+import { getInisiasiUnit } from './spreadsheetService';
+
+const getAdmInspeksiSignature = (): string => {
+  const activeUnit = getInisiasiUnit();
+  const selectedUl = (activeUnit?.namaUL || (typeof window !== 'undefined' ? localStorage.getItem('imonex_selected_ul') : '') || '').toUpperCase();
+  const selectedKode = (activeUnit?.kodeUL || (typeof window !== 'undefined' ? localStorage.getItem('imonex_selected_kode_ul') : '') || '').toUpperCase();
+  
+  if (!selectedUl && !selectedKode) {
+    return 'ENDANG WINARNINGSIH';
+  }
+  
+  if (selectedUl.includes('BUKITTINGGI') || selectedKode === 'BKT') {
+    return 'ENDANG WINARNINGSIH';
+  }
+  
+  return '';
+};
+
+/**
+ * Returns the active Unit Layanan name (e.g. 'UL BUKITTINGGI', 'UL PAYAKUMBUH', 'UL PADANG').
+ * Defaults to 'UL BUKITTINGGI'.
+ */
+const getInisiasiHeaderUL = (): string => {
+  const activeUnit = getInisiasiUnit();
+  let selectedUl = (activeUnit?.namaUL || (typeof window !== 'undefined' ? localStorage.getItem('imonex_selected_ul') : '') || '').trim().toUpperCase();
+  
+  if (!selectedUl) {
+    return 'UL BUKITTINGGI';
+  }
+  
+  if (selectedUl.startsWith('UL ')) {
+    return selectedUl;
+  }
+  
+  return `UL ${selectedUl}`;
+};
 
 const formatDriveUrl = (url?: string) => {
   if (!url) return '';
@@ -60,7 +96,7 @@ export const ReportService = {
     worksheet.getCell('A2').alignment = { horizontal: 'center' };
 
     worksheet.mergeCells('A3:L3');
-    worksheet.getCell('A3').value = 'TIM DIVISI INSPEKSI PLN ELECTRICITY SERVICES UL BUKITTINGGI';
+    worksheet.getCell('A3').value = `TIM DIVISI INSPEKSI PLN ELECTRICITY SERVICES ${getInisiasiHeaderUL()}`;
     worksheet.getCell('A3').font = { bold: true, size: 11 };
     worksheet.getCell('A3').alignment = { horizontal: 'center' };
 
@@ -141,7 +177,7 @@ export const ReportService = {
       ['JAM', ': 07.30 S/D 17.00 WIB'],
       ['PETUGAS', `: ${filters.inspektor1 || '-'}`],
       ['', `: ${filters.inspektor2 || '-'}`],
-      ['ADMINSPEKSI', ': ENDANG WINARNINGSIH']
+      ['ADMINSPEKSI', `: ${getAdmInspeksiSignature()}`]
     ];
 
     footerData.forEach(f => {
@@ -169,7 +205,7 @@ export const ReportService = {
     doc.text('LAPORAN BULANAN', 148, 15, { align: 'center' });
     doc.setFontSize(11);
     doc.text(`FOTO INSPEKSI TEMUAN KELAINAN KONTRUKSI ${String(filters.pekerjaan || 'SEMUA').replace(/Tier/g, 'TIER')}`, 148, 22, { align: 'center' });
-    doc.text('TIM DIVISI INSPEKSI PLN ELECTRICITY SERVICES UL BUKITTINGGI', 148, 28, { align: 'center' });
+    doc.text(`TIM DIVISI INSPEKSI PLN ELECTRICITY SERVICES ${getInisiasiHeaderUL()}`, 148, 28, { align: 'center' });
     
     const tableBody = data.map((item, i) => {
       const cleanEksekusiDate = item.tanggalEksekusi ? item.tanggalEksekusi.split(/[ T,]/)[0] : '-';
