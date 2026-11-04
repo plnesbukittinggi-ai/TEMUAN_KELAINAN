@@ -14,6 +14,7 @@ import { getDashboardInsights } from '../services/geminiService';
 import { ReportService } from '../services/ReportService';
 import { SpreadsheetService } from '../services/spreadsheetService';
 import { getDisplayImageUrl } from '../utils/image-utils';
+import DatabaseManagementView from './DatabaseManagementView';
 
 interface AdminPageProps {
   data: TemuanData[];
@@ -29,6 +30,7 @@ interface AdminPageProps {
   currentRole?: string;
   onBack: () => void;
   onInisiasi?: () => void;
+  onRefreshData?: () => void;
   onUpdateInspectors: (data: Inspector[]) => void;
   onUpdateUlp: (data: ULP[]) => void;
   onUpdateFeeders: (data: Feeder[]) => void;
@@ -69,11 +71,16 @@ const getDefaultRekapDates = () => {
 
 const AdminPage: React.FC<AdminPageProps> = ({ 
   data, ulpList, inspectors, feeders, yandalList, harList = [], rowList = [], pekerjaanList, keteranganList, marqueeMessages, currentRole, onBack,
-  onInisiasi, onUpdateInspectors, onUpdateUlp, onUpdateFeeders, onUpdateYandal, onUpdateMessages, onDeleteTemuans
+  onInisiasi, onRefreshData, onUpdateInspectors, onUpdateUlp, onUpdateFeeders, onUpdateYandal, onUpdateMessages, onDeleteTemuans
 }) => {
-  const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP' | 'REKAP_JENIS' | 'REKAP_YANDAL' | 'REKAP_HAR_ROW' | 'HAPUS_REALISASI'>('DASHBOARD');
+  const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP' | 'REKAP_JENIS' | 'REKAP_YANDAL' | 'REKAP_HAR_ROW' | 'HAPUS_REALISASI' | 'DATABASE'>('DASHBOARD');
   const [dataSubTab, setDataSubTab] = useState<'PLN_ES' | 'PLN'>('PLN_ES');
   
+  // Historical Database Integration State (Mode 2 & Bagian 9)
+  const [includeHistorical, setIncludeHistorical] = useState<boolean>(false);
+  const [historicalData, setHistoricalData] = useState<TemuanData[]>([]);
+  const [isLoadingHistorical, setIsLoadingHistorical] = useState<boolean>(false);
+
   // States for Hapus Realisasi Tab
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
@@ -506,8 +513,35 @@ const AdminPage: React.FC<AdminPageProps> = ({
     }).slice(0, 10);
   }, [dashboardData]);
 
+  const handleToggleHistorical = async () => {
+    if (!includeHistorical) {
+      if (historicalData.length === 0) {
+        setIsLoadingHistorical(true);
+        try {
+          const archive = await SpreadsheetService.fetchHistoricalData();
+          setHistoricalData(archive);
+        } catch (e) {
+          console.warn('Gagal memuat data historis:', e);
+        } finally {
+          setIsLoadingHistorical(false);
+        }
+      }
+      setIncludeHistorical(true);
+    } else {
+      setIncludeHistorical(false);
+    }
+  };
+
+  const effectiveData = useMemo(() => {
+    if (!includeHistorical || historicalData.length === 0) return data;
+    // Hindari duplikasi ID jika ada
+    const existingIds = new Set(data.map(d => d.id));
+    const uniqueHistorical = historicalData.filter(d => !existingIds.has(d.id));
+    return [...data, ...uniqueHistorical];
+  }, [data, historicalData, includeHistorical]);
+
   const filteredAndSortedData = useMemo(() => {
-    const filtered = data.filter(item => {
+    const filtered = effectiveData.filter(item => {
       // Sub-tab filter: DATA PLN ES is non-PLN inspector, DATA PLN is PLN inspector
       if (dataSubTab === 'PLN_ES' && item.inspektor1 === 'PLN') return false;
       if (dataSubTab === 'PLN' && item.inspektor1 !== 'PLN') return false;
@@ -539,7 +573,7 @@ const AdminPage: React.FC<AdminPageProps> = ({
       const dateB = parseRobustDate(b.tanggal).getTime();
       return dateA - dateB;
     });
-  }, [data, filterUlp, filterFeeder, filterPekerjaan, filterKeterangan, filterStatus, filterPriority, filterStartDate, filterEndDate, dataSubTab]);
+  }, [effectiveData, filterUlp, filterFeeder, filterPekerjaan, filterKeterangan, filterStatus, filterPriority, filterStartDate, filterEndDate, dataSubTab]);
 
   const handleDownloadExcel = async () => {
     if (filteredAndSortedData.length === 0) {
@@ -807,7 +841,8 @@ const AdminPage: React.FC<AdminPageProps> = ({
           { id: 'REKAP_HAR_ROW', label: 'REKAP HAR / ROW' },
           { id: 'DATA', label: 'DATA' },
           ...(currentRole === 'SUPER_ADMIN' ? [
-            { id: 'KELOLA', label: 'KELOLA' },
+            { id: 'DATABASE', label: 'DATABASE MANAGEMENT' },
+            { id: 'KELOLA', label: 'KELOLA MASTER' },
             { id: 'HAPUS_REALISASI', label: 'HAPUS REALISASI' }
           ] : [])
         ].map(t => (
@@ -1148,6 +1183,24 @@ const AdminPage: React.FC<AdminPageProps> = ({
               </select>
             </div>
           </div>
+
+          {/* AI Insight Card */}
+          {aiInsight && (
+            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-5 rounded-[2rem] shadow-xl border border-indigo-500/20 flex items-start gap-3.5">
+              <div className="p-2.5 bg-indigo-500/20 text-indigo-400 rounded-2xl flex-shrink-0 border border-indigo-400/20">
+                <Sparkles className="w-5 h-5 text-amber-300" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-300">AI Ringkasan Cerdas</p>
+                  <span className="px-2 py-0.5 text-[8px] font-bold bg-indigo-500/30 text-indigo-200 rounded-full">Gemini</span>
+                </div>
+                <p className="text-xs font-medium leading-relaxed text-slate-200">
+                  {aiInsight}
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             {tierStats.map(s => (
@@ -1631,9 +1684,42 @@ const AdminPage: React.FC<AdminPageProps> = ({
             </div>
             <button onClick={handleDownloadExcel} disabled={isExporting} className={`w-full py-4 rounded-2xl shadow-lg font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-3 ${isExporting ? 'bg-slate-200 text-slate-400' : 'bg-emerald-600 text-white active:scale-95'}`}>{isExporting ? '⏳ MENYIAPKAN FILE...' : '📗 DOWNLOAD LAPORAN EXCEL'}</button>
           </div>
+
+          {/* HISTORICAL DATA INTEGRATION TOGGLE (BAGIAN 9 & 11) */}
+          <div className="bg-indigo-50/70 border border-indigo-100 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                <Database className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-xs font-black text-indigo-950 uppercase tracking-tight">Integrasi Data Historis (Arsip)</span>
+                <p className="text-[10px] text-indigo-700 font-medium">
+                  {includeHistorical 
+                    ? `Menampilkan ${data.length} Data Aktif + ${historicalData.length} Data Arsip Database` 
+                    : 'Mode Cepat Aktif: Hanya memuat data dari Spreadsheet Aktif (Hemat Kuota)'}
+                </p>
+              </div>
+            </div>
+            
+            <button
+              type="button"
+              onClick={handleToggleHistorical}
+              disabled={isLoadingHistorical}
+              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-xs active:scale-95 shrink-0 ${
+                includeHistorical 
+                  ? 'bg-indigo-600 text-white' 
+                  : 'bg-white text-indigo-700 border border-indigo-200 hover:bg-indigo-100'
+              }`}
+            >
+              {isLoadingHistorical ? 'Memuat Arsip...' : (includeHistorical ? '✓ Mode Historis Aktif' : '+ Gabungkan Data Arsip')}
+            </button>
+          </div>
+
           <div className="space-y-3">
              <div className="flex justify-between items-center px-1">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Preview {filteredAndSortedData.length} Data Terbaru</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  Preview {filteredAndSortedData.length} Data Terbaru {includeHistorical && '(Termasuk Arsip)'}
+                </p>
              </div>
              {filteredAndSortedData.slice(0, 50).map((item, idx) => {
                 const itemDate = parseRobustDate(item.tanggal);
@@ -1655,7 +1741,18 @@ const AdminPage: React.FC<AdminPageProps> = ({
                    )}
                    <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start">
-                         <p className="text-[10px] font-black text-slate-900 truncate uppercase">{item.noTiang} • {item.feeder}</p>
+                         <div className="flex items-center gap-1.5 flex-wrap">
+                           <p className="text-[10px] font-black text-slate-900 truncate uppercase">{item.noTiang} • {item.feeder}</p>
+                           {item.sourceDatabaseSequence !== undefined && (
+                             <span className={`text-[7px] px-1.5 py-0.2 rounded font-black uppercase ${
+                               item.sourceDatabaseStatus === 'ARCHIVE' 
+                                 ? 'bg-slate-100 text-slate-600 border border-slate-200' 
+                                 : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                             }`}>
+                               DB {item.sourceDatabaseSequence < 10 ? `00${item.sourceDatabaseSequence}` : item.sourceDatabaseSequence}
+                             </span>
+                           )}
+                         </div>
                          <span className={`text-[7px] px-1.5 py-0.5 rounded font-black uppercase ${item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>{item.status.split(' ')[0]}</span>
                       </div>
                       <p className="text-[9px] font-bold text-red-500 mt-0.5 truncate uppercase">{item.keterangan}</p>
@@ -1693,6 +1790,14 @@ const AdminPage: React.FC<AdminPageProps> = ({
               )})}
           </div>
         </div>
+      )}
+
+      {/* DATABASE MANAGEMENT TAB (SUPER ADMIN) */}
+      {tab === 'DATABASE' && (
+        <DatabaseManagementView 
+          currentRole={currentRole} 
+          onRefreshParentData={onRefreshData} 
+        />
       )}
 
       {tab === 'KELOLA' && (
