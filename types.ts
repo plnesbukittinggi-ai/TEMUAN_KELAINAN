@@ -89,6 +89,11 @@ export interface TemuanData {
   HAR?: string;
   ROW?: string;
   Team_Tujuan?: string;
+  // Metadata for Automatic Rotation & Historical Database Integration
+  sourceSpreadsheetId?: string;
+  sourceDatabaseSequence?: number;
+  sourceDatabaseStatus?: 'ACTIVE' | 'ARCHIVE';
+  sourceDatabaseName?: string;
 }
 
 export interface LoginSession {
@@ -109,3 +114,83 @@ export interface InisiasiUnit {
   urlGAS: string;
   folderIdFoto: string;
 }
+
+export type DatabaseHealthStatus = 'NORMAL' | 'WARNING' | 'ROTATION_REQUIRED' | 'CRITICAL';
+
+export interface DatabaseRegistryItem {
+  ulId: string;
+  kodeUL: string;
+  namaUL: string;
+  databaseId: string;
+  databaseName: string;
+  databaseUrl: string;
+  databaseStatus: 'ACTIVE' | 'ARCHIVE' | 'ERROR';
+  sequence: number;
+  createdAt: string;
+  activatedAt: string;
+  archivedAt?: string;
+  totalRecords: number;
+  usedCells: number;
+  capacityPercent: number;
+  lastSync: string;
+}
+
+export interface RotationHistoryItem {
+  id: string;
+  ulId: string;
+  kodeUL: string;
+  namaUL: string;
+  previousDatabaseId: string;
+  previousDatabaseName: string;
+  newDatabaseId: string;
+  newDatabaseName: string;
+  timestamp: string;
+  capacityBefore: number;
+  triggeredBy: string;
+  status: 'SUCCESS' | 'FAILED';
+  errorMessage?: string;
+}
+
+export interface DatabaseCapacityInfo {
+  ulId: string;
+  kodeUL: string;
+  namaUL: string;
+  controllerDatabaseId: string;
+  activeDatabaseId: string;
+  activeDatabaseName: string;
+  activeDatabaseUrl: string;
+  totalSheets: number;
+  totalCellsAllocated: number;
+  totalCellsUsed: number;
+  capacityPercent: number;
+  maxCells: number; // 10,000,000
+  status: DatabaseHealthStatus;
+  warningThreshold: number; // default 80
+  rotationThreshold: number; // default 85
+  criticalThreshold: number; // default 95
+  autoRotationEnabled: boolean;
+  activeRecordsCount: number;
+  totalHistoricalRecordsCount: number;
+  totalDatabasesCount: number;
+  lastChecked: string;
+}
+
+export interface RotationSettings {
+  autoRotationEnabled?: boolean;
+  warningThreshold?: number;
+  rotationThreshold?: number;
+  criticalThreshold?: number;
+}
+
+export interface HistoricalFilterParams {
+  filterStartDate?: string;
+  filterEndDate?: string;
+  filterUlp?: string;
+  filterFeeder?: string;
+  filterStatus?: string;
+  filterPekerjaan?: string;
+  search?: string;
+  limit?: number;
+  page?: number;
+}
+
