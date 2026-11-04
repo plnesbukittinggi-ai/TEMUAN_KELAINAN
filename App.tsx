@@ -647,6 +647,7 @@ const App: React.FC = () => {
               onUpdateMessages={setMarqueeMessages}
               currentRole={session!.role}
               onDeleteTemuans={handleDeleteTemuans}
+              onRefreshData={() => refreshData(false)}
             />
           </div>
         );
