@@ -473,6 +473,7 @@ const App: React.FC = () => {
     setActiveUnit(finalUnit);
     setIsInitialized(true);
     setShowInisiasiPage(false);
+    setSession(null);
     setCustomUrlInput(effectiveUrl);
     setSpreadsheetUrl(effectiveUrl);
     setConnectionError(false);
