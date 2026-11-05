@@ -1,15 +1,15 @@
 
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    tailwindcss(),
+    react()
+  ],
   optimizeDeps: {
     include: ['react-leaflet', 'leaflet', '@react-leaflet/core', 'fabric']
-  },
-  define: {
-    'process.env.API_KEY': JSON.stringify(process.env.API_KEY || ''),
-    'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY || '')
   },
   server: {
     port: 3000
