@@ -65,21 +65,28 @@ const InisiasiPage: React.FC<InisiasiPageProps> = ({ onComplete, onBack }) => {
     setSelectedUnitId(unitId);
   };
 
-  const selectedUnit = units.find(u => u.id === selectedUnitId);
+  const selectedUnit = units.find(u => 
+    u.id === selectedUnitId || 
+    (u.namaUL && selectedUnitId && u.namaUL.toUpperCase() === selectedUnitId.toUpperCase()) || 
+    (u.kodeUL && selectedUnitId && u.kodeUL.toUpperCase() === selectedUnitId.toUpperCase())
+  ) || units[0];
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedUnit) {
+  const handleSubmit = (e?: React.FormEvent | React.MouseEvent) => {
+    if (e && e.preventDefault) {
+      e.preventDefault();
+    }
+    const unitToProcess = selectedUnit || units[0];
+    if (!unitToProcess) {
       alert('Silakan pilih Unit Layanan terlebih dahulu.');
       return;
     }
 
-    const effectiveUrl = (selectedUnit.urlGAS && selectedUnit.urlGAS.trim())
-      ? selectedUnit.urlGAS.trim()
+    const effectiveUrl = (unitToProcess.urlGAS && unitToProcess.urlGAS.trim())
+      ? unitToProcess.urlGAS.trim()
       : SPREADSHEET_WEB_APP_URL;
 
     const unitToSave: InisiasiUnit = {
-      ...selectedUnit,
+      ...unitToProcess,
       urlGAS: effectiveUrl
     };
 
@@ -93,7 +100,7 @@ const InisiasiPage: React.FC<InisiasiPageProps> = ({ onComplete, onBack }) => {
       if (typeof onComplete === 'function') {
         onComplete(unitToSave);
       }
-    }, 200);
+    }, 150);
   };
 
   return (
@@ -243,7 +250,8 @@ const InisiasiPage: React.FC<InisiasiPageProps> = ({ onComplete, onBack }) => {
             <div className="pt-2">
               <button
                 type="submit"
-                disabled={isSubmitting || isLoading || !selectedUnit}
+                onClick={(e) => handleSubmit(e)}
+                disabled={isSubmitting || isLoading || (!selectedUnit && units.length === 0)}
                 className="w-full py-3.5 bg-[#002d59] hover:bg-[#002244] text-white font-bold rounded-xl shadow-md active:scale-[0.99] transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isSubmitting ? (
