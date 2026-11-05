@@ -29,7 +29,7 @@ export const INITIAL_INISIASI_UNITS: InisiasiUnit[] = [
     kodeUL: 'SLK',
     namaUL: 'UL SOLOK',
     idSpreadsheet: '',
-    urlGAS: '',
+    urlGAS: 'https://script.google.com/macros/s/AKfycbw_8wCUk4EZcTVwxG3oryedtEEOc24glOKgpug5zPY3S3E7QuDXuzohnMpp_W_jajIN/exec',
     folderIdFoto: ''
   },
   {
