@@ -41,7 +41,7 @@ export const setSpreadsheetUrl = (url: string): void => {
 
 export const isAppInitialized = (): boolean => {
   if (typeof window === 'undefined') return false;
-  return localStorage.getItem('imonex_is_initialized') === 'true' && !!localStorage.getItem('imonex_spreadsheet_url');
+  return localStorage.getItem('imonex_is_initialized') === 'true';
 };
 
 export const getInisiasiUnit = (): InisiasiUnit | null => {
@@ -59,9 +59,11 @@ export const getInisiasiUnit = (): InisiasiUnit | null => {
 
 export const saveInisiasiUnit = (unit: InisiasiUnit): void => {
   if (typeof window === 'undefined') return;
+  const effectiveUrl = (unit.urlGAS && unit.urlGAS.trim()) ? unit.urlGAS.trim() : SPREADSHEET_WEB_APP_URL;
+  const unitToSave = { ...unit, urlGAS: effectiveUrl };
   localStorage.setItem('imonex_is_initialized', 'true');
-  localStorage.setItem('imonex_inisiasi_unit', JSON.stringify(unit));
-  localStorage.setItem('imonex_spreadsheet_url', unit.urlGAS || '');
+  localStorage.setItem('imonex_inisiasi_unit', JSON.stringify(unitToSave));
+  localStorage.setItem('imonex_spreadsheet_url', effectiveUrl);
   localStorage.setItem('imonex_spreadsheet_id', unit.idSpreadsheet || '');
   localStorage.setItem('imonex_folder_id', unit.folderIdFoto || '');
   localStorage.setItem('imonex_selected_ul', unit.namaUL || '');
