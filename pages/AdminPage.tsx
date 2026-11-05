@@ -1,268 +1,2311 @@
-import React, { useState, useEffect } from 'react';
-import { InisiasiUnit } from '../types';
-import { fetchInisiasiUnits, saveInisiasiUnit, getInisiasiUnit } from '../services/spreadsheetService';
-import { Database, Building2, CheckCircle2, AlertCircle, RefreshCw, ArrowRight, Sparkles } from 'lucide-react';
 
-interface InisiasiPageProps {
-  onComplete: (unit: InisiasiUnit) => void;
-  onBack?: () => void;
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  PieChart, 
+  Pie, 
+  Cell, 
+  ResponsiveContainer, 
+  Tooltip 
+} from 'recharts';
+import { TemuanData, ULP, Inspector, Feeder, Pekerjaan, Keterangan, Yandal, Har, Row, MarqueeMessage } from '../types';
+import { Database, Sparkles } from 'lucide-react';
+import { getDashboardInsights } from '../services/geminiService';
+// Fixed casing: Using ReportService (PascalCase) to match consolidated file.
+import { ReportService } from '../services/ReportService';
+import { SpreadsheetService } from '../services/spreadsheetService';
+import { getDisplayImageUrl } from '../utils/image-utils';
+import DatabaseManagementView from './DatabaseManagementView';
+
+interface AdminPageProps {
+  data: TemuanData[];
+  ulpList: ULP[];
+  inspectors: Inspector[];
+  feeders: Feeder[];
+  yandalList: Yandal[];
+  harList: Har[];
+  rowList: Row[];
+  pekerjaanList: Pekerjaan[];
+  keteranganList: Keterangan[];
+  marqueeMessages: MarqueeMessage[];
+  currentRole?: string;
+  onBack: () => void;
+  onInisiasi?: () => void;
+  onRefreshData?: () => void;
+  onUpdateInspectors: (data: Inspector[]) => void;
+  onUpdateUlp: (data: ULP[]) => void;
+  onUpdateFeeders: (data: Feeder[]) => void;
+  onUpdateYandal: (data: Yandal[]) => void;
+  onUpdateMessages: (data: MarqueeMessage[]) => void;
+  onDeleteTemuans?: (ids: string[]) => Promise<boolean>;
 }
 
-const RAW_LOGO_URL = "https://drive.google.com/file/d/1W_q1EgEvSsFH0d1bc7QtzbeOozfW9DtR/view?usp=sharing";
+const MONTHS = [
+  { val: 1, label: 'Januari' }, { val: 2, label: 'Februari' }, { val: 3, label: 'Maret' },
+  { val: 4, label: 'April' }, { val: 5, label: 'Mei' }, { val: 6, label: 'Juni' },
+  { val: 7, label: 'Juli' }, { val: 8, label: 'Agustus' }, { val: 9, label: 'September' },
+  { val: 10, label: 'Oktober' }, { val: 11, label: 'November' }, { val: 12, label: 'Desember' }
+];
 
-const getDirectImageUrl = (url: string) => {
-  if (url.includes('drive.google.com/file/d/')) {
-    const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-    if (match && match[1]) {
-      return `https://lh3.googleusercontent.com/d/${match[1]}`;
-    }
-  }
-  return url;
+const getDefaultRekapDates = () => {
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  
+  const formatDate = (date: Date) => {
+    const d = new Date(date);
+    let month = '' + (d.getMonth() + 1);
+    let day = '' + d.getDate();
+    const year = d.getFullYear();
+
+    if (month.length < 2) month = '0' + month;
+    if (day.length < 2) day = '0' + day;
+
+    return [year, month, day].join('-');
+  };
+
+  return {
+    start: formatDate(firstDay),
+    end: formatDate(lastDay)
+  };
 };
 
-const LOGO_URL = getDirectImageUrl(RAW_LOGO_URL);
+const AdminPage: React.FC<AdminPageProps> = ({ 
+  data, ulpList, inspectors, feeders, yandalList, harList = [], rowList = [], pekerjaanList, keteranganList, marqueeMessages, currentRole, onBack,
+  onInisiasi, onRefreshData, onUpdateInspectors, onUpdateUlp, onUpdateFeeders, onUpdateYandal, onUpdateMessages, onDeleteTemuans
+}) => {
+  const [tab, setTab] = useState<'DATA' | 'KELOLA' | 'DASHBOARD' | 'REKAP' | 'REKAP_JENIS' | 'REKAP_YANDAL' | 'REKAP_HAR_ROW' | 'HAPUS_REALISASI' | 'DATABASE'>('DASHBOARD');
+  const [dataSubTab, setDataSubTab] = useState<'PLN_ES' | 'PLN'>('PLN_ES');
+  
+  // Historical Database Integration State (Mode 2 & Bagian 9)
+  const [includeHistorical, setIncludeHistorical] = useState<boolean>(false);
+  const [historicalData, setHistoricalData] = useState<TemuanData[]>([]);
+  const [isLoadingHistorical, setIsLoadingHistorical] = useState<boolean>(false);
 
-const InisiasiPage: React.FC<InisiasiPageProps> = ({ onComplete, onBack }) => {
-  const [units, setUnits] = useState<InisiasiUnit[]>([]);
-  const [selectedUnitId, setSelectedUnitId] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [errorMsg, setErrorMsg] = useState<string>('');
-  const [logoError, setLogoError] = useState<boolean>(false);
+  // States for Hapus Realisasi Tab
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [deleteSearch, setDeleteSearch] = useState('');
+  const [deleteUlpFilter, setDeleteUlpFilter] = useState('');
+  const [deleteStatusFilter, setDeleteStatusFilter] = useState('');
+  const [deleteDateFilter, setDeleteDateFilter] = useState('');
+  const [aiInsight, setAiInsight] = useState<string>('Menganalisis performa data...');
+  
+  const [dashFilterMonth, setDashFilterMonth] = useState<number>(new Date().getMonth() + 1);
+  const [dashFilterYear, setDashFilterYear] = useState<number>(new Date().getFullYear());
+  const [dashFilterUlp, setDashFilterUlp] = useState<string>('');
+  const [dashFilterPekerjaan, setDashFilterPekerjaan] = useState<string>('');
 
-  const loadData = async () => {
-    setIsLoading(true);
-    setErrorMsg('');
+  const initialRekapDates = getDefaultRekapDates();
+  const [rekapStartDate, setRekapStartDate] = useState<string>(initialRekapDates.start);
+  const [rekapEndDate, setRekapEndDate] = useState<string>(initialRekapDates.end);
+
+  // Filters for Rekap Jenis Temuan
+  const [rekapJenisStartDate, setRekapJenisStartDate] = useState<string>(initialRekapDates.start);
+  const [rekapJenisEndDate, setRekapJenisEndDate] = useState<string>(initialRekapDates.end);
+  const [rekapJenisPekerjaan, setRekapJenisPekerjaan] = useState<string>('');
+  const [rekapJenisUlp, setRekapJenisUlp] = useState<string>('');
+  const [rekapJenisFeeder, setRekapJenisFeeder] = useState<string>('');
+  const [rekapJenisStatus, setRekapJenisStatus] = useState<string>('');
+  
+  // Filters for Rekap Yandal
+  const [rekapYandalUlp, setRekapYandalUlp] = useState<string>('');
+  const [rekapYandalStartDate, setRekapYandalStartDate] = useState<string>(initialRekapDates.start);
+  const [rekapYandalEndDate, setRekapYandalEndDate] = useState<string>(initialRekapDates.end);
+
+  // Filters for Rekap HAR/ROW
+  const [rekapHarRowUlp, setRekapHarRowUlp] = useState<string>('');
+  const [rekapHarRowStartDate, setRekapHarRowStartDate] = useState<string>(initialRekapDates.start);
+  const [rekapHarRowEndDate, setRekapHarRowEndDate] = useState<string>(initialRekapDates.end);
+
+  const [filterUlp, setFilterUlp] = useState<string>('');
+  const [filterFeeder, setFilterFeeder] = useState<string>('');
+  const [filterPekerjaan, setFilterPekerjaan] = useState<string>('');
+  const [filterKeterangan, setFilterKeterangan] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [filterPriority, setFilterPriority] = useState<string>('');
+  const [filterStartDate, setFilterStartDate] = useState<string>('');
+  const [filterEndDate, setFilterEndDate] = useState<string>('');
+  const [isExporting, setIsExporting] = useState(false);
+
+  const [subTab, setSubTab] = useState<'INSPEKTOR' | 'ULP' | 'FEEDER' | 'YANDAL' | 'MESSAGE'>('INSPEKTOR');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'ADD' | 'EDIT'>('ADD');
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [formData, setFormData] = useState<any>({ name: '', ulpId: '', isActive: true });
+  const [isSaving, setIsSaving] = useState(false);
+
+  // State for Rekap Jenis Detail Popup
+  const [detailPopup, setDetailPopup] = useState<{
+    keterangan: string;
+    status: string;
+    data: TemuanData[];
+  } | null>(null);
+
+  const parseRobustDate = (dateStr: any): Date => {
+    if (!dateStr) return new Date(0);
+    if (dateStr instanceof Date) return dateStr;
+    const s = String(dateStr).trim();
+    const nativeDate = new Date(s);
+    if (!isNaN(nativeDate.getTime())) return nativeDate;
+
     try {
-      const data = await fetchInisiasiUnits();
-      setUnits(data);
-      
-      const existing = getInisiasiUnit();
-      if (existing && data.some(u => u.namaUL === existing.namaUL || u.id === existing.id)) {
-        const found = data.find(u => u.namaUL === existing.namaUL || u.id === existing.id);
-        if (found) {
-          setSelectedUnitId(found.id);
+      const clean = s.replace('pukul ', '').replace(/\./g, ':');
+      const parts = clean.split(',');
+      const dPart = parts[0].trim();
+      const dParts = dPart.split(/[\/\-]/);
+      if (dParts.length === 3) {
+        const day = parseInt(dParts[0], 10);
+        const month = parseInt(dParts[1], 10) - 1;
+        const year = parseInt(dParts[2], 10);
+        const tPart = parts[1] ? parts[1].trim() : null;
+        if (tPart) {
+          const tParts = tPart.split(':');
+          return new Date(year, month, day, parseInt(tParts[0] || '0'), parseInt(tParts[1] || '0'), parseInt(tParts[2] || '0'));
         }
-      } else if (data.length > 0) {
-        // Default select first available with GAS
-        const withGas = data.find(u => u.urlGAS && u.urlGAS.trim()) || data[0];
-        setSelectedUnitId(withGas.id);
+        return new Date(year, month, day);
       }
-    } catch (err: any) {
-      console.error("Error loading inisiasi units:", err);
-      setErrorMsg('Gagal membaca data inisiasi dari Spreadsheet. Menggunakan daftar cadangan.');
-    } finally {
-      setIsLoading(false);
+    } catch (e) { return new Date(0); }
+    return new Date(0);
+  };
+
+  const handleReset = () => {
+    const dates = getDefaultRekapDates();
+    setRekapStartDate(dates.start);
+    setRekapEndDate(dates.end);
+  };
+
+  const handleShowDetail = (keterangan: string, status: string | 'ALL') => {
+    const filtered = data.filter(item => {
+      const dDate = parseRobustDate(item.tanggal);
+      
+      let matchDate = true;
+      if (rekapJenisStartDate) {
+        const start = new Date(rekapJenisStartDate);
+        start.setHours(0,0,0,0);
+        if (dDate < start) matchDate = false;
+      }
+      if (rekapJenisEndDate) {
+        const end = new Date(rekapJenisEndDate);
+        end.setHours(23,59,59,999);
+        if (dDate > end) matchDate = false;
+      }
+
+      const matchPekerjaan = !rekapJenisPekerjaan || item.pekerjaan === rekapJenisPekerjaan;
+      const matchUlp = !rekapJenisUlp || item.ulp === rekapJenisUlp;
+      const matchFeeder = !rekapJenisFeeder || item.feeder === rekapJenisFeeder;
+      const matchStatusFilter = !rekapJenisStatus || item.status === rekapJenisStatus;
+      
+      const matchKeterangan = (item.keterangan || 'Tanpa Keterangan') === keterangan;
+      
+      let matchStatus = false;
+      if (status === 'ALL') matchStatus = true;
+      else if (status === 'BELUM EKSEKUSI') matchStatus = item.status === 'BELUM EKSEKUSI';
+      else if (status === 'SUDAH EKSEKUSI') matchStatus = item.status === 'SUDAH EKSEKUSI';
+      else if (status === 'BUTUH PADAM') matchStatus = item.status === 'BUTUH PADAM';
+      else if (status === 'TIDAK DAPAT IZIN') matchStatus = item.status === 'TIDAK DAPAT IZIN';
+      else if (status === 'KENDALA MATERIAL') matchStatus = item.status === 'KENDALA MATERIAL';
+      
+      return matchDate && matchPekerjaan && matchUlp && matchFeeder && matchStatusFilter && matchKeterangan && matchStatus;
+    });
+    
+    setDetailPopup({ keterangan, status, data: filtered });
+  };
+
+  const dashboardData = useMemo(() => {
+    return data.filter(d => {
+      const dDate = parseRobustDate(d.tanggal);
+      const matchMonth = dDate.getMonth() + 1 === dashFilterMonth;
+      const matchYear = dDate.getFullYear() === dashFilterYear;
+      const matchUlp = !dashFilterUlp || d.ulp === dashFilterUlp;
+      const matchPek = !dashFilterPekerjaan || d.pekerjaan === dashFilterPekerjaan;
+      return matchMonth && matchYear && matchUlp && matchPek;
+    });
+  }, [data, dashFilterMonth, dashFilterYear, dashFilterUlp, dashFilterPekerjaan]);
+
+  const statusSummary = useMemo(() => {
+    const counts = {
+      'BELUM EKSEKUSI': 0,
+      'SUDAH EKSEKUSI': 0,
+      'BUTUH PADAM': 0,
+      'TIDAK DAPAT IZIN': 0,
+      'KENDALA MATERIAL': 0,
+    };
+    dashboardData.forEach(d => {
+      if (counts[d.status as keyof typeof counts] !== undefined) {
+        counts[d.status as keyof typeof counts]++;
+      }
+    });
+    
+    const chartData = [
+      { name: 'Belum Eksekusi', value: counts['BELUM EKSEKUSI'], color: '#6366f1' },
+      { name: 'Sudah Eksekusi', value: counts['SUDAH EKSEKUSI'], color: '#10b981' },
+      { name: 'Butuh Padam', value: counts['BUTUH PADAM'], color: '#f59e0b' },
+      { name: 'Tidak Izin', value: counts['TIDAK DAPAT IZIN'] || 0, color: '#ea580c' },
+      { name: 'Kendala Material', value: counts['KENDALA MATERIAL'], color: '#ef4444' }
+    ].filter(item => item.value > 0);
+
+    return { chartData, counts, total: dashboardData.length };
+  }, [dashboardData]);
+
+  const rekapData = useMemo(() => {
+    const counts: Record<string, { inspektor: string, ulp: string, feeder: string, pekerjaan: string, total: number }> = {};
+    data.forEach(item => {
+      const dDate = parseRobustDate(item.tanggal);
+      if (rekapStartDate) {
+        const start = new Date(rekapStartDate);
+        start.setHours(0,0,0,0);
+        if (dDate < start) return;
+      }
+      if (rekapEndDate) {
+        const end = new Date(rekapEndDate);
+        end.setHours(23,59,59,999);
+        if (dDate > end) return;
+      }
+      const inspectorArray = [item.inspektor1, item.inspektor2].filter(Boolean).sort();
+      const combinedInspectors = inspectorArray.join(' & ');
+      const key = `${combinedInspectors}|${item.ulp}|${item.feeder}|${item.pekerjaan}`;
+      if (!counts[key]) {
+        counts[key] = { inspektor: combinedInspectors || 'Tanpa Nama', ulp: item.ulp || '-', feeder: item.feeder || '-', pekerjaan: item.pekerjaan || '-', total: 0 };
+      }
+      counts[key].total++;
+    });
+    return Object.values(counts).sort((a, b) => a.inspektor.localeCompare(b.inspektor));
+  }, [data, rekapStartDate, rekapEndDate]);
+
+  const rekapYandalData = useMemo(() => {
+    const counts: Record<string, { name: string, ulp: string, total: number, period: string }> = {};
+    
+    data.forEach(item => {
+      if (item.status !== 'SUDAH EKSEKUSI') return;
+      
+      const dDate = parseRobustDate(item.tanggalEksekusi || item.tanggal);
+      
+      if (rekapYandalStartDate) {
+        const start = new Date(rekapYandalStartDate);
+        start.setHours(0,0,0,0);
+        if (dDate < start) return;
+      }
+      if (rekapYandalEndDate) {
+        const end = new Date(rekapYandalEndDate);
+        end.setHours(23,59,59,999);
+        if (dDate > end) return;
+      }
+      
+      if (rekapYandalUlp && item.ulp !== rekapYandalUlp) return;
+
+      const monthName = MONTHS[dDate.getMonth()].label;
+      const year = dDate.getFullYear();
+      const period = `${monthName} ${year}`;
+
+      const yandals = [item.namaYandal1, item.namaYandal2].filter(Boolean) as string[];
+      
+      yandals.forEach(name => {
+        const key = `${name}|${item.ulp}|${period}`;
+        if (!counts[key]) {
+          counts[key] = { name, ulp: item.ulp || '-', total: 0, period };
+        }
+        counts[key].total++;
+      });
+    });
+
+    return Object.values(counts).sort((a, b) => b.total - a.total);
+  }, [data, rekapYandalStartDate, rekapYandalEndDate, rekapYandalUlp]);
+
+  const rekapRowData = useMemo(() => {
+    const counts: Record<string, { name: string, total: number, period: string }> = {};
+    
+    data.forEach(item => {
+      if (item.status !== 'SUDAH EKSEKUSI') return;
+      if (!item.ROW) return;
+      
+      const dDate = parseRobustDate(item.tanggalEksekusi || item.tanggal);
+      
+      if (rekapHarRowStartDate) {
+        const start = new Date(rekapHarRowStartDate);
+        start.setHours(0,0,0,0);
+        if (dDate < start) return;
+      }
+      if (rekapHarRowEndDate) {
+        const end = new Date(rekapHarRowEndDate);
+        end.setHours(23,59,59,999);
+        if (dDate > end) return;
+      }
+      
+      if (rekapHarRowUlp && item.ulp !== rekapHarRowUlp) return;
+
+      const monthName = MONTHS[dDate.getMonth()]?.label || 'Desember';
+      const year = dDate.getFullYear();
+      const period = `${monthName} ${year}`;
+
+      const name = item.ROW.trim();
+      if (!name) return;
+
+      const key = `${name}|${period}`;
+      if (!counts[key]) {
+        counts[key] = { name, total: 0, period };
+      }
+      counts[key].total++;
+    });
+
+    return Object.values(counts).sort((a, b) => b.total - a.total);
+  }, [data, rekapHarRowStartDate, rekapHarRowEndDate, rekapHarRowUlp]);
+
+  const rekapHarData = useMemo(() => {
+    const counts: Record<string, { name: string, total: number, period: string }> = {};
+    
+    data.forEach(item => {
+      if (item.status !== 'SUDAH EKSEKUSI') return;
+      if (!item.HAR) return;
+      
+      const dDate = parseRobustDate(item.tanggalEksekusi || item.tanggal);
+      
+      if (rekapHarRowStartDate) {
+        const start = new Date(rekapHarRowStartDate);
+        start.setHours(0,0,0,0);
+        if (dDate < start) return;
+      }
+      if (rekapHarRowEndDate) {
+        const end = new Date(rekapHarRowEndDate);
+        end.setHours(23,59,59,999);
+        if (dDate > end) return;
+      }
+      
+      if (rekapHarRowUlp && item.ulp !== rekapHarRowUlp) return;
+
+      const monthName = MONTHS[dDate.getMonth()]?.label || 'Desember';
+      const year = dDate.getFullYear();
+      const period = `${monthName} ${year}`;
+
+      const name = item.HAR.trim();
+      if (!name) return;
+
+      const key = `${name}|${period}`;
+      if (!counts[key]) {
+        counts[key] = { name, total: 0, period };
+      }
+      counts[key].total++;
+    });
+
+    return Object.values(counts).sort((a, b) => b.total - a.total);
+  }, [data, rekapHarRowStartDate, rekapHarRowEndDate, rekapHarRowUlp]);
+
+  // Logic for Rekap Jenis Temuan
+  const rekapJenisData = useMemo(() => {
+    const counts: Record<string, { 
+      keterangan: string, 
+      total: number, 
+      belum: number, 
+      sudah: number, 
+      padam: number, 
+      tidakIzin: number, 
+      kendala: number 
+    }> = {};
+
+    data.forEach(item => {
+      const dDate = parseRobustDate(item.tanggal);
+      
+      let matchDate = true;
+      if (rekapJenisStartDate) {
+        const start = new Date(rekapJenisStartDate);
+        start.setHours(0,0,0,0);
+        if (dDate < start) matchDate = false;
+      }
+      if (rekapJenisEndDate) {
+        const end = new Date(rekapJenisEndDate);
+        end.setHours(23,59,59,999);
+        if (dDate > end) matchDate = false;
+      }
+
+      const matchPekerjaan = !rekapJenisPekerjaan || item.pekerjaan === rekapJenisPekerjaan;
+      const matchUlp = !rekapJenisUlp || item.ulp === rekapJenisUlp;
+      const matchFeeder = !rekapJenisFeeder || item.feeder === rekapJenisFeeder;
+      const matchStatusFilter = !rekapJenisStatus || item.status === rekapJenisStatus;
+
+      if (matchDate && matchPekerjaan && matchUlp && matchFeeder && matchStatusFilter) {
+        const key = item.keterangan || 'Tanpa Keterangan';
+        if (!counts[key]) {
+          counts[key] = { keterangan: key, total: 0, belum: 0, sudah: 0, padam: 0, tidakIzin: 0, kendala: 0 };
+        }
+        counts[key].total++;
+        if (item.status === 'BELUM EKSEKUSI') counts[key].belum++;
+        else if (item.status === 'SUDAH EKSEKUSI') counts[key].sudah++;
+        else if (item.status === 'BUTUH PADAM') counts[key].padam++;
+        else if (item.status === 'TIDAK DAPAT IZIN') counts[key].tidakIzin++;
+        else if (item.status === 'KENDALA MATERIAL') counts[key].kendala++;
+      }
+    });
+
+    return Object.values(counts).sort((a, b) => b.total - a.total);
+  }, [data, rekapJenisStartDate, rekapJenisEndDate, rekapJenisPekerjaan, rekapJenisUlp, rekapJenisFeeder, rekapJenisStatus]);
+
+  // Filter feeders to show only those that have findings in current period for Rekap Jenis filter
+  const feedersWithDataForRekapJenis = useMemo(() => {
+    const unique = new Set<string>();
+    data.forEach(item => {
+      const dDate = parseRobustDate(item.tanggal);
+      
+      let matchDate = true;
+      if (rekapJenisStartDate) {
+        const start = new Date(rekapJenisStartDate);
+        start.setHours(0,0,0,0);
+        if (dDate < start) matchDate = false;
+      }
+      if (rekapJenisEndDate) {
+        const end = new Date(rekapJenisEndDate);
+        end.setHours(23,59,59,999);
+        if (dDate > end) matchDate = false;
+      }
+
+      const matchPekerjaan = !rekapJenisPekerjaan || item.pekerjaan === rekapJenisPekerjaan;
+      const matchUlp = !rekapJenisUlp || item.ulp === rekapJenisUlp;
+      
+      if (matchDate && matchPekerjaan && matchUlp) {
+        if (item.feeder) unique.add(item.feeder);
+      }
+    });
+    return Array.from(unique).sort();
+  }, [data, rekapJenisStartDate, rekapJenisEndDate, rekapJenisPekerjaan, rekapJenisUlp]);
+
+  useEffect(() => {
+    if (tab === 'DASHBOARD' && dashboardData.length > 0) {
+      getDashboardInsights(dashboardData).then(setAiInsight);
+    } else if (tab === 'DASHBOARD') {
+      setAiInsight("Tidak ada data temuan untuk periode yang dipilih.");
     }
+  }, [tab, dashboardData]);
+
+  const tierStats = useMemo(() => {
+    const getStats = (name: string) => {
+      const items = dashboardData.filter(d => d.pekerjaan === name);
+      const total = items.length;
+      const done = items.filter(d => 
+        d.status === 'SUDAH EKSEKUSI' || 
+        d.status === 'BUTUH PADAM' || 
+        d.status === 'TIDAK DAPAT IZIN' || 
+        d.status === 'KENDALA MATERIAL'
+      ).length;
+      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+      return { total, done, pct };
+    };
+    return [
+      { label: 'JTM TIER 1', ...getStats('JTM TIER 1'), barColor: 'bg-white', bgColor: 'bg-blue-600', borderColor: 'border-blue-700', textColor: 'text-white', labelColor: 'text-blue-100' },
+      { label: 'JTM TIER 1 & 2', ...getStats('JTM TIER 1 & 2'), barColor: 'bg-white', bgColor: 'bg-indigo-700', borderColor: 'border-indigo-800', textColor: 'text-white', labelColor: 'text-indigo-100' },
+      { label: 'GARDU TIER 1', ...getStats('GARDU TIER 1'), barColor: 'bg-slate-900', bgColor: 'bg-amber-500', borderColor: 'border-amber-600', textColor: 'text-slate-900', labelColor: 'text-amber-900' },
+      { label: 'GARDU TIER 1 & 2', ...getStats('GARDU TIER 1 & 2'), barColor: 'bg-slate-900', bgColor: 'bg-yellow-400', borderColor: 'border-yellow-500', textColor: 'text-slate-900', labelColor: 'text-yellow-900' }
+    ];
+  }, [dashboardData]);
+
+  const topTenFeeders = useMemo(() => {
+    const counts: Record<string, { name: string, total: number, done: number }> = {};
+    const selesaiStatuses = ['SUDAH EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN', 'KENDALA MATERIAL'];
+    
+    dashboardData.forEach(item => {
+      const name = item.feeder || 'Tanpa Feeder';
+      if (!counts[name]) counts[name] = { name, total: 0, done: 0 };
+      counts[name].total++;
+      if (selesaiStatuses.includes(item.status)) counts[name].done++;
+    });
+    return Object.values(counts).sort((a, b) => {
+      const pctA = a.total > 0 ? a.done / a.total : 0;
+      const pctB = b.total > 0 ? b.done / b.total : 0;
+      if (pctB !== pctA) return pctB - pctA;
+      return b.total - a.total;
+    }).slice(0, 10);
+  }, [dashboardData]);
+
+  const handleToggleHistorical = async () => {
+    if (!includeHistorical) {
+      if (historicalData.length === 0) {
+        setIsLoadingHistorical(true);
+        try {
+          const archive = await SpreadsheetService.fetchHistoricalData();
+          setHistoricalData(archive);
+        } catch (e) {
+          console.warn('Gagal memuat data historis:', e);
+        } finally {
+          setIsLoadingHistorical(false);
+        }
+      }
+      setIncludeHistorical(true);
+    } else {
+      setIncludeHistorical(false);
+    }
+  };
+
+  const effectiveData = useMemo(() => {
+    if (!includeHistorical || historicalData.length === 0) return data;
+    // Hindari duplikasi ID jika ada
+    const existingIds = new Set(data.map(d => d.id));
+    const uniqueHistorical = historicalData.filter(d => !existingIds.has(d.id));
+    return [...data, ...uniqueHistorical];
+  }, [data, historicalData, includeHistorical]);
+
+  const filteredAndSortedData = useMemo(() => {
+    const filtered = effectiveData.filter(item => {
+      // Sub-tab filter: DATA PLN ES is non-PLN inspector, DATA PLN is PLN inspector
+      if (dataSubTab === 'PLN_ES' && item.inspektor1 === 'PLN') return false;
+      if (dataSubTab === 'PLN' && item.inspektor1 !== 'PLN') return false;
+
+      const matchUlp = !filterUlp || item.ulp === filterUlp;
+      const matchFeeder = !filterFeeder || item.feeder === filterFeeder;
+      const matchPekerjaan = !filterPekerjaan || item.pekerjaan === filterPekerjaan;
+      const matchKeterangan = !filterKeterangan || item.keterangan === filterKeterangan;
+      const matchStatus = !filterStatus || item.status === filterStatus;
+      const matchPriority = !filterPriority || String(item.prioritas) === filterPriority;
+      const itemDate = parseRobustDate(item.tanggal);
+      let matchDate = true;
+      if (filterStartDate) {
+        const start = new Date(filterStartDate);
+        start.setHours(0,0,0,0);
+        if (itemDate < start) matchDate = false;
+      }
+      if (filterEndDate) {
+        const end = new Date(filterEndDate);
+        end.setHours(23,59,59,999);
+        if (itemDate > end) matchDate = false;
+      }
+      return matchUlp && matchFeeder && matchPekerjaan && matchKeterangan && matchStatus && matchPriority && matchDate;
+    });
+    
+    // Sort by Date (Oldest First)
+    return filtered.sort((a, b) => {
+      const dateA = parseRobustDate(a.tanggal).getTime();
+      const dateB = parseRobustDate(b.tanggal).getTime();
+      return dateA - dateB;
+    });
+  }, [effectiveData, filterUlp, filterFeeder, filterPekerjaan, filterKeterangan, filterStatus, filterPriority, filterStartDate, filterEndDate, dataSubTab]);
+
+  const handleDownloadExcel = async () => {
+    if (filteredAndSortedData.length === 0) {
+      alert("Tidak ada data untuk diunduh sesuai filter terpilih.");
+      return;
+    }
+    setIsExporting(true);
+    try {
+      // Use the already sorted data
+      const sortedForExport = [...filteredAndSortedData];
+      const firstDataDate = parseRobustDate(sortedForExport[0]?.tanggal);
+      const monthLabel = MONTHS.find(m => m.val === (firstDataDate.getMonth() + 1))?.label || 'Unknown';
+      const yearLabel = firstDataDate.getFullYear();
+      const displayMonth = `${monthLabel} ${yearLabel}`;
+
+      const filters = { 
+        ulp: filterUlp || 'SEMUA UNIT', 
+        feeder: filterFeeder || 'SEMUA FEEDER', 
+        pekerjaan: filterPekerjaan || 'SEMUA PEKERJAAN', 
+        bulan: displayMonth, 
+        inspektor1: sortedForExport[0]?.inspektor1 || '-', 
+        inspektor2: sortedForExport[0]?.inspektor2 || '-' 
+      };
+      
+      await ReportService.downloadExcel(sortedForExport, filters);
+    } catch (error) {
+      console.error(error);
+      alert("Gagal mengunduh file Excel.");
+    } finally { setIsExporting(false); }
+  };
+
+  const handleExportYandalExcel = async () => {
+    if (rekapYandalData.length === 0) {
+      alert("Tidak ada data rekap Yandal untuk diexport.");
+      return;
+    }
+    setIsExporting(true);
+    try {
+      const filters = {
+        start: rekapYandalStartDate,
+        end: rekapYandalEndDate,
+        ulp: rekapYandalUlp
+      };
+      await ReportService.downloadYandalExcel(rekapYandalData, filters);
+    } catch (error) {
+      console.error(error);
+      alert("Gagal mengunduh file Excel Rekap Yandal.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportJenisExcel = async () => {
+    if (rekapJenisData.length === 0) {
+      alert("Tidak ada data rekap jenis temuan untuk diexport.");
+      return;
+    }
+    setIsExporting(true);
+    try {
+      const filters = {
+        start: rekapJenisStartDate,
+        end: rekapJenisEndDate,
+        pekerjaan: rekapJenisPekerjaan,
+        ulp: rekapJenisUlp,
+        feeder: rekapJenisFeeder,
+        status: rekapJenisStatus
+      };
+      await ReportService.downloadJenisExcel(rekapJenisData, filters);
+    } catch (error) {
+      console.error(error);
+      alert("Gagal mengunduh file Excel Rekap Jenis Temuan.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
+
+  const resetDataFilters = () => {
+    setFilterUlp('');
+    setFilterFeeder('');
+    setFilterPekerjaan('');
+    setFilterKeterangan('');
+    setFilterStatus('');
+    setFilterPriority('');
+    setFilterStartDate('');
+    setFilterEndDate('');
   };
 
   useEffect(() => {
-    loadData();
-  }, []);
+    setFilterKeterangan('');
+  }, [filterPekerjaan]);
 
-  const handleSelectUnit = (unitId: string) => {
-    setSelectedUnitId(unitId);
+  const handleOpenAdd = () => {
+    setModalMode('ADD');
+    setEditingItem(null);
+    setFormData({ name: '', ulpId: ulpList[0]?.id || '', isActive: true });
+    setIsModalOpen(true);
   };
 
-  const selectedUnit = units.find(u => u.id === selectedUnitId);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedUnit) {
-      alert('Silakan pilih Unit Layanan terlebih dahulu.');
-      return;
-    }
-
-    if (!selectedUnit.urlGAS || !selectedUnit.urlGAS.trim()) {
-      alert(`Peringatan: URL Google Apps Script (GAS) untuk ${selectedUnit.namaUL} belum terisi di sheet inisiasi. Silakan hubungi Administrator.`);
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    // Simpan ke storage dan selesaikan inisiasi
-    saveInisiasiUnit(selectedUnit);
-
-    setTimeout(() => {
-      setIsSubmitting(false);
-      onComplete(selectedUnit);
-    }, 400);
+  const handleOpenEdit = (item: any) => {
+    setModalMode('EDIT');
+    setEditingItem(item);
+    setFormData({ 
+      name: item.name || item.text, 
+      ulpId: item.ulpId || '',
+      isActive: item.isActive !== undefined ? item.isActive === true || item.isActive === 'TRUE' : true
+    });
+    setIsModalOpen(true);
   };
+
+  const handleDelete = async (item: any) => {
+    if (!window.confirm(`Yakin ingin menghapus "${item.name || item.text}"?`)) return;
+    let updatedList: any[] = [];
+    let sheetName: 'Inspectors' | 'ULP' | 'Feeders' | 'Yandal' | 'Messages';
+    if (subTab === 'INSPEKTOR') {
+      updatedList = inspectors.filter(i => i.id !== item.id);
+      sheetName = 'Inspectors';
+    } else if (subTab === 'ULP') {
+      updatedList = ulpList.filter(u => u.id !== item.id);
+      sheetName = 'ULP';
+    } else if (subTab === 'FEEDER') {
+      updatedList = feeders.filter(f => f.id !== item.id);
+      sheetName = 'Feeders';
+    } else if (subTab === 'MESSAGE') {
+      updatedList = marqueeMessages.filter(m => m.id !== item.id);
+      sheetName = 'Messages';
+    } else {
+      updatedList = yandalList.filter(y => y.id !== item.id);
+      sheetName = 'Yandal';
+    }
+    setIsSaving(true);
+    try {
+      await SpreadsheetService.updateMasterData(sheetName, updatedList);
+      if (subTab === 'INSPEKTOR') onUpdateInspectors(updatedList);
+      else if (subTab === 'ULP') onUpdateUlp(updatedList);
+      else if (subTab === 'FEEDER') onUpdateFeeders(updatedList);
+      else if (subTab === 'MESSAGE') onUpdateMessages(updatedList);
+      else onUpdateYandal(updatedList);
+      alert('Data berhasil dihapus.');
+    } catch (e) { alert('Gagal menghapus data di server.'); }
+    finally { setIsSaving(false); }
+  };
+
+  const handleSaveMaster = async () => {
+    if (!formData.name.trim()) return alert('Input wajib diisi!');
+    if ((subTab === 'FEEDER' || subTab === 'YANDAL') && !formData.ulpId) return alert('Pilih ULP!');
+    setIsSaving(true);
+    try {
+      let updatedList: any[] = [];
+      let sheetName: 'Inspectors' | 'ULP' | 'Feeders' | 'Yandal' | 'Messages';
+      if (subTab === 'INSPEKTOR') {
+        sheetName = 'Inspectors';
+        if (modalMode === 'ADD') {
+          updatedList = [...inspectors, { id: `INS-${Date.now()}`, name: formData.name }];
+        } else {
+          updatedList = inspectors.map(i => i.id === editingItem.id ? { ...i, name: formData.name } : i);
+        }
+      } else if (subTab === 'ULP') {
+        sheetName = 'ULP';
+        if (modalMode === 'ADD') {
+          updatedList = [...ulpList, { id: `ULP-${Date.now()}`, name: formData.name }];
+        } else {
+          updatedList = ulpList.map(u => u.id === editingItem.id ? { ...u, name: formData.name } : u);
+        }
+      } else if (subTab === 'FEEDER') {
+        sheetName = 'Feeders';
+        if (modalMode === 'ADD') {
+          updatedList = [...feeders, { id: `F-${Date.now()}`, name: formData.name, ulpId: formData.ulpId }];
+        } else {
+          updatedList = feeders.map(f => f.id === editingItem.id ? { ...f, name: formData.name, ulpId: formData.ulpId } : f);
+        }
+      } else if (subTab === 'MESSAGE') {
+        sheetName = 'Messages';
+        if (modalMode === 'ADD') {
+          updatedList = [...marqueeMessages, { id: `M-${Date.now()}`, text: formData.name, isActive: formData.isActive }];
+        } else {
+          updatedList = marqueeMessages.map(m => m.id === editingItem.id ? { ...m, text: formData.name, isActive: formData.isActive } : m);
+        }
+      } else {
+        sheetName = 'Yandal';
+        if (modalMode === 'ADD') {
+          updatedList = [...yandalList, { id: `Y-${Date.now()}`, name: formData.name, ulpId: formData.ulpId }];
+        } else {
+          updatedList = yandalList.map(y => y.id === editingItem.id ? { ...y, name: formData.name, ulpId: formData.ulpId } : y);
+        }
+      }
+      const res = await SpreadsheetService.updateMasterData(sheetName, updatedList);
+      if (res.success) {
+        if (subTab === 'INSPEKTOR') onUpdateInspectors(updatedList);
+        else if (subTab === 'ULP') onUpdateUlp(updatedList);
+        else if (subTab === 'FEEDER') onUpdateFeeders(updatedList);
+        else if (subTab === 'MESSAGE') onUpdateMessages(updatedList);
+        else onUpdateYandal(updatedList);
+        setIsModalOpen(false);
+        alert(`Berhasil ${modalMode === 'ADD' ? 'menambah' : 'mengubah'} data di Spreadsheet.`);
+      } else { alert('Gagal menyimpan ke Spreadsheet.'); }
+    } catch (e) { alert('Terjadi kesalahan sinkronisasi.'); }
+    finally { setIsSaving(false); }
+  };
+
+  const currentFilteredFeedersInData = useMemo(() => {
+    const filtered = data.filter(item => {
+      if (dataSubTab === 'PLN_ES' && item.inspektor1 === 'PLN') return false;
+      if (dataSubTab === 'PLN' && item.inspektor1 !== 'PLN') return false;
+
+      const matchUlp = !filterUlp || item.ulp === filterUlp;
+      const matchPekerjaan = !filterPekerjaan || item.pekerjaan === filterPekerjaan;
+      const itemDate = parseRobustDate(item.tanggal);
+      let matchDate = true;
+      if (filterStartDate) {
+        const start = new Date(filterStartDate);
+        start.setHours(0,0,0,0);
+        if (itemDate < start) matchDate = false;
+      }
+      if (filterEndDate) {
+        const end = new Date(filterEndDate);
+        end.setHours(23,59,59,999);
+        if (itemDate > end) matchDate = false;
+      }
+      return matchUlp && matchPekerjaan && matchDate;
+    });
+    const unique = Array.from(new Set(filtered.map(d => d.feeder).filter(Boolean))).sort();
+    return unique;
+  }, [data, filterUlp, filterPekerjaan, filterStartDate, filterEndDate, dataSubTab]);
+
+  const currentFilteredKeteranganInData = useMemo(() => {
+    if (!filterPekerjaan) return keteranganList;
+    const selectedPekId = pekerjaanList.find(p => p.name === filterPekerjaan)?.id;
+    if (!selectedPekId) return keteranganList;
+    return keteranganList.filter(k => k.idPekerjaan === selectedPekId);
+  }, [filterPekerjaan, pekerjaanList, keteranganList]);
 
   return (
-    <div className="min-h-screen bg-[#eaf4fa] flex flex-col justify-between py-6 px-4 sm:px-6">
-      <div className="max-w-xl mx-auto w-full flex-1 flex flex-col justify-center animate-fade-in my-auto">
-        
-        {/* HEADER BRANDING */}
-        <div className="text-center mb-5">
-          {/* Logo Banner */}
-          <div className="w-full max-w-[340px] sm:max-w-[400px] h-20 sm:h-24 mx-auto mb-3 flex items-center justify-center">
-            {!logoError ? (
-              <img 
-                src={LOGO_URL} 
-                alt="Logo I-Monex" 
-                className="w-full h-full object-contain filter drop-shadow-sm"
-                referrerPolicy="no-referrer"
-                onError={() => setLogoError(true)}
-              />
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-2xl font-black text-[#003b71] tracking-wider">i-MONEX</span>
-              </div>
-            )}
-          </div>
-
-          {/* Badge */}
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#fef3c7] text-[#92400e] border border-[#fde68a] rounded-full text-[10px] sm:text-[11px] font-bold tracking-wider uppercase mb-2 shadow-xs">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-            <span>SETUP INISIASI SISTEM</span>
-          </div>
-
-          {/* Title & Subtitle */}
-          <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight uppercase">
-            INISIASI DATABASE UNIT LAYANAN
-          </h1>
-          <p className="text-xs sm:text-[13px] text-slate-600 font-medium mt-1 max-w-md mx-auto leading-relaxed">
-            Pilih Unit Layanan (UL) untuk menghubungkan koneksi database<br className="hidden sm:inline" /> Google Spreadsheet &amp; Google Apps Script
-          </p>
+    <div className="pb-10">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 mb-8">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button onClick={onBack} className="flex items-center gap-2 px-3.5 sm:px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 active:scale-95 transition-all group">
+            <span className="text-sm font-black text-slate-900 group-hover:-translate-x-1 transition-transform">←</span>
+            <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Logout</span>
+          </button>
+          {onInisiasi && (
+            <button 
+              onClick={onInisiasi}
+              title="Buka Halaman Inisiasi Unit Layanan / Ganti Spreadsheet Database"
+              className="flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 py-2.5 bg-[#003b71] hover:bg-[#002b54] text-white border border-[#003b71] rounded-xl shadow-sm active:scale-95 transition-all group cursor-pointer"
+            >
+              <Database className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform" />
+              <span className="text-[9px] font-black uppercase tracking-widest">Inisiasi</span>
+            </button>
+          )}
         </div>
+        <div className="flex-1 min-w-[200px] text-right sm:text-left">
+          <h2 className="text-xl font-black text-slate-900 tracking-tight">Panel Admin</h2>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Kontrol &amp; Rekapitulasi Analitik</p>
+        </div>
+      </div>
 
-        {/* MAIN CARD */}
-        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xl overflow-hidden">
-          {/* Card Header (Deep Blue) */}
-          <div className="bg-[#003865] px-5 py-3.5 sm:py-4 text-white flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
-                <Database className="w-4.5 h-4.5 text-cyan-300" />
+      <div className="flex bg-white border border-slate-200 p-1.5 rounded-2xl mb-8 shadow-sm overflow-x-auto gap-1 scrollbar-hide no-scrollbar">
+        {[
+          { id: 'DASHBOARD', label: 'DASHBOARD' },
+          { id: 'REKAP', label: 'REKAP INSPEKTOR' },
+          { id: 'REKAP_JENIS', label: 'REKAP JENIS TEMUAN' },
+          { id: 'REKAP_YANDAL', label: 'REKAP YANDAL' },
+          { id: 'REKAP_HAR_ROW', label: 'REKAP HAR / ROW' },
+          { id: 'DATA', label: 'DATA' },
+          ...(currentRole === 'SUPER_ADMIN' ? [
+            { id: 'DATABASE', label: 'DATABASE MANAGEMENT' },
+            { id: 'KELOLA', label: 'KELOLA MASTER' },
+            { id: 'HAPUS_REALISASI', label: 'HAPUS REALISASI' }
+          ] : [])
+        ].map(t => (
+          <button 
+            key={t.id} 
+            onClick={() => setTab(t.id as any)} 
+            className={`flex-shrink-0 py-3 px-4 text-[9px] font-black rounded-xl transition-all tracking-widest uppercase whitespace-nowrap ${tab === t.id ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'REKAP_HAR_ROW' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 ml-1">Filter Rekap HAR & ROW</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Mulai Tanggal</label>
+                <input type="date" value={rekapHarRowStartDate} onChange={(e) => setRekapHarRowStartDate(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500/20 transition-all" />
               </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Sampai Tanggal</label>
+                <input type="date" value={rekapHarRowEndDate} onChange={(e) => setRekapHarRowEndDate(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500/20 transition-all" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Filter ULP</label>
+                <select value={rekapHarRowUlp} onChange={(e) => setRekapHarRowUlp(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500/20 transition-all">
+                  <option value="">Semua ULP</option>
+                  {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button onClick={() => {
+                const dates = getDefaultRekapDates();
+                setRekapHarRowStartDate(dates.start);
+                setRekapHarRowEndDate(dates.end);
+                setRekapHarRowUlp('');
+              }} className="px-6 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Reset Filter</button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* ROW REKAP TABLE */}
+            <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 tracking-tight flex items-center gap-2 uppercase">
+                    <span className="w-1.5 h-4 bg-orange-500 rounded-full"></span>
+                    Rekap Eksekusi ROW
+                  </h3>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Kinerja Eksekusi Tim ROW</p>
+                </div>
+                <div className="px-3 py-1.5 bg-orange-50 border border-orange-100 rounded-full shrink-0">
+                  <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest">{rekapRowData.length} Tim ROW</span>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-slate-50/50">
+                      <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest w-20">No. Urut</th>
+                      <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Bulan / Periode</th>
+                      <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Nama Team ROW</th>
+                      <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center w-36">Total Eksekusi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {rekapRowData.length > 0 ? rekapRowData.map((item, idx) => {
+                      const rank = idx + 1;
+                      let medal = null;
+                      if (rank === 1) medal = "🥇";
+                      else if (rank === 2) medal = "🥈";
+                      else if (rank === 3) medal = "🥉";
+
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              {medal ? (
+                                <span className="text-2xl drop-shadow-sm animate-bounce-subtle">{medal}</span>
+                              ) : (
+                                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-[11px] font-black text-slate-400">
+                                  {rank}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">{item.period}</span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-xs font-black text-slate-900 uppercase tracking-tight group-hover:text-orange-600 transition-colors">{item.name}</div>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <div className="inline-flex items-center justify-center min-w-[40px] h-8 px-3 rounded-full bg-orange-500 text-white text-[11px] font-black shadow-lg shadow-orange-200">
+                              {item.total}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }) : (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-20 text-center">
+                          <div className="flex flex-col items-center gap-3 opacity-20">
+                            <span className="text-4xl">🌲</span>
+                            <p className="text-[10px] font-black uppercase tracking-widest">Belum ada data eksekusi ROW</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* HAR REKAP TABLE */}
+            <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 tracking-tight flex items-center gap-2 uppercase">
+                    <span className="w-1.5 h-4 bg-purple-600 rounded-full"></span>
+                    Rekap Eksekusi Team HAR
+                  </h3>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Kinerja Eksekusi Tim HAR</p>
+                </div>
+                <div className="px-3 py-1.5 bg-purple-50 border border-purple-100 rounded-full shrink-0">
+                  <span className="text-[10px] font-black text-purple-600 uppercase tracking-widest">{rekapHarData.length} Tim HAR</span>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-slate-50/50">
+                      <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest w-20">No. Urut</th>
+                      <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Bulan / Periode</th>
+                      <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Nama Team HAR</th>
+                      <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center w-36">Total Eksekusi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {rekapHarData.length > 0 ? rekapHarData.map((item, idx) => {
+                      const rank = idx + 1;
+                      let medal = null;
+                      if (rank === 1) medal = "🥇";
+                      else if (rank === 2) medal = "🥈";
+                      else if (rank === 3) medal = "🥉";
+
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              {medal ? (
+                                <span className="text-2xl drop-shadow-sm animate-bounce-subtle">{medal}</span>
+                              ) : (
+                                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-[11px] font-black text-slate-400">
+                                  {rank}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">{item.period}</span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-xs font-black text-slate-900 uppercase tracking-tight group-hover:text-purple-600 transition-colors">{item.name}</div>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <div className="inline-flex items-center justify-center min-w-[40px] h-8 px-3 rounded-full bg-purple-600 text-white text-[11px] font-black shadow-lg shadow-purple-200">
+                              {item.total}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }) : (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-20 text-center">
+                          <div className="flex flex-col items-center gap-3 opacity-20">
+                            <span className="text-4xl">⚡</span>
+                            <p className="text-[10px] font-black uppercase tracking-widest">Belum ada data eksekusi HAR</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'REKAP_YANDAL' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 ml-1">Filter Rekap Yandal</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Mulai Tanggal</label>
+                <input type="date" value={rekapYandalStartDate} onChange={(e) => setRekapYandalStartDate(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500/20 transition-all" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Sampai Tanggal</label>
+                <input type="date" value={rekapYandalEndDate} onChange={(e) => setRekapYandalEndDate(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500/20 transition-all" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Filter ULP</label>
+                <select value={rekapYandalUlp} onChange={(e) => setRekapYandalUlp(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500/20 transition-all">
+                  <option value="">Semua ULP</option>
+                  {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button onClick={() => {
+                const dates = getDefaultRekapDates();
+                setRekapYandalStartDate(dates.start);
+                setRekapYandalEndDate(dates.end);
+                setRekapYandalUlp('');
+              }} className="px-6 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Reset Filter</button>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-slate-50 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center bg-slate-50/30">
               <div>
-                <h2 className="text-xs sm:text-sm font-black uppercase tracking-wide text-white">
-                  PILIH UNIT LAYANAN (UL)
-                </h2>
-                <p className="text-[10px] sm:text-[11px] text-cyan-100/90 font-medium">
-                  Sheet Sumber: <span className="underline decoration-cyan-300 underline-offset-2 font-semibold">inisiasi</span>
+                <h3 className="text-sm font-black text-slate-900 tracking-tight flex items-center gap-2 uppercase">
+                  <span className="w-1.5 h-4 bg-blue-600 rounded-full"></span>
+                  Rekap Eksekusi Yandal
+                </h3>
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Leaderboard Performa Petugas</p>
+              </div>
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                <button
+                  onClick={handleExportYandalExcel}
+                  disabled={isExporting}
+                  className={`px-4 py-2.5 text-[10px] font-black rounded-xl transition-all uppercase tracking-widest flex items-center gap-2 shadow-md ${
+                    isExporting 
+                      ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                      : 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95'
+                  }`}
+                >
+                  {isExporting ? '⏳ EXPORTING...' : '📗 EXPORT EXCEL'}
+                </button>
+                <div className="px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-full shrink-0">
+                  <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{rekapYandalData.length} Petugas</span>
+                </div>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-slate-50/50">
+                    <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">No. Urut</th>
+                    <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Bulan / Periode</th>
+                    <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">Nama Petugas Yandal</th>
+                    <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">ULP</th>
+                    <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Total Eksekusi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {rekapYandalData.length > 0 ? rekapYandalData.map((item, idx) => {
+                    const rank = idx + 1;
+                    let medal = null;
+                    if (rank === 1) medal = "🥇";
+                    else if (rank === 2) medal = "🥈";
+                    else if (rank === 3) medal = "🥉";
+                    else if (rank <= 6) medal = "🏅";
+
+                    return (
+                      <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            {medal ? (
+                              <span className="text-2xl drop-shadow-sm animate-bounce-subtle">{medal}</span>
+                            ) : (
+                              <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-[11px] font-black text-slate-400">
+                                {rank}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">{item.period}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-xs font-black text-slate-900 uppercase tracking-tight group-hover:text-blue-600 transition-colors">{item.name}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="px-2 py-1 bg-slate-100 text-slate-500 rounded-md text-[9px] font-black uppercase tracking-widest">{item.ulp}</span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <div className="inline-flex items-center justify-center min-w-[40px] h-8 px-3 rounded-full bg-blue-600 text-white text-[11px] font-black shadow-lg shadow-blue-200">
+                            {item.total}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }) : (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-20 text-center">
+                        <div className="flex flex-col items-center gap-3 opacity-20">
+                          <span className="text-4xl">📊</span>
+                          <p className="text-[10px] font-black uppercase tracking-widest">Belum ada data eksekusi</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'DASHBOARD' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Saring Dashboard</p>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={dashFilterMonth} onChange={(e) => setDashFilterMonth(Number(e.target.value))}>
+                {MONTHS.map(m => <option key={m.val} value={m.val}>{m.label}</option>)}
+              </select>
+              <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold outline-none" value={dashFilterYear} onChange={(e) => setDashFilterYear(Number(e.target.value))}>
+                {years.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={dashFilterUlp} onChange={(e) => setDashFilterUlp(e.target.value)}>
+                <option value="">Semua ULP</option>
+                {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+              </select>
+              <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={dashFilterPekerjaan} onChange={(e) => setDashFilterPekerjaan(e.target.value)}>
+                <option value="">Semua Jenis Pekerjaan</option>
+                {pekerjaanList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* AI Insight Card */}
+          {aiInsight && (
+            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-5 rounded-[2rem] shadow-xl border border-indigo-500/20 flex items-start gap-3.5">
+              <div className="p-2.5 bg-indigo-500/20 text-indigo-400 rounded-2xl flex-shrink-0 border border-indigo-400/20">
+                <Sparkles className="w-5 h-5 text-amber-300" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-300">AI Ringkasan Cerdas</p>
+                  <span className="px-2 py-0.5 text-[8px] font-bold bg-indigo-500/30 text-indigo-200 rounded-full">Gemini</span>
+                </div>
+                <p className="text-xs font-medium leading-relaxed text-slate-200">
+                  {aiInsight}
                 </p>
               </div>
             </div>
+          )}
 
-            <div className="flex items-center gap-2">
-              {onBack && (
-                <button
-                  type="button"
-                  onClick={onBack}
-                  title="Kembali ke Aplikasi"
-                  className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition-all text-white text-[11px] font-bold active:scale-95 flex items-center gap-1 border border-white/20 cursor-pointer"
-                >
-                  <span>← Kembali</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={loadData}
-                disabled={isLoading}
-                title="Muat Ulang Data Inisiasi"
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 transition-all text-white flex items-center justify-center active:scale-95 disabled:opacity-50 cursor-pointer"
+          <div className="grid grid-cols-2 gap-4">
+            {tierStats.map(s => (
+              <div key={s.label} className={`${s.bgColor} border-2 ${s.borderColor} p-5 rounded-[2rem] shadow-xl transition-all hover:scale-[1.02]`}>
+                 <div className="flex justify-between items-start mb-4">
+                    <div className="text-left">
+                       <p className={`text-[8px] font-black uppercase tracking-widest mb-0.5 ${s.labelColor}`}>Total Temuan</p>
+                       <p className={`text-2xl font-black leading-none ${s.textColor}`}>{s.total}</p>
+                    </div>
+                    <div className="text-right">
+                       <p className={`text-[8px] font-black uppercase tracking-widest mb-0.5 ${s.labelColor}`}>Eksekusi</p>
+                       <p className={`text-2xl font-black leading-none ${s.textColor}`}>{s.done}</p>
+                    </div>
+                 </div>
+                 <div className="w-full bg-black/10 h-2 rounded-full overflow-hidden mb-3">
+                    <div className={`${s.barColor} h-full transition-all duration-1000`} style={{ width: `${s.pct}%` }}></div>
+                 </div>
+                 <div className="flex justify-between items-center">
+                    <p className={`text-[9px] font-black uppercase tracking-tight ${s.textColor}`}>{s.label}</p>
+                    <p className={`text-[9px] font-black opacity-60 ${s.textColor}`}>{s.pct}%</p>
+                 </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-xl overflow-hidden animate-slide-up">
+            <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-6 flex items-center gap-2">
+              <span className="w-2 h-6 bg-indigo-600 rounded-full"></span>
+              Distribusi Status Temuan
+            </h3>
+            
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="w-full h-52 md:w-1/2 flex items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={statusSummary.chartData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      dataKey="value"
+                      stroke="#fff"
+                      strokeWidth={2}
+                    >
+                      {statusSummary.chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', fontSize: '10px', fontWeight: 'bold' }}
+                      formatter={(value: any) => [`${value ?? 0} Data`, 'Status']}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="flex-1 w-full grid grid-cols-1 gap-2.5">
+                <div className="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-slate-900"></div>
+                    <p className="text-[10px] font-black text-slate-900 uppercase tracking-wider">Jumlah Temuan</p>
+                  </div>
+                  <p className="text-xs font-black text-slate-900">{statusSummary.total}</p>
+                </div>
+
+                {statusSummary.chartData.map((item) => (
+                  <div key={item.name} className="flex items-center justify-between bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }}></div>
+                      <div className="flex flex-col">
+                        <p className="text-[9px] font-black text-slate-600 uppercase tracking-wider">{item.name}</p>
+                        <p className="text-[7px] text-slate-400 font-bold uppercase tracking-widest">
+                          {Math.round((item.value / statusSummary.total) * 100)}% dari total
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs font-black text-slate-900">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-slate-900 p-6 rounded-[2.5rem] border-2 border-yellow-500 shadow-xl">
+             <div className="flex justify-between items-center mb-6">
+                <h3 className="text-sm font-black text-white uppercase tracking-tight">Top 10 Feeder (Berdasarkan Persentase)</h3>
+                <span className="text-[9px] font-black text-yellow-500 uppercase tracking-widest">Selesai / Total</span>
+             </div>
+             <div className="space-y-4">
+                {topTenFeeders.map((f, i) => {
+                  const isTop3 = i < 3;
+                  const pctValue = f.total > 0 ? Math.round((f.done / f.total) * 100) : 0;
+                  return (
+                    <div key={f.name} className={`flex items-center gap-4 p-3 rounded-2xl transition-all ${isTop3 ? 'bg-white/5 border border-yellow-500/30' : ''}`}>
+                       <span className={`w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-black ${isTop3 ? 'bg-yellow-500 text-slate-900' : 'text-slate-400'}`}>{i+1}</span>
+                       <div className="flex-1">
+                          <div className="flex justify-between items-center mb-1.5">
+                             <div className="flex flex-col">
+                                <p className="text-[10px] font-black text-white uppercase">{f.name}</p>
+                                <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">{pctValue}% Selesai</p>
+                             </div>
+                             <p className="text-[9px] font-black text-yellow-500 uppercase tracking-tighter">{f.done} / {f.total}</p>
+                          </div>
+                          <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden border border-white/5">
+                             <div className="bg-yellow-500 h-full transition-all duration-700" style={{ width: `${pctValue}%` }}></div>
+                          </div>
+                       </div>
+                    </div>
+                  );
+                })}
+                {topTenFeeders.length === 0 && (
+                   <p className="text-center py-4 text-[10px] font-bold text-slate-500 uppercase italic">Tidak ada data untuk periode ini</p>
+                )}
+             </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'REKAP' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 shadow-sm transition-all duration-300 hover:shadow-md">
+            <div className="flex justify-between items-center mb-3 ml-1">
+              <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">
+                Filter Rentang Waktu
+              </p>
+              <button 
+                onClick={handleReset}
+                className="text-[9px] font-black text-white bg-emerald-600 hover:bg-black px-3 py-1.5 rounded-lg transition-all duration-200 uppercase tracking-tighter"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+                Reset ke Bulan Ini
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-2">
+              <div className="flex flex-col gap-1">
+                <label className="text-[8px] font-bold text-emerald-600 ml-1 uppercase">Mulai</label>
+                <input 
+                  type="date" 
+                  className="p-3 bg-white border border-emerald-200 rounded-xl text-[11px] font-bold text-black outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200" 
+                  value={rekapStartDate} 
+                  onChange={(e) => setRekapStartDate(e.target.value)} 
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[8px] font-bold text-emerald-600 ml-1 uppercase">Sampai</label>
+                <input 
+                  type="date" 
+                  className="p-3 bg-white border border-emerald-200 rounded-xl text-[11px] font-bold text-black outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200" 
+                  value={rekapEndDate} 
+                  onChange={(e) => setRekapEndDate(e.target.value)} 
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-200 shadow-sm transition-all duration-300 hover:shadow-md">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-emerald-100 border-b border-emerald-200">
+                  <th className="p-4 text-[9px] font-black text-emerald-700 uppercase tracking-widest">Inspektor</th>
+                  <th className="p-4 text-[9px] font-black text-emerald-700 uppercase tracking-widest text-center">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-emerald-100">
+                {rekapData.length > 0 ? (
+                  rekapData.map((r, i) => (
+                    <tr key={i} className="hover:bg-emerald-100/60 transition-colors">
+                      <td className="p-4">
+                        <p className="text-[10px] font-black text-black uppercase">{r.inspektor}</p>
+                        <p className="text-[8px] text-emerald-600 font-bold uppercase tracking-tight mt-0.5">
+                          {r.pekerjaan} • {r.feeder}
+                        </p>
+                      </td>
+                      <td className="p-4 text-center">
+                        <span className="inline-block bg-emerald-100 text-black px-3 py-1 rounded-full text-[10px] font-black">
+                          {r.total}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={2} className="p-10 text-center text-[10px] font-bold text-emerald-600 uppercase">
+                      Tidak ada data pada periode terpilih
+                    </td>
+                  </tr>
+                )}
+                {rekapData.length > 0 && (
+                  <tr className="bg-gradient-to-r from-emerald-200 to-emerald-100 border-t-2 border-emerald-300">
+                    <td className="p-4">
+                      <p className="text-[10px] font-black text-black uppercase tracking-widest">
+                        Total Keseluruhan
+                      </p>
+                    </td>
+                    <td className="p-4 text-center">
+                      <span className="inline-block bg-black text-white px-4 py-1.5 rounded-full text-[11px] font-black">
+                        {rekapData.reduce((sum, r) => sum + r.total, 0)}
+                      </span>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tab === 'REKAP_JENIS' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-emerald-50 p-6 rounded-[2.5rem] border border-emerald-200 shadow-sm space-y-5">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-1.5 h-4 bg-emerald-600 rounded-full"></div>
+              <p className="text-[11px] font-black text-emerald-800 uppercase tracking-widest">Saring Laporan Jenis Temuan</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <p className="text-[8px] font-black text-emerald-600/60 uppercase tracking-widest ml-1">Periode & Jenis Pekerjaan</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[7px] font-bold text-emerald-700 ml-1 uppercase">Tgl Mulai</label>
+                    <input 
+                      type="date" 
+                      className="w-full p-3 bg-white border border-emerald-100 rounded-xl text-[11px] font-bold outline-none text-emerald-900 shadow-sm focus:border-emerald-400 transition-all" 
+                      value={rekapJenisStartDate} 
+                      onChange={(e) => setRekapJenisStartDate(e.target.value)} 
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[7px] font-bold text-emerald-700 ml-1 uppercase">Tgl Akhir</label>
+                    <input 
+                      type="date" 
+                      className="w-full p-3 bg-white border border-emerald-100 rounded-xl text-[11px] font-bold outline-none text-emerald-900 shadow-sm focus:border-emerald-400 transition-all" 
+                      value={rekapJenisEndDate} 
+                      onChange={(e) => setRekapJenisEndDate(e.target.value)} 
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[7px] font-bold text-emerald-700 ml-1 uppercase">Bidang Pekerjaan</label>
+                  <select 
+                    className="w-full p-3 bg-white border border-emerald-100 rounded-xl text-[11px] font-bold outline-none text-emerald-900 shadow-sm focus:border-emerald-400 transition-all" 
+                    value={rekapJenisPekerjaan} 
+                    onChange={(e) => setRekapJenisPekerjaan(e.target.value)}
+                  >
+                    <option value="">Semua Pekerjaan</option>
+                    {pekerjaanList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[7px] font-bold text-emerald-700 ml-1 uppercase">Status Temuan</label>
+                  <select 
+                    className="w-full p-3 bg-white border border-emerald-100 rounded-xl text-[11px] font-bold outline-none text-emerald-900 shadow-sm focus:border-emerald-400 transition-all" 
+                    value={rekapJenisStatus} 
+                    onChange={(e) => setRekapJenisStatus(e.target.value)}
+                  >
+                    <option value="">Semua Status</option>
+                    <option value="BELUM EKSEKUSI">BELUM EKSEKUSI</option>
+                    <option value="SUDAH EKSEKUSI">SUDAH EKSEKUSI</option>
+                    <option value="BUTUH PADAM">BUTUH PADAM</option>
+                    <option value="TIDAK DAPAT IZIN">TIDAK DAPAT IZIN</option>
+                    <option value="KENDALA MATERIAL">KENDALA MATERIAL</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-[8px] font-black text-emerald-600/60 uppercase tracking-widest ml-1">Unit & Aset Feeder</p>
+                <div className="space-y-1">
+                  <label className="text-[7px] font-bold text-emerald-700 ml-1 uppercase">Unit Pelaksana (ULP)</label>
+                  <select 
+                    className="w-full p-3 bg-white border border-emerald-100 rounded-xl text-[11px] font-bold outline-none text-emerald-900 shadow-sm focus:border-emerald-400 transition-all" 
+                    value={rekapJenisUlp} 
+                    onChange={(e) => { setRekapJenisUlp(e.target.value); setRekapJenisFeeder(''); }}
+                  >
+                    <option value="">Semua ULP</option>
+                    {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[7px] font-bold text-emerald-700 ml-1 uppercase">Penyulang (Feeder)</label>
+                  <select 
+                    className="w-full p-3 bg-white border border-emerald-100 rounded-xl text-[11px] font-bold outline-none text-emerald-900 shadow-sm focus:border-emerald-400 transition-all" 
+                    value={rekapJenisFeeder} 
+                    onChange={(e) => setRekapJenisFeeder(e.target.value)}
+                  >
+                    <option value="">-- Semua Feeder (Berisi Temuan) --</option>
+                    {feedersWithDataForRekapJenis.map(f => <option key={f} value={f}>{f}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end pt-2">
+              <button 
+                onClick={() => {
+                  const dates = getDefaultRekapDates();
+                  setRekapJenisStartDate(dates.start);
+                  setRekapJenisEndDate(dates.end);
+                  setRekapJenisPekerjaan('');
+                  setRekapJenisUlp('');
+                  setRekapJenisFeeder('');
+                  setRekapJenisStatus('');
+                }}
+                className="px-6 py-2.5 bg-white border border-emerald-200 text-emerald-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-100 transition-all shadow-sm"
+              >
+                Reset Filter
               </button>
             </div>
           </div>
 
-          {/* Card Body */}
-          <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4">
-            {errorMsg && (
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-800 flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <span>{errorMsg}</span>
+          <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl overflow-hidden">
+            <div className="p-6 border-b border-emerald-100 flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center bg-emerald-50/10">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 tracking-tight flex items-center gap-2 uppercase">
+                  <span className="w-1.5 h-4 bg-emerald-600 rounded-full"></span>
+                  Rekapitulasi Jenis Temuan
+                </h3>
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Statistik Temuan Berdasarkan Kelainan</p>
               </div>
-            )}
-
-            {/* UL LIST SECTION */}
-            <div>
-              <label className="block text-[11px] font-bold uppercase text-slate-600 tracking-wider mb-2.5 flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5 text-slate-500" />
-                <span>NAMA UNIT LAYANAN (KOLOM: NAMA_UL):</span>
-              </label>
-              
-              {isLoading ? (
-                <div className="py-8 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
-                  <RefreshCw className="w-6 h-6 animate-spin text-[#003865]" />
-                  <span className="text-xs font-semibold">Membaca daftar Unit dari Spreadsheet...</span>
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                <button
+                  onClick={handleExportJenisExcel}
+                  disabled={isExporting}
+                  className={`px-4 py-2.5 text-[10px] font-black rounded-xl transition-all uppercase tracking-widest flex items-center gap-2 shadow-md ${
+                    isExporting 
+                      ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                      : 'bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95'
+                  }`}
+                >
+                  {isExporting ? '⏳ EXPORTING...' : '📗 EXPORT EXCEL'}
+                </button>
+                <div className="px-3 py-1.5 bg-emerald-50 border border-emerald-100 rounded-full shrink-0">
+                  <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">{rekapJenisData.length} Keterangan</span>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {units.map((unit) => {
-                    const isSelected = unit.id === selectedUnitId;
-                    const hasGas = !!(unit.urlGAS && unit.urlGAS.trim());
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[800px]">
+                <thead>
+                  <tr className="bg-emerald-600 text-white">
+                    <th className="p-4 text-[10px] font-black uppercase tracking-wider border-r border-white/10">Keterangan</th>
+                    <th className="p-4 text-[9px] font-black uppercase tracking-wider text-center border-r border-white/10">Jumlah</th>
+                    <th className="p-4 text-[9px] font-black uppercase tracking-wider text-center border-r border-white/10">Belum</th>
+                    <th className="p-4 text-[9px] font-black uppercase tracking-wider text-center border-r border-white/10">Sudah</th>
+                    <th className="p-4 text-[9px] font-black uppercase tracking-wider text-center border-r border-white/10">Padam</th>
+                    <th className="p-4 text-[9px] font-black uppercase tracking-wider text-center border-r border-white/10">Tdk Izin</th>
+                    <th className="p-4 text-[9px] font-black uppercase tracking-wider text-center">Kendala</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {rekapJenisData.length > 0 ? (
+                    rekapJenisData.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-4 text-[10px] font-bold text-slate-800 uppercase tracking-tight leading-tight">{row.keterangan}</td>
+                        <td 
+                          className="p-4 text-[11px] font-black text-center bg-slate-50/50 border-x border-slate-100 cursor-pointer hover:bg-indigo-50 hover:text-indigo-600 transition-all"
+                          onClick={() => handleShowDetail(row.keterangan, 'ALL')}
+                        >
+                          {row.total}
+                        </td>
+                        <td 
+                          className="p-4 text-[10px] font-bold text-center text-indigo-600 cursor-pointer hover:bg-indigo-50 transition-all"
+                          onClick={() => handleShowDetail(row.keterangan, 'BELUM EKSEKUSI')}
+                        >
+                          {row.belum}
+                        </td>
+                        <td 
+                          className="p-4 text-[10px] font-bold text-center text-emerald-600 cursor-pointer hover:bg-emerald-50 transition-all"
+                          onClick={() => handleShowDetail(row.keterangan, 'SUDAH EKSEKUSI')}
+                        >
+                          {row.sudah}
+                        </td>
+                        <td 
+                          className="p-4 text-[10px] font-bold text-center text-amber-600 cursor-pointer hover:bg-amber-50 transition-all"
+                          onClick={() => handleShowDetail(row.keterangan, 'BUTUH PADAM')}
+                        >
+                          {row.padam}
+                        </td>
+                        <td 
+                          className="p-4 text-[10px] font-bold text-center text-orange-600 cursor-pointer hover:bg-orange-50 transition-all"
+                          onClick={() => handleShowDetail(row.keterangan, 'TIDAK DAPAT IZIN')}
+                        >
+                          {row.tidakIzin}
+                        </td>
+                        <td 
+                          className="p-4 text-[10px] font-bold text-center text-red-600 cursor-pointer hover:bg-red-50 transition-all"
+                          onClick={() => handleShowDetail(row.keterangan, 'KENDALA MATERIAL')}
+                        >
+                          {row.kendala}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="p-20 text-center text-[10px] font-bold text-slate-400 uppercase italic">Tidak ada data untuk filter terpilih</td>
+                    </tr>
+                  )}
+                  {rekapJenisData.length > 0 && (
+                    <tr className="bg-slate-900 text-white font-black">
+                      <td className="p-4 text-[10px] uppercase tracking-widest">Total Keseluruhan</td>
+                      <td className="p-4 text-[11px] text-center border-x border-white/10">{rekapJenisData.reduce((s, r) => s + r.total, 0)}</td>
+                      <td className="p-4 text-[11px] text-center">{rekapJenisData.reduce((s, r) => s + r.belum, 0)}</td>
+                      <td className="p-4 text-[11px] text-center">{rekapJenisData.reduce((s, r) => s + r.sudah, 0)}</td>
+                      <td className="p-4 text-[11px] text-center">{rekapJenisData.reduce((s, r) => s + r.padam, 0)}</td>
+                      <td className="p-4 text-[11px] text-center">{rekapJenisData.reduce((s, r) => s + r.tidakIzin, 0)}</td>
+                      <td className="p-4 text-[11px] text-center">{rekapJenisData.reduce((s, r) => s + r.kendala, 0)}</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
-                    return (
-                      <button
-                        type="button"
-                        key={unit.id}
-                        onClick={() => handleSelectUnit(unit.id)}
-                        className={`p-3.5 rounded-xl text-left transition-all relative flex flex-col justify-between cursor-pointer border ${
-                          isSelected
-                            ? 'bg-[#003865] text-white border-[#003865] shadow-md'
-                            : 'bg-white hover:bg-slate-50/90 text-slate-800 border-slate-200'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-2 pb-2 border-b border-current/15">
-                          <span className="font-bold text-xs sm:text-[13px] tracking-tight uppercase">
-                            {unit.namaUL}
-                          </span>
-                          <span className={`text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider ${
-                            isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
-                          }`}>
-                            {unit.kodeUL || unit.id}
-                          </span>
-                        </div>
+      {tab === 'DATA' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="flex bg-slate-100 p-1 rounded-2xl gap-1 mb-2 overflow-x-auto scrollbar-hide no-scrollbar">
+            <button 
+              onClick={() => setDataSubTab('PLN_ES')}
+              className={`flex-1 md:flex-initial flex-shrink-0 py-3 px-4 text-[10px] font-black rounded-xl transition-all tracking-widest uppercase whitespace-nowrap ${dataSubTab === 'PLN_ES' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              DATA PLN ES
+            </button>
+            <button 
+              onClick={() => setDataSubTab('PLN')}
+              className={`flex-1 md:flex-initial flex-shrink-0 py-3 px-4 text-[10px] font-black rounded-xl transition-all tracking-widest uppercase whitespace-nowrap ${dataSubTab === 'PLN' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              DATA PLN
+            </button>
+          </div>
 
-                        <div className="flex items-center justify-between text-[10px] sm:text-[11px] pt-2">
-                          <span className={`font-medium ${isSelected ? 'text-white/90' : (hasGas ? 'text-slate-500' : 'text-amber-600')}`}>
-                            {hasGas ? '✓ Database Terhubung' : '⚠️ GAS Belum Diatur'}
-                          </span>
-                          {isSelected && (
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
+          <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
+            <div className="flex justify-between items-center mb-1"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Saring Data Laporan</p>
+              {(filterUlp || filterFeeder || filterPekerjaan || filterStartDate || filterEndDate) && (<button onClick={resetDataFilters} className="text-[9px] font-black text-red-500 uppercase tracking-widest">Reset</button>)}
+            </div>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1"><p className="text-[8px] font-black text-slate-300 uppercase ml-1">Tgl Mulai</p>
+                  <input type="date" className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} />
                 </div>
-              )}
+                <div className="space-y-1"><p className="text-[8px] font-black text-slate-300 uppercase ml-1">Tgl Akhir</p>
+                  <input type="date" className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterUlp} onChange={(e) => setFilterUlp(e.target.value)}>
+                   <option value="">Semua ULP</option>
+                   {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+                </select>
+                <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterFeeder} onChange={(e) => setFilterFeeder(e.target.value)}>
+                   <option value="">Semua Feeder</option>
+                   {currentFilteredFeedersInData.map(name => <option key={name} value={name}>{name}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterPekerjaan} onChange={(e) => setFilterPekerjaan(e.target.value)}>
+                   <option value="">Semua Jenis Pekerjaan</option>
+                   {pekerjaanList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                </select>
+                <select className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none uppercase" value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
+                   <option value="">Semua Prioritas</option>
+                   <option value="1">⭐ 1 (Urgent)</option>
+                   <option value="2">⭐⭐ 2 (Waspada)</option>
+                   <option value="3">⭐⭐⭐ 3 (Normal)</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <select className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                   <option value="">Semua Status</option>
+                   <option value="BELUM EKSEKUSI">BELUM EKSEKUSI</option>
+                   <option value="SUDAH EKSEKUSI">SUDAH EKSEKUSI</option>
+                   <option value="BUTUH PADAM">BUTUH PADAM</option>
+                   <option value="TIDAK DAPAT IZIN">TIDAK DAPAT IZIN</option>
+                   <option value="KENDALA MATERIAL">KENDALA MATERIAL</option>
+                </select>
+                <select className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold outline-none" value={filterKeterangan} onChange={(e) => setFilterKeterangan(e.target.value)}>
+                   <option value="">Semua Keterangan</option>
+                   {currentFilteredKeteranganInData.map(k => <option key={k.id} value={k.text}>{k.text}</option>)}
+                </select>
+              </div>
+            </div>
+            <button onClick={handleDownloadExcel} disabled={isExporting} className={`w-full py-4 rounded-2xl shadow-lg font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-3 ${isExporting ? 'bg-slate-200 text-slate-400' : 'bg-emerald-600 text-white active:scale-95'}`}>{isExporting ? '⏳ MENYIAPKAN FILE...' : '📗 DOWNLOAD LAPORAN EXCEL'}</button>
+          </div>
+
+          {/* HISTORICAL DATA INTEGRATION TOGGLE (BAGIAN 9 & 11) */}
+          <div className="bg-indigo-50/70 border border-indigo-100 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                <Database className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-xs font-black text-indigo-950 uppercase tracking-tight">Integrasi Data Historis (Arsip)</span>
+                <p className="text-[10px] text-indigo-700 font-medium">
+                  {includeHistorical 
+                    ? `Menampilkan ${data.length} Data Aktif + ${historicalData.length} Data Arsip Database` 
+                    : 'Mode Cepat Aktif: Hanya memuat data dari Spreadsheet Aktif (Hemat Kuota)'}
+                </p>
+              </div>
+            </div>
+            
+            <button
+              type="button"
+              onClick={handleToggleHistorical}
+              disabled={isLoadingHistorical}
+              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-xs active:scale-95 shrink-0 ${
+                includeHistorical 
+                  ? 'bg-indigo-600 text-white' 
+                  : 'bg-white text-indigo-700 border border-indigo-200 hover:bg-indigo-100'
+              }`}
+            >
+              {isLoadingHistorical ? 'Memuat Arsip...' : (includeHistorical ? '✓ Mode Historis Aktif' : '+ Gabungkan Data Arsip')}
+            </button>
+          </div>
+
+          <div className="space-y-3">
+             <div className="flex justify-between items-center px-1">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  Preview {filteredAndSortedData.length} Data Terbaru {includeHistorical && '(Termasuk Arsip)'}
+                </p>
+             </div>
+             {filteredAndSortedData.slice(0, 50).map((item, idx) => {
+                const itemDate = parseRobustDate(item.tanggal);
+                return (
+                <div key={`${item.id}-${idx}`} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex gap-4">
+                   <div className="flex flex-col items-center flex-shrink-0">
+                      <div className="w-14 h-14 bg-slate-50 rounded-xl overflow-hidden border border-slate-100">
+                        <img src={getDisplayImageUrl(item.fotoTemuan)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                      </div>
+                      <p className="text-[7px] font-black uppercase text-slate-400 mt-1">Temuan</p>
+                   </div>
+                   {item.status === 'SUDAH EKSEKUSI' && item.fotoEksekusi && (
+                      <div className="flex flex-col items-center flex-shrink-0">
+                        <div className="w-14 h-14 bg-emerald-50 rounded-xl overflow-hidden border border-emerald-100">
+                           <img src={getDisplayImageUrl(item.fotoEksekusi)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                        </div>
+                        <p className="text-[7px] font-black uppercase text-emerald-500 mt-1">Eksekusi</p>
+                      </div>
+                   )}
+                   <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start">
+                         <div className="flex items-center gap-1.5 flex-wrap">
+                           <p className="text-[10px] font-black text-slate-900 truncate uppercase">{item.noTiang} • {item.feeder}</p>
+                           {item.sourceDatabaseSequence !== undefined && (
+                             <span className={`text-[7px] px-1.5 py-0.2 rounded font-black uppercase ${
+                               item.sourceDatabaseStatus === 'ARCHIVE' 
+                                 ? 'bg-slate-100 text-slate-600 border border-slate-200' 
+                                 : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                             }`}>
+                               DB {item.sourceDatabaseSequence < 10 ? `00${item.sourceDatabaseSequence}` : item.sourceDatabaseSequence}
+                             </span>
+                           )}
+                         </div>
+                         <span className={`text-[7px] px-1.5 py-0.5 rounded font-black uppercase ${item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>{item.status.split(' ')[0]}</span>
+                      </div>
+                      <p className="text-[9px] font-bold text-red-500 mt-0.5 truncate uppercase">{item.keterangan}</p>
+                      <p className="text-[8px] text-slate-400 mt-1 font-bold uppercase tracking-widest">
+                        {itemDate.toLocaleDateString('id-ID')} | {item.ulp}
+                        {item.status === 'SUDAH EKSEKUSI' && (
+                          item.timEksekusi === 'Team Yandal' ? (
+                            (item.namaYandal1 || item.namaYandal2) && (
+                              <span className="text-emerald-600 ml-2 font-black">
+                                 👤 {[item.namaYandal1, item.namaYandal2].filter(Boolean).join(' & ')}
+                              </span>
+                            )
+                          ) : item.timEksekusi === 'Team ROW' ? (
+                            item.ROW && (
+                              <span className="text-emerald-600 ml-2 font-black">
+                                 👤 {item.ROW}
+                              </span>
+                            )
+                          ) : item.timEksekusi === 'Team HAR' ? (
+                            item.HAR && (
+                              <span className="text-emerald-600 ml-2 font-black">
+                                 👤 {item.HAR}
+                              </span>
+                            )
+                          ) : null
+                        )}
+                      </p>
+                      {item.catatan && (
+                        <p className="text-[8px] text-slate-500 mt-1 font-bold italic line-clamp-1">
+                          📝 {item.catatan}
+                        </p>
+                      )}
+                   </div>
+                </div>
+              )})}
+          </div>
+        </div>
+      )}
+
+      {/* DATABASE MANAGEMENT TAB (SUPER ADMIN) */}
+      {tab === 'DATABASE' && (
+        <DatabaseManagementView 
+          currentRole={currentRole} 
+          onRefreshParentData={onRefreshData} 
+        />
+      )}
+
+      {tab === 'KELOLA' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="flex bg-slate-100 p-1 rounded-xl gap-1 overflow-x-auto no-scrollbar scrollbar-hide">
+             {(['INSPEKTOR', 'ULP', 'FEEDER', 'YANDAL', 'MESSAGE'] as const).map(s => (<button key={s} onClick={() => setSubTab(s)} className={`flex-1 md:flex-initial flex-shrink-0 py-2.5 px-4 text-[10px] font-black rounded-lg transition-all uppercase tracking-widest min-w-[100px] ${subTab === s ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>{s === 'MESSAGE' ? 'MARQUEE' : s}</button>))}
+          </div>
+          <div className="flex justify-between items-center px-1"><h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">Daftar {subTab === 'MESSAGE' ? 'Pesan Marquee' : subTab}</h3><button onClick={handleOpenAdd} disabled={isSaving} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50">{isSaving ? '⏳' : '+ Tambah'}</button></div>
+          <div className="grid grid-cols-1 gap-3">
+             {subTab === 'INSPEKTOR' && inspectors.map(i => (<div key={i.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all"><div><p className="text-[11px] font-black text-slate-900 uppercase">{i.name}</p><p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">ID: {i.id}</p></div><div className="flex gap-2"><button onClick={() => handleOpenEdit(i)} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">✏️</button><button onClick={() => handleDelete(i)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button></div></div>))}
+             {subTab === 'ULP' && ulpList.map(u => (<div key={u.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all"><div><p className="text-[11px] font-black text-slate-900 uppercase">{u.name}</p><p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Unit Pelaksana</p></div><div className="flex gap-2"><button onClick={() => handleOpenEdit(u)} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">✏️</button><button onClick={() => handleDelete(u)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button></div></div>))}
+             {subTab === 'FEEDER' && feeders.map(f => (<div key={f.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all"><div><p className="text-[11px] font-black text-slate-900 uppercase">{f.name}</p><p className="text-[8px] text-indigo-600 font-bold uppercase tracking-widest mt-0.5">{ulpList.find(u => u.id === f.ulpId)?.name || 'Unit Unknown'}</p></div><div className="flex gap-2"><button onClick={() => handleOpenEdit(f)} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">✏️</button><button onClick={() => handleDelete(f)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button></div></div>))}
+             {subTab === 'YANDAL' && yandalList.map(y => (<div key={y.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all"><div><p className="text-[11px] font-black text-slate-900 uppercase">{y.name}</p><p className="text-[8px] text-emerald-600 font-bold uppercase tracking-widest mt-0.5">{ulpList.find(u => u.id === y.ulpId)?.name || 'Unit Unknown'}</p></div><div className="flex gap-2"><button onClick={() => handleOpenEdit(y)} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">✏️</button><button onClick={() => handleDelete(y)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button></div></div>))}
+             {subTab === 'MESSAGE' && marqueeMessages.map(m => (<div key={m.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center group hover:border-indigo-200 transition-all"><div><p className="text-[11px] font-black text-slate-900 uppercase">{m.text}</p><div className="flex items-center gap-2 mt-1"><span className={`w-1.5 h-1.5 rounded-full ${m.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></span><p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">{m.isActive ? 'Aktif' : 'Non-aktif'}</p></div></div><div className="flex gap-2"><button onClick={() => handleOpenEdit(m)} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">✏️</button><button onClick={() => handleDelete(m)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">🗑️</button></div></div>))}
+          </div>
+        </div>
+      )}
+
+      {tab === 'HAPUS_REALISASI' && (
+        <div className="space-y-6 animate-fade-in text-left">
+          {/* Filtering and Selection Header Panel */}
+          <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Menu SuperAdmin</p>
+                <h3 className="text-base font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                  <span className="w-1.5 h-4 bg-red-600 rounded-full"></span>
+                  Hapus Realisasi Temuan
+                </h3>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-black px-3.5 py-1.5 bg-slate-100 text-slate-600 rounded-full uppercase tracking-wider">
+                  {selectedIds.length} dari {data.length} Terpilih
+                </span>
+                <button
+                  onClick={() => selectedIds.length > 0 && setIsDeleteConfirmOpen(true)}
+                  disabled={selectedIds.length === 0}
+                  className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all active:scale-95 flex items-center gap-2 ${
+                    selectedIds.length > 0 
+                      ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-200 cursor-pointer' 
+                      : 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
+                  }`}
+                >
+                  🗑️ HAPUS
+                </button>
+              </div>
             </div>
 
-            {/* ACTION SUBMIT BUTTON */}
-            <div className="pt-2">
-              <button
-                type="submit"
-                disabled={isSubmitting || isLoading || !selectedUnit}
-                className="w-full py-3.5 bg-[#002d59] hover:bg-[#002244] text-white font-bold rounded-xl shadow-md active:scale-[0.99] transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            {/* In-tab Filters */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+              <input
+                type="text"
+                placeholder="Cari No Tiang / Feeder / Ket..."
+                value={deleteSearch}
+                onChange={e => setDeleteSearch(e.target.value)}
+                className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none uppercase"
+              />
+              <select
+                value={deleteUlpFilter}
+                onChange={e => setDeleteUlpFilter(e.target.value)}
+                className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
               >
-                {isSubmitting ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>MENGHUBUNGKAN DATABASE...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-4.5 h-4.5 text-emerald-400" />
-                    <span>INISIASI &amp; LANJUT KE LOGIN</span>
-                    <ArrowRight className="w-4 h-4 ml-1" />
-                  </>
-                )}
+                <option value="">Semua ULP</option>
+                {ulpList.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+              </select>
+              <select
+                value={deleteStatusFilter}
+                onChange={e => setDeleteStatusFilter(e.target.value)}
+                className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
+              >
+                <option value="">Semua Status</option>
+                <option value="BELUM EKSEKUSI">BELUM EKSEKUSI</option>
+                <option value="SUDAH EKSEKUSI">SUDAH EKSEKUSI</option>
+                <option value="BUTUH PADAM">BUTUH PADAM</option>
+                <option value="TIDAK DAPAT IZIN">TIDAK DAPAT IZIN</option>
+                <option value="KENDALA MATERIAL">KENDALA MATERIAL</option>
+              </select>
+              <input
+                type="date"
+                value={deleteDateFilter}
+                onChange={e => setDeleteDateFilter(e.target.value)}
+                className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"
+              />
+            </div>
+          </div>
+
+          {/* List of findings with Checkboxes */}
+          <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+            {/* Table or Card view header */}
+            <div className="px-6 py-4 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="selectAllDelete"
+                  className="w-5 h-5 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer"
+                  checked={
+                    (() => {
+                      const filtered = data.filter(item => {
+                        const s = deleteSearch.toLowerCase();
+                        const matchSearch = !deleteSearch || 
+                          String(item.noTiang || '').toLowerCase().includes(s) || 
+                          String(item.feeder || '').toLowerCase().includes(s) || 
+                          String(item.keterangan || '').toLowerCase().includes(s) || 
+                          String(item.alamat || '').toLowerCase().includes(s);
+                        const matchUlp = !deleteUlpFilter || item.ulp === deleteUlpFilter;
+                        const matchStatus = !deleteStatusFilter || item.status === deleteStatusFilter;
+                        
+                        let matchDate = true;
+                        if (deleteDateFilter) {
+                          const filterD = new Date(deleteDateFilter);
+                          filterD.setHours(0,0,0,0);
+                          const itemD = parseRobustDate(item.tanggal);
+                          itemD.setHours(0,0,0,0);
+                          matchDate = filterD.getTime() === itemD.getTime();
+                        }
+                        
+                        return matchSearch && matchUlp && matchStatus && matchDate;
+                      });
+                      return filtered.length > 0 && filtered.every(item => selectedIds.includes(item.id));
+                    })()
+                  }
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    const filtered = data.filter(item => {
+                      const s = deleteSearch.toLowerCase();
+                      const matchSearch = !deleteSearch || 
+                        String(item.noTiang || '').toLowerCase().includes(s) || 
+                        String(item.feeder || '').toLowerCase().includes(s) || 
+                        String(item.keterangan || '').toLowerCase().includes(s) || 
+                        String(item.alamat || '').toLowerCase().includes(s);
+                      const matchUlp = !deleteUlpFilter || item.ulp === deleteUlpFilter;
+                      const matchStatus = !deleteStatusFilter || item.status === deleteStatusFilter;
+                      
+                      let matchDate = true;
+                      if (deleteDateFilter) {
+                        const filterD = new Date(deleteDateFilter);
+                        filterD.setHours(0,0,0,0);
+                        const itemD = parseRobustDate(item.tanggal);
+                        itemD.setHours(0,0,0,0);
+                        matchDate = filterD.getTime() === itemD.getTime();
+                      }
+                      
+                      return matchSearch && matchUlp && matchStatus && matchDate;
+                    });
+
+                    if (checked) {
+                      const newIds = Array.from(new Set([...selectedIds, ...filtered.map(item => item.id)]));
+                      setSelectedIds(newIds);
+                    } else {
+                      const filteredIds = filtered.map(item => item.id);
+                      setSelectedIds(selectedIds.filter(id => !filteredIds.includes(id)));
+                    }
+                  }}
+                />
+                <label htmlFor="selectAllDelete" className="text-[10px] font-black text-slate-500 uppercase tracking-widest cursor-pointer select-none">
+                  Pilih Semua yang Ditampilkan
+                </label>
+              </div>
+              <button
+                onClick={() => setSelectedIds([])}
+                disabled={selectedIds.length === 0}
+                className="text-[9px] font-semibold text-slate-400 hover:text-red-500 uppercase disabled:opacity-0 transition-all font-black tracking-widest cursor-pointer"
+              >
+                Reset Pilihan
               </button>
             </div>
-          </form>
-        </div>
 
-        {/* FOOTER */}
-        <footer className="text-center text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-5">
-          © DO : 2026 - IT PLN ES BKT
-        </footer>
-      </div>
+            <div className="divide-y divide-slate-50 p-4 space-y-3 max-h-[60vh] overflow-y-auto">
+              {(() => {
+                const filtered = data.filter(item => {
+                  const s = deleteSearch.toLowerCase();
+                  const matchSearch = !deleteSearch || 
+                    String(item.noTiang || '').toLowerCase().includes(s) || 
+                    String(item.feeder || '').toLowerCase().includes(s) || 
+                    String(item.keterangan || '').toLowerCase().includes(s) || 
+                    String(item.alamat || '').toLowerCase().includes(s);
+                  const matchUlp = !deleteUlpFilter || item.ulp === deleteUlpFilter;
+                  const matchStatus = !deleteStatusFilter || item.status === deleteStatusFilter;
+                  
+                  let matchDate = true;
+                  if (deleteDateFilter) {
+                    const filterD = new Date(deleteDateFilter);
+                    filterD.setHours(0,0,0,0);
+                    const itemD = parseRobustDate(item.tanggal);
+                    itemD.setHours(0,0,0,0);
+                    matchDate = filterD.getTime() === itemD.getTime();
+                  }
+                  
+                  return matchSearch && matchUlp && matchStatus && matchDate;
+                }).sort((a,b) => parseRobustDate(b.tanggal).getTime() - parseRobustDate(a.tanggal).getTime());
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="py-16 text-center opacity-30">
+                      <span className="text-4xl">📂</span>
+                      <p className="text-[10px] font-black uppercase tracking-widest mt-2">Tidak ada data untuk filter terpilih</p>
+                    </div>
+                  );
+                }
+
+                return filtered.map((item, idx) => {
+                  const isChecked = selectedIds.includes(item.id);
+                  const dDate = parseRobustDate(item.tanggal);
+                  return (
+                    <div
+                      key={`${item.id}-${idx}`}
+                      onClick={() => {
+                        if (isChecked) {
+                          setSelectedIds(selectedIds.filter(id => id !== item.id));
+                        } else {
+                          setSelectedIds([...selectedIds, item.id]);
+                        }
+                      }}
+                      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all cursor-pointer ${
+                        isChecked 
+                          ? 'bg-red-50/40 border-red-200' 
+                          : 'bg-white border-slate-100 hover:border-slate-200'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {}} // Handled by outer div onClick
+                        className="w-5 h-5 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer flex-shrink-0"
+                      />
+                      
+                      <div className="w-12 h-12 bg-slate-50 border border-slate-200 rounded-xl overflow-hidden flex-shrink-0 shadow-sm">
+                        <img 
+                          src={getDisplayImageUrl(item.fotoTemuan)} 
+                          alt="" 
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start mb-0.5">
+                          <p className={`text-[11px] font-black uppercase tracking-tight truncate ${isChecked ? 'text-red-900' : 'text-slate-950'}`}>
+                            {item.noTiang || 'TANPA TIANG'} • {item.feeder || 'TANPA FEEDER'}
+                          </p>
+                          <span className={`text-[8px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider ${
+                            item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-100 text-emerald-700' : 
+                            item.status === 'BELUM EKSEKUSI' ? 'bg-indigo-100 text-indigo-700' :
+                            'bg-amber-100 text-amber-700'
+                          }`}>
+                            {item.status}
+                          </span>
+                        </div>
+                        
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight line-clamp-1">
+                          {item.keterangan || 'Tanpa Keterangan Kelainan'}
+                        </p>
+                        
+                        <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                          <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">
+                            📅 {dDate.toLocaleDateString('id-ID')}
+                          </span>
+                          <span className="text-[8px] font-black text-indigo-600/75 uppercase tracking-wider">
+                            🏢 {item.ulp || 'Unit Pelaksana'}
+                          </span>
+                          <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
+                            👤 {item.inspektor1 || '-'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal PopUp */}
+      {isDeleteConfirmOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[250] flex items-center justify-center p-4 animate-fade-in text-center">
+          <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden animate-slide-up">
+            <div className="p-8 space-y-6">
+              <div className="w-20 h-20 bg-red-50 border border-red-100 rounded-full flex items-center justify-center text-4xl mx-auto shadow-inner">
+                ⚠️
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-black text-slate-950 uppercase tracking-tight">
+                  Apakah Anda Sudah Yakin?
+                </h3>
+                <p className="text-xs text-slate-500 font-bold leading-relaxed">
+                  Tindakan ini akan menghapus sebanyak <span className="font-black text-red-600">{selectedIds.length} data temuan</span> yang dipilih secara permanen dari database.
+                </p>
+              </div>
+
+              <div className="flex gap-4 pt-2">
+                <button
+                  onClick={() => setIsDeleteConfirmOpen(false)}
+                  className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 active:scale-95 transition-all cursor-pointer"
+                >
+                  TIDAK
+                </button>
+                <button
+                  onClick={async () => {
+                    setIsDeleteConfirmOpen(false);
+                    if (onDeleteTemuans) {
+                      const success = await onDeleteTemuans(selectedIds);
+                      if (success) {
+                        setSelectedIds([]);
+                      }
+                    } else {
+                      alert('Fungsi penghapusan tidak terpasang.');
+                    }
+                  }}
+                  className="flex-1 py-4 bg-red-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-200 hover:bg-red-700 active:scale-95 transition-all cursor-pointer"
+                >
+                  YA
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
+           <div className="bg-white w-full max-sm rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up"><div className="p-8"><div className="flex justify-between items-center mb-6"><h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">{modalMode === 'ADD' ? 'Tambah' : 'Edit'} {subTab === 'MESSAGE' ? 'Pesan Marquee' : subTab}</h3><button onClick={() => setIsModalOpen(false)} className="text-slate-400 p-2 hover:text-slate-600">✕</button></div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">
+                       {subTab === 'MESSAGE' ? 'Isi Pesan' : `Nama ${subTab}`} *
+                    </label>
+                    {subTab === 'MESSAGE' ? (
+                      <textarea 
+                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-indigo-500 transition-all font-mono" 
+                        placeholder="Masukkan isi pesan marquee" 
+                        value={formData.name} 
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        rows={3}
+                      />
+                    ) : (
+                      <input 
+                        type="text" 
+                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none focus:border-indigo-500 transition-all uppercase" 
+                        placeholder={`Masukkan nama ${subTab.toLowerCase()}`} 
+                        value={formData.name} 
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
+                      />
+                    )}
+                  </div>
+                  {(subTab === 'FEEDER' || subTab === 'YANDAL') && (
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Tautkan ke ULP *</label>
+                      <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none" value={formData.ulpId} onChange={(e) => setFormData({ ...formData, ulpId: e.target.value })}>
+                        <option value="">Pilih Unit</option>
+                        {ulpList.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {subTab === 'MESSAGE' && (
+                    <div className="flex items-center gap-3 px-1 mt-2">
+                      <input 
+                        type="checkbox" 
+                        id="isActive" 
+                        className="w-5 h-5 rounded-lg border-slate-200 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        checked={formData.isActive}
+                        onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                      />
+                      <label htmlFor="isActive" className="text-[10px] font-black text-slate-600 uppercase tracking-widest cursor-pointer select-none">Aktifkan Pesan Ini</label>
+                    </div>
+                  )}
+                </div>
+                 <div className="mt-8 flex gap-3"><button onClick={() => setIsModalOpen(false)} className="flex-1 py-4 bg-slate-100 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Batal</button><button onClick={handleSaveMaster} disabled={isSaving} className="flex-2 py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50 px-8">{isSaving ? '⏳' : 'Simpan'}</button></div>
+              </div></div>
+        </div>
+      )}
+
+      {/* Detail Popup for Rekap Jenis */}
+      {detailPopup && (
+        <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-md z-[200] flex items-center justify-center p-4 animate-fade-in" onClick={() => setDetailPopup(null)}>
+          <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-[2.5rem] shadow-2xl flex flex-col animate-slide-up overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                  <span className="w-1.5 h-4 bg-indigo-600 rounded-full"></span>
+                  Detail Data: {detailPopup.keterangan}
+                </h3>
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                  Status: <span className="text-indigo-600">{detailPopup.status === 'ALL' ? 'SEMUA STATUS' : detailPopup.status}</span> • {detailPopup.data.length} Data Ditemukan
+                </p>
+              </div>
+              <button onClick={() => setDetailPopup(null)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-red-500 transition-all shadow-sm">✕</button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-4">
+                {detailPopup.data.length > 0 ? detailPopup.data.map((item, idx) => {
+                  const itemDate = parseRobustDate(item.tanggal);
+                  return (
+                    <div key={idx} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex gap-4 hover:border-indigo-200 transition-all group">
+                      <div className="flex flex-col items-center flex-shrink-0">
+                        <div className="w-16 h-16 bg-white rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                          <img src={getDisplayImageUrl(item.fotoTemuan)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                        </div>
+                        <p className="text-[7px] font-black uppercase text-slate-400 mt-1">Temuan</p>
+                      </div>
+                      
+                      {item.status === 'SUDAH EKSEKUSI' && item.fotoEksekusi && (
+                        <div className="flex flex-col items-center flex-shrink-0">
+                          <div className="w-16 h-16 bg-emerald-50 rounded-xl overflow-hidden border border-emerald-100 shadow-sm">
+                            <img src={getDisplayImageUrl(item.fotoEksekusi)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                          </div>
+                          <p className="text-[7px] font-black uppercase text-emerald-500 mt-1">Eksekusi</p>
+                        </div>
+                      )}
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start mb-1">
+                          <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight group-hover:text-indigo-600 transition-colors">
+                            {item.noTiang} • {item.feeder}
+                          </p>
+                          <span className={`text-[8px] px-2 py-0.5 rounded-full font-black uppercase ${
+                            item.status === 'SUDAH EKSEKUSI' ? 'bg-emerald-100 text-emerald-700' : 
+                            item.status === 'BELUM EKSEKUSI' ? 'bg-indigo-100 text-indigo-700' :
+                            'bg-amber-100 text-amber-700'
+                          }`}>
+                            {item.status}
+                          </span>
+                        </div>
+                        
+                        <p className="text-[10px] font-bold text-slate-600 uppercase tracking-tight line-clamp-1 mb-2">
+                          {item.alamat || item.lokasi || 'Alamat tidak tersedia'}
+                        </p>
+                        
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                          <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
+                            📅 {itemDate.toLocaleDateString('id-ID')}
+                          </p>
+                          <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
+                            🏢 {item.ulp}
+                          </p>
+                          <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
+                            👤 {item.inspektor1} {item.inspektor2 ? `& ${item.inspektor2}` : ''}
+                          </p>
+                        </div>
+
+                        {item.status === 'SUDAH EKSEKUSI' && (
+                          <div className="mt-3 pt-3 border-t border-slate-200/60 flex flex-col gap-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded uppercase tracking-wider">Eksekusi</span>
+                              <p className="text-[9px] font-black text-slate-700 uppercase">
+                                {item.tanggalEksekusi ? parseRobustDate(item.tanggalEksekusi).toLocaleDateString('id-ID') : '-'}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">Team:</span>
+                                <p className="text-[9px] font-black text-slate-700 uppercase">{item.timEksekusi || '-'}</p>
+                              </div>
+                              {item.timEksekusi === 'Team Yandal' && (item.namaYandal1 || item.namaYandal2) && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">Petugas:</span>
+                                  <p className="text-[9px] font-black text-emerald-600 uppercase">
+                                    {[item.namaYandal1, item.namaYandal2].filter(Boolean).join(' & ')}
+                                  </p>
+                                </div>
+                              )}
+                              {item.timEksekusi === 'Team ROW' && item.ROW && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">Team:</span>
+                                  <p className="text-[9px] font-black text-emerald-600 uppercase">
+                                    {item.ROW}
+                                  </p>
+                                </div>
+                              )}
+                              {item.timEksekusi === 'Team HAR' && item.HAR && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">Team:</span>
+                                  <p className="text-[9px] font-black text-emerald-600 uppercase">
+                                    {item.HAR}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {item.catatan && (
+                          <div className="mt-3 pt-3 border-t border-slate-200/60">
+                            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">📝 Catatan:</p>
+                            <p className="text-[10px] text-slate-700 font-bold leading-relaxed">{item.catatan}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <div className="text-center py-20 opacity-20">
+                    <span className="text-6xl">📂</span>
+                    <p className="text-xs font-black uppercase tracking-widest mt-4">Data tidak ditemukan</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end">
+              <button onClick={() => setDetailPopup(null)} className="px-8 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all">Tutup Detail</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default InisiasiPage;
+export default AdminPage;
