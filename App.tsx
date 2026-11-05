@@ -17,6 +17,7 @@ import InspeksiPage from './pages/InspeksiPage';
 import EksekusiPage from './pages/EksekusiPage';
 import AdminPage from './pages/AdminPage';
 import DataViewPage from './pages/DataViewPage';
+import { HARAPAN1_LOGO_BASE64 } from './constants/harapanLogo';
 
 const App: React.FC = () => {
   const [isInitialized, setIsInitialized] = useState<boolean>(() => isAppInitialized());
@@ -124,7 +125,6 @@ const App: React.FC = () => {
     : [];
 
   const RAW_LOGO_URL = "https://drive.google.com/file/d/1W_q1EgEvSsFH0d1bc7QtzbeOozfW9DtR/view?usp=sharing";
-  const RAW_HEADER_RIGHT_IMAGE_URL = "/assets/aistudio/Harapan1_transparan.png";
   
   const getDirectImageUrl = (url: string) => {
     if (url.includes('drive.google.com/file/d/')) {
@@ -137,7 +137,7 @@ const App: React.FC = () => {
   };
 
   const LOGO_URL = getDirectImageUrl(RAW_LOGO_URL);
-  const HEADER_RIGHT_IMAGE_URL = getDirectImageUrl(RAW_HEADER_RIGHT_IMAGE_URL);
+  const HEADER_RIGHT_IMAGE_URL = HARAPAN1_LOGO_BASE64;
 
   const refreshData = async (isBackground = false) => {
     if (!isBackground) {
