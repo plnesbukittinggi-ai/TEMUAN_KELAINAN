@@ -147,12 +147,17 @@ const App: React.FC = () => {
     try {
       const config = await SpreadsheetService.fetchAllData() as any;
       
-      // Simpan data mentah ke localStorage agar bisa diload secara instan lain kali
+      // Simpan data master & sebagian temuan ke localStorage (hindari QuotaExceededError untuk 6000+ temuan)
       try {
-        localStorage.setItem('imonex_cached_config', JSON.stringify(config));
+        const { allData: rawAllData, ...masterConfig } = config || {};
+        const lightConfig = {
+          ...masterConfig,
+          allData: Array.isArray(rawAllData) ? rawAllData.slice(0, 200) : []
+        };
+        localStorage.setItem('imonex_cached_config', JSON.stringify(lightConfig));
         localStorage.setItem('imonex_cache_timestamp', Date.now().toString());
-      } catch (cacheErr) {
-        console.warn('Gagal menyimpan cache ke localStorage:', cacheErr);
+      } catch {
+        // Abaikan jika penyimpanan browser penuh
       }
       
       const normalize = (input: any, label: string) => {
