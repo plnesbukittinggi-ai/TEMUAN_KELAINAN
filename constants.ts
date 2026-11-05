@@ -1,4 +1,3 @@
-
 import { Inspector, ULP, Feeder, Keterangan, Pekerjaan, Yandal, Har, Row, Tujuan, InisiasiUnit } from './types';
 
 export const SPREADSHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbw_8wCUk4EZcTVwxG3oryedtEEOc24glOKgpug5zPY3S3E7QuDXuzohnMpp_W_jajIN/exec';
@@ -120,3 +119,6 @@ export const getAdminPasswordForUnit = (unitName?: string): string => {
   if (upper.includes('SOLOK') || upper.includes('SLK')) return 'Admslk';
   return ADMIN_PASSWORDS_BY_UL[unitName] || 'Admbkt';
 };
+
+// Logo Juara Harapan 1 Lomba Karya Inovasi Ke-IX (Transparent PNG)
+export const HARAPAN1_LOGO_URL = '/logo-harapan1.png';
