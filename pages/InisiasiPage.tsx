@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { InisiasiUnit } from '../types';
 import { fetchInisiasiUnits, saveInisiasiUnit, getInisiasiUnit } from '../services/spreadsheetService';
+import { SPREADSHEET_WEB_APP_URL } from '../constants';
 import { Database, Building2, CheckCircle2, AlertCircle, RefreshCw, ArrowRight, Sparkles } from 'lucide-react';
 
 interface InisiasiPageProps {
@@ -73,20 +74,26 @@ const InisiasiPage: React.FC<InisiasiPageProps> = ({ onComplete, onBack }) => {
       return;
     }
 
-    if (!selectedUnit.urlGAS || !selectedUnit.urlGAS.trim()) {
-      alert(`Peringatan: URL Google Apps Script (GAS) untuk ${selectedUnit.namaUL} belum terisi di sheet inisiasi. Silakan hubungi Administrator.`);
-      return;
-    }
+    const effectiveUrl = (selectedUnit.urlGAS && selectedUnit.urlGAS.trim())
+      ? selectedUnit.urlGAS.trim()
+      : SPREADSHEET_WEB_APP_URL;
+
+    const unitToSave: InisiasiUnit = {
+      ...selectedUnit,
+      urlGAS: effectiveUrl
+    };
 
     setIsSubmitting(true);
 
     // Simpan ke storage dan selesaikan inisiasi
-    saveInisiasiUnit(selectedUnit);
+    saveInisiasiUnit(unitToSave);
 
     setTimeout(() => {
       setIsSubmitting(false);
-      onComplete(selectedUnit);
-    }, 400);
+      if (typeof onComplete === 'function') {
+        onComplete(unitToSave);
+      }
+    }, 200);
   };
 
   return (
