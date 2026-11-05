@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AppRole, LoginSession, Inspector, ULP, Pekerjaan, MarqueeMessage } from '../types';
-import { ADMIN_PASSWORD, getAdminPasswordForUnit, HARAPAN1_LOGO_BASE64 } from '../constants';
+import { ADMIN_PASSWORD, getAdminPasswordForUnit, HARAPAN1_LOGO_URL } from '../constants';
 import { 
   ClipboardList, 
   Wrench, 
@@ -57,7 +57,6 @@ const LoginPage: React.FC<LoginPageProps> = ({
   };
 
   const LOGO_URL = getDirectImageUrl(RAW_LOGO_URL);
-  const HARAPAN1_LOGO_URL = HARAPAN1_LOGO_BASE64;
 
   const handleSelectRole = (role: AppRole) => {
     setSelectedRole(role);
