@@ -612,11 +612,11 @@ const LoginPage: React.FC<LoginPageProps> = ({
               <img 
                 src={HARAPAN1_LOGO_URL} 
                 alt="Juara Harapan 1 Lomba Karya Inovasi Ke-IX PLN Electricity Services"
-                className="h-11 xs:h-14 sm:h-18 md:h-22 w-auto max-w-[85vw] object-contain filter drop-shadow-[0_10px_20px_rgba(0,100,176,0.18)] drop-shadow-[0_2px_4px_rgba(0,0,0,0.12)] hover:scale-105 transition-all duration-300" 
+                className="h-10 xs:h-12 sm:h-16 md:h-20 w-auto max-w-[85vw] object-contain filter drop-shadow-[0_10px_20px_rgba(0,100,176,0.18)] drop-shadow-[0_2px_4px_rgba(0,0,0,0.12)] hover:scale-105 transition-all duration-300" 
               />
             </div>
 
-            <div className="inline-flex items-center justify-center w-[56rem] h-[56rem] xs:w-[64rem] xs:h-[64rem] sm:w-[96rem] sm:h-[96rem] max-w-[95vw] max-h-[38vh] rounded-2xl xs:rounded-[1.75rem] sm:rounded-[2.2rem] p-1 mb-1 sm:mb-1.5 transform hover:scale-[1.03] hover:rotate-1 transition-all duration-300 overflow-hidden">
+            <div className="inline-flex items-center justify-center w-44 h-44 xs:w-52 xs:h-52 sm:w-64 sm:h-64 md:w-72 md:h-72 max-w-[85vw] max-h-[28vh] rounded-2xl xs:rounded-[1.75rem] sm:rounded-[2.2rem] p-1 mb-1 sm:mb-1.5 transform hover:scale-[1.03] hover:rotate-1 transition-all duration-300 overflow-hidden">
               {!logoError ? (
                 <img 
                   src={LOGO_URL} 
