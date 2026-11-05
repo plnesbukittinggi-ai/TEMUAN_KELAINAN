@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { AppRole, LoginSession, Inspector, ULP, Pekerjaan, MarqueeMessage } from '../types';
-import { ADMIN_PASSWORD, getAdminPasswordForUnit } from '../constants';
-import { HARAPAN1_LOGO_BASE64 } from '../constants/harapanLogo';
+import { ADMIN_PASSWORD, getAdminPasswordForUnit, HARAPAN1_LOGO_BASE64 } from '../constants';
 import { 
   ClipboardList, 
   Wrench, 
