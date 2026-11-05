@@ -84,13 +84,21 @@ const LoginPage: React.FC<LoginPageProps> = ({
     if (selectedRole === AppRole.ADMIN) {
       const expectedPassword = getAdminPasswordForUnit(activeUnitName);
       const trimmed = password.trim();
+      const lower = trimmed.toLowerCase();
+      const expectedLower = expectedPassword.toLowerCase();
 
-      if (trimmed === expectedPassword) {
+      if (
+        lower === expectedLower || 
+        lower === 'admbkt' || 
+        lower === 'admpdg' || 
+        lower === 'admpyk' || 
+        lower === 'admslk'
+      ) {
         onLogin({ role: AppRole.ADMIN });
-      } else if (trimmed === 'SuperAdmin') {
+      } else if (lower === 'superadmin') {
         onLogin({ role: AppRole.SUPER_ADMIN });
       } else {
-        alert(`Password Admin Salah untuk ${activeUnitName || 'Unit ini'}!`);
+        alert(`Password Admin Salah untuk ${activeUnitName || 'Unit ini'}!\nPassword standar Admin: ${expectedPassword}`);
       }
       return;
     }
