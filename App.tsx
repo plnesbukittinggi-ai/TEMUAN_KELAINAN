@@ -582,9 +582,7 @@ const App: React.FC = () => {
 
   const handleLogin = (sessionData: LoginSession) => {
     setSession(sessionData);
-    if (sessionData.role === AppRole.ADMIN || sessionData.role === AppRole.SUPER_ADMIN) {
-      setShowInisiasiPage(true);
-    }
+    setShowInisiasiPage(false);
   };
 
   const renderContent = () => {
