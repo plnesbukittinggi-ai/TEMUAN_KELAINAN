@@ -40,21 +40,22 @@ export const setSpreadsheetUrl = (url: string): void => {
 };
 
 export const isAppInitialized = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  return localStorage.getItem('imonex_is_initialized') === 'true';
+  if (typeof window === 'undefined') return true;
+  return localStorage.getItem('imonex_is_initialized') !== 'false';
 };
 
 export const getInisiasiUnit = (): InisiasiUnit | null => {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === 'undefined') return INITIAL_INISIASI_UNITS[0];
   const raw = localStorage.getItem('imonex_inisiasi_unit');
   if (raw) {
     try {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (parsed && (parsed.namaUL || parsed.kodeUL)) return parsed;
     } catch {
-      return null;
+      // ignore
     }
   }
-  return null;
+  return INITIAL_INISIASI_UNITS[0];
 };
 
 export const saveInisiasiUnit = (unit: InisiasiUnit): void => {
@@ -72,7 +73,7 @@ export const saveInisiasiUnit = (unit: InisiasiUnit): void => {
 
 export const resetInisiasi = (): void => {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem('imonex_is_initialized');
+  localStorage.setItem('imonex_is_initialized', 'false');
   localStorage.removeItem('imonex_inisiasi_unit');
   localStorage.removeItem('imonex_spreadsheet_url');
   localStorage.removeItem('imonex_spreadsheet_id');
