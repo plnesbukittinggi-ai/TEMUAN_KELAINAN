@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AppRole, TemuanData, LoginSession, Inspector, ULP, Feeder, Pekerjaan, Keterangan, Yandal, Har, Row, Tujuan, MarqueeMessage, InisiasiUnit } from './types';
-import { INITIAL_INSPECTORS, INITIAL_ULP, INITIAL_FEEDERS, INITIAL_KETERANGAN, INITIAL_PEKERJAAN, INITIAL_YANDAL, INITIAL_HAR, INITIAL_ROW, INITIAL_TUJUAN, APP_VERSION, HARAPAN1_LOGO_URL } from './constants';
+import { INITIAL_INSPECTORS, INITIAL_ULP, INITIAL_FEEDERS, INITIAL_KETERANGAN, INITIAL_PEKERJAAN, INITIAL_YANDAL, INITIAL_HAR, INITIAL_ROW, INITIAL_TUJUAN, APP_VERSION, HARAPAN1_LOGO_URL, SPREADSHEET_WEB_APP_URL } from './constants';
 import { Shield, Download, X, Smartphone, Settings, RefreshCw, AlertTriangle, CheckCircle2, Wifi, WifiOff, Globe, Database, Link, ExternalLink, Building2 } from 'lucide-react';
 import { 
   SpreadsheetService, 
@@ -467,11 +467,14 @@ const App: React.FC = () => {
   }, [isInitialized]);
 
   const handleInisiasiComplete = async (unit: InisiasiUnit) => {
-    setActiveUnit(unit);
+    const effectiveUrl = (unit.urlGAS && unit.urlGAS.trim()) ? unit.urlGAS.trim() : SPREADSHEET_WEB_APP_URL;
+    const finalUnit: InisiasiUnit = { ...unit, urlGAS: effectiveUrl };
+    saveInisiasiUnit(finalUnit);
+    setActiveUnit(finalUnit);
     setIsInitialized(true);
     setShowInisiasiPage(false);
-    setCustomUrlInput(unit.urlGAS);
-    setSpreadsheetUrl(unit.urlGAS);
+    setCustomUrlInput(effectiveUrl);
+    setSpreadsheetUrl(effectiveUrl);
     setConnectionError(false);
     setIsLoading(true);
     try {
