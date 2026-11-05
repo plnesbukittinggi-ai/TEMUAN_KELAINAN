@@ -124,7 +124,7 @@ const App: React.FC = () => {
     : [];
 
   const RAW_LOGO_URL = "https://drive.google.com/file/d/1W_q1EgEvSsFH0d1bc7QtzbeOozfW9DtR/view?usp=sharing";
-  const RAW_HEADER_RIGHT_IMAGE_URL = "https://drive.google.com/file/d/134vKMK9ORFocqB8E1LNY9AI9y92AKPG4/view?usp=drive_link";
+  const RAW_HEADER_RIGHT_IMAGE_URL = "/assets/aistudio/Harapan1_transparan.png";
   
   const getDirectImageUrl = (url: string) => {
     if (url.includes('drive.google.com/file/d/')) {
@@ -939,13 +939,19 @@ const App: React.FC = () => {
           </div>
 
           {/* Action buttons (Gear and KELUAR button if logged in) */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {!session && (
               <img 
                 src={HEADER_RIGHT_IMAGE_URL} 
-                alt="Header Logo Right" 
-                className="h-9 sm:h-11 w-auto object-contain filter drop-shadow-sm" 
-                referrerPolicy="no-referrer" 
+                alt="Juara Harapan 1 Lomba Karya Inovasi Ke-IX PLN Electricity Services" 
+                className="h-8 sm:h-11 w-auto max-w-[130px] sm:max-w-[190px] object-contain filter drop-shadow-sm rounded-lg" 
+              />
+            )}
+            {session && (
+              <img 
+                src={HEADER_RIGHT_IMAGE_URL} 
+                alt="Juara Harapan 1 Lomba Karya Inovasi Ke-IX PLN Electricity Services" 
+                className="hidden md:block h-8 sm:h-10 w-auto max-w-[160px] object-contain filter drop-shadow-sm rounded-lg" 
               />
             )}
             {session && (
