@@ -147,17 +147,12 @@ const App: React.FC = () => {
     try {
       const config = await SpreadsheetService.fetchAllData() as any;
       
-      // Simpan data master & sebagian temuan ke localStorage (hindari QuotaExceededError untuk 6000+ temuan)
+      // Simpan data mentah ke localStorage agar bisa diload secara instan lain kali
       try {
-        const { allData: rawAllData, ...masterConfig } = config || {};
-        const lightConfig = {
-          ...masterConfig,
-          allData: Array.isArray(rawAllData) ? rawAllData.slice(0, 200) : []
-        };
-        localStorage.setItem('imonex_cached_config', JSON.stringify(lightConfig));
+        localStorage.setItem('imonex_cached_config', JSON.stringify(config));
         localStorage.setItem('imonex_cache_timestamp', Date.now().toString());
-      } catch {
-        // Abaikan jika penyimpanan browser penuh
+      } catch (cacheErr) {
+        console.warn('Gagal menyimpan cache ke localStorage:', cacheErr);
       }
       
       const normalize = (input: any, label: string) => {
@@ -719,7 +714,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#dfefe2]/30 via-[#e2f1fc] to-[#e4f6fc] flex flex-col justify-between items-center py-8 px-4">
         <div className="flex-1 flex flex-col items-center justify-center text-center animate-fade-in max-w-lg w-full mx-auto">
-          <div className="w-40 h-40 sm:w-56 sm:h-56 max-w-[85vw] max-h-[25vh] flex items-center justify-center mb-4">
+          <div className="w-[32rem] h-[32rem] max-w-[85vw] max-h-[35vh] flex items-center justify-center mb-4">
             <img 
               src={LOGO_URL} 
               alt="Logo PLN" 
@@ -881,7 +876,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#dfefe2]/30 via-[#e2f1fc] to-[#e4f6fc] flex flex-col justify-between items-center py-12 px-4">
         <div className="flex-1 flex flex-col items-center justify-center text-center animate-fade-in">
-          <div className="inline-flex items-center justify-center w-48 h-48 sm:w-64 sm:h-64 max-w-[85vw] max-h-[30vh] p-3.5 mb-6 animate-pulse">
+          <div className="inline-flex items-center justify-center w-[56rem] h-[56rem] sm:w-[64rem] sm:h-[64rem] max-w-[95vw] max-h-[55vh] p-3.5 mb-6 animate-pulse">
             <img 
               src={LOGO_URL} 
               alt="Logo PLN ES Bukittinggi" 
