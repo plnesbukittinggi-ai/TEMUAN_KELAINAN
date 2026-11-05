@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AppRole, TemuanData, LoginSession, Inspector, ULP, Feeder, Pekerjaan, Keterangan, Yandal, Har, Row, Tujuan, MarqueeMessage, InisiasiUnit } from './types';
-import { INITIAL_INSPECTORS, INITIAL_ULP, INITIAL_FEEDERS, INITIAL_KETERANGAN, INITIAL_PEKERJAAN, INITIAL_YANDAL, INITIAL_HAR, INITIAL_ROW, INITIAL_TUJUAN, APP_VERSION } from './constants';
+import { INITIAL_INSPECTORS, INITIAL_ULP, INITIAL_FEEDERS, INITIAL_KETERANGAN, INITIAL_PEKERJAAN, INITIAL_YANDAL, INITIAL_HAR, INITIAL_ROW, INITIAL_TUJUAN, APP_VERSION, HARAPAN1_LOGO_BASE64 } from './constants';
 import { Shield, Download, X, Smartphone, Settings, RefreshCw, AlertTriangle, CheckCircle2, Wifi, WifiOff, Globe, Database, Link, ExternalLink, Building2 } from 'lucide-react';
 import { 
   SpreadsheetService, 
@@ -17,7 +17,6 @@ import InspeksiPage from './pages/InspeksiPage';
 import EksekusiPage from './pages/EksekusiPage';
 import AdminPage from './pages/AdminPage';
 import DataViewPage from './pages/DataViewPage';
-import { HARAPAN1_LOGO_BASE64 } from './constants/harapanLogo';
 
 const App: React.FC = () => {
   const [isInitialized, setIsInitialized] = useState<boolean>(() => isAppInitialized());
