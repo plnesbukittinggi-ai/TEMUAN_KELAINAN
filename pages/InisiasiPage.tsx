@@ -262,7 +262,7 @@ const InisiasiPage: React.FC<InisiasiPageProps> = ({ onComplete, onBack }) => {
                 ) : (
                   <>
                     <CheckCircle2 className="w-4.5 h-4.5 text-emerald-400" />
-                    <span>INISIASI &amp; LANJUT KE LOGIN</span>
+                    <span>{onBack ? 'INISIASI & MASUK KE DASHBOARD ADMIN' : 'INISIASI & LANJUT KE LOGIN'}</span>
                     <ArrowRight className="w-4 h-4 ml-1" />
                   </>
                 )}
