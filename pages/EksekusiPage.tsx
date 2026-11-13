@@ -1,7 +1,10 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { LoginSession, TemuanData, Yandal, Har, Row, ULP } from '../types';
+import { INITIAL_HAR, INITIAL_ROW } from '../constants';
+import { filterYandalByUlp, normalizeString } from '../utils/masterDataUtils';
 import { compressImage, getDisplayImageUrl } from '../utils/image-utils';
 import ImageEditor from '../src/components/ImageEditor';
+import { RefreshCw } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -17,6 +20,8 @@ interface EksekusiPageProps {
   harList: Har[];
   rowList: Row[];
   ulpList: ULP[];
+  onRefreshMasterData?: () => void;
+  isSyncingMasterData?: boolean;
 }
 
 type EksekusiSubFilter = 'BELUM EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN' | 'KENDALA MATERIAL';
@@ -40,7 +45,19 @@ const createCustomIcon = (color: string, isSearching: boolean) => {
   });
 };
 
-const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSave, initialData, yandalList, harList, rowList, ulpList }) => {
+const EksekusiPage: React.FC<EksekusiPageProps> = ({
+  session,
+  data,
+  onBack,
+  onSave,
+  initialData,
+  yandalList,
+  harList,
+  rowList,
+  ulpList,
+  onRefreshMasterData,
+  isSyncingMasterData = false
+}) => {
   const [selectedTemuan, setSelectedTemuan] = useState<TemuanData | null>(initialData || null);
   const [executionPhoto, setExecutionPhoto] = useState<string>(initialData?.fotoEksekusi || '');
   const [executionDate, setExecutionDate] = useState<string>('');
@@ -145,38 +162,19 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
   };
 
   const availableYandal = useMemo(() => {
-    if (!session.ulp) return [];
-    
-    const currentUlp = ulpList.find(u => 
-      (u.name && u.name.trim().toLowerCase() === session.ulp?.trim().toLowerCase()) ||
-      (u.id && u.id.trim().toLowerCase() === session.ulp?.trim().toLowerCase())
-    );
-    
-    const filtered = yandalList.filter(y => {
-      const yUlpId = String(y.ulpId || (y as any).ulp || '').trim().toLowerCase();
-      if (!yUlpId) return false;
-      
-      const sessionUlp = session.ulp?.trim().toLowerCase();
-      if (yUlpId === sessionUlp) return true;
-      
-      if (currentUlp) {
-        const targetId = String(currentUlp.id).trim().toLowerCase();
-        const targetName = String(currentUlp.name).trim().toLowerCase();
-        return yUlpId === targetId || yUlpId === targetName;
-      }
-      return false;
-    });
-
-    console.log(`Filtering Yandal for ${session.ulp}. Found: ${filtered.length} of ${yandalList.length}`);
-    return filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    return filterYandalByUlp(yandalList, ulpList, session.ulp);
   }, [yandalList, ulpList, session.ulp]);
 
   const availableHar = useMemo(() => {
-    return [...harList].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const valid = (harList || []).filter(h => h && normalizeString(h.name).length > 0);
+    const list = valid.length > 0 ? valid : INITIAL_HAR;
+    return [...list].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [harList]);
 
   const availableRow = useMemo(() => {
-    return [...rowList].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const valid = (rowList || []).filter(r => r && normalizeString(r.name).length > 0);
+    const list = valid.length > 0 ? valid : INITIAL_ROW;
+    return [...list].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [rowList]);
 
   const handleAction = async (newStatus: 'SUDAH EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN' | 'KENDALA MATERIAL') => {
@@ -284,15 +282,27 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
 
   return (
     <div className="pb-10">
-      <div className="flex items-center mb-8 gap-4">
+      <div className="flex items-center mb-8 gap-3">
         <button onClick={onBack} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 active:scale-95 transition-all group">
           <span className="text-sm font-black text-slate-900 group-hover:-translate-x-1 transition-transform">←</span>
           <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Kembali</span>
         </button>
-        <div className="flex-1">
-          <h2 className="text-lg font-bold text-slate-900 tracking-tight">{initialData ? 'Edit Eksekusi' : 'Antrean Eksekusi'}</h2>
-          <p className="text-[11px] text-emerald-600 font-bold uppercase tracking-wider">{session.ulp}</p>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-lg font-bold text-slate-900 tracking-tight truncate">{initialData ? 'Edit Eksekusi' : 'Antrean Eksekusi'}</h2>
+          <p className="text-[11px] text-emerald-600 font-bold uppercase tracking-wider truncate">{session.ulp}</p>
         </div>
+        {onRefreshMasterData && (
+          <button
+            type="button"
+            onClick={onRefreshMasterData}
+            disabled={isSyncingMasterData}
+            title="Muat ulang data master tanpa logout"
+            className="flex items-center gap-1.5 px-3 py-2.5 bg-white border border-blue-200 text-[#003b71] hover:bg-blue-50 rounded-xl shadow-sm active:scale-95 transition-all text-[9px] font-black uppercase tracking-wider disabled:opacity-60 cursor-pointer shrink-0"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncingMasterData ? 'animate-spin text-blue-600' : ''}`} />
+            <span className="hidden sm:inline">{isSyncingMasterData ? 'Memuat...' : 'Muat Ulang Data'}</span>
+          </button>
+        )}
       </div>
 
       {!initialData && (
@@ -521,7 +531,20 @@ const EksekusiPage: React.FC<EksekusiPageProps> = ({ session, data, onBack, onSa
           <div className="bg-white w-full max-sm rounded-3xl shadow-2xl flex flex-col my-8" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center p-6 border-b border-slate-100">
               <h3 className="text-lg font-bold text-slate-900">Form Laporan Eksekusi</h3>
-              <button onClick={() => initialData ? onBack() : setSelectedTemuan(null)} className="text-slate-400 p-2">✕</button>
+              <div className="flex items-center gap-2">
+                {onRefreshMasterData && (
+                  <button
+                    type="button"
+                    onClick={onRefreshMasterData}
+                    disabled={isSyncingMasterData}
+                    title="Muat ulang data petugas"
+                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isSyncingMasterData ? 'animate-spin' : ''}`} />
+                  </button>
+                )}
+                <button onClick={() => initialData ? onBack() : setSelectedTemuan(null)} className="text-slate-400 p-2">✕</button>
+              </div>
             </div>
             <div className="p-6 space-y-6">
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">

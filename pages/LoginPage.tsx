@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AppRole, LoginSession, Inspector, ULP, Pekerjaan, MarqueeMessage } from '../types';
 import { ADMIN_PASSWORD, getAdminPasswordForUnit, HARAPAN1_LOGO_URL } from '../constants';
+import { resolvePekerjaan } from '../utils/masterDataUtils';
 import { 
   ClipboardList, 
   Wrench, 
@@ -15,7 +16,8 @@ import {
   ArrowLeft, 
   Building, 
   Sparkles,
-  Shield
+  Shield,
+  RefreshCw
 } from 'lucide-react';
 
 interface LoginPageProps {
@@ -24,6 +26,8 @@ interface LoginPageProps {
   ulpList: ULP[];
   pekerjaanList: Pekerjaan[];
   isLoading?: boolean;
+  isSyncing?: boolean;
+  onRefreshMasterData?: () => void;
   marqueeMessages?: MarqueeMessage[];
   activeUnitName?: string;
 }
@@ -34,6 +38,8 @@ const LoginPage: React.FC<LoginPageProps> = ({
   ulpList, 
   pekerjaanList, 
   isLoading, 
+  isSyncing = false,
+  onRefreshMasterData,
   marqueeMessages,
   activeUnitName
 }) => {
@@ -72,10 +78,10 @@ const LoginPage: React.FC<LoginPageProps> = ({
 
   const handlePekerjaanChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedId = e.target.value;
-    const selectedPek = pekerjaanList.find(p => p.id === selectedId);
+    const selectedPek = resolvePekerjaan(pekerjaanList, selectedId);
     setFormData({
       ...formData,
-      idPekerjaan: selectedId,
+      idPekerjaan: selectedPek ? selectedPek.id : selectedId,
       pekerjaan: selectedPek ? selectedPek.name : ''
     });
   };
@@ -738,19 +744,33 @@ const LoginPage: React.FC<LoginPageProps> = ({
         <div className="flex-1 flex items-center justify-center w-full max-w-lg mx-auto py-10 px-4 relative z-20 animate-slide-up">
           <div className="bg-white p-8 sm:p-10 rounded-[2.8rem] border border-slate-200/90 shadow-2xl space-y-6 w-full">
             
-            {/* Back indicator trigger */}
-            <button 
-              onClick={handleBack} 
-              className="flex items-center gap-2.5 px-4 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl shadow-sm hover:shadow active:scale-95 transition-all text-xs font-black uppercase tracking-[0.1em] text-slate-800 group"
-            >
-              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform stroke-[2.5]" />
-              Kembali
-            </button>
+            {/* Back indicator trigger + Refresh Master Data */}
+            <div className="flex items-center justify-between gap-2">
+              <button 
+                onClick={handleBack} 
+                className="flex items-center gap-2.5 px-4 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl shadow-sm hover:shadow active:scale-95 transition-all text-xs font-black uppercase tracking-[0.1em] text-slate-800 group"
+              >
+                <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform stroke-[2.5]" />
+                Kembali
+              </button>
+              {onRefreshMasterData && (
+                <button
+                  type="button"
+                  onClick={onRefreshMasterData}
+                  disabled={isSyncing}
+                  title="Muat ulang daftar ULP, Inspektor, dan Pekerjaan"
+                  className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-[#003b71] border border-blue-200 rounded-2xl text-[10px] font-black uppercase tracking-wider active:scale-95 transition-all disabled:opacity-60 cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />
+                  <span>{isSyncing ? 'Memuat...' : 'Muat Ulang Master'}</span>
+                </button>
+              )}
+            </div>
 
             {/* Description headers */}
             <div className="text-center pt-2">
               <p className="text-[9px] font-black text-blue-600 uppercase tracking-[0.34em] mb-1.5">
-                Konfigurasi Akses {isLoading && '(Sinkronisasi...)'}
+                Konfigurasi Akses {(isLoading || isSyncing) && '(Sinkronisasi...)'}
               </p>
               <h3 className="text-xl sm:text-2xl font-black text-[#0f2d59] uppercase tracking-wide leading-none">
                 {selectedRole?.replace('_', ' ')}

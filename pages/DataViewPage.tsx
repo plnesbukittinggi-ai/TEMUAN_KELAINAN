@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { TemuanData, LoginSession } from '../types';
 import { getDisplayImageUrl } from '../utils/image-utils';
+import { RefreshCw } from 'lucide-react';
 
 interface DataViewPageProps {
   ulp: string;
@@ -11,6 +12,8 @@ interface DataViewPageProps {
   onAddEksekusi?: () => void;
   onEdit?: (data: TemuanData) => void;
   currentSession?: LoginSession;
+  onRefreshMasterData?: () => void;
+  isSyncingMasterData?: boolean;
 }
 
 // Helper to get default month dates
@@ -37,7 +40,17 @@ const getDefaultMonthDates = () => {
   };
 };
 
-const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTemuan, onAddEksekusi, onEdit, currentSession }) => {
+const DataViewPage: React.FC<DataViewPageProps> = ({
+  ulp,
+  data,
+  onBack,
+  onAddTemuan,
+  onAddEksekusi,
+  onEdit,
+  currentSession,
+  onRefreshMasterData,
+  isSyncingMasterData = false
+}) => {
   const initialDates = getDefaultMonthDates();
   const [activeTab, setActiveTab] = useState<'MONITORING' | 'PLN'>('MONITORING');
   const [filter, setFilter] = useState<'ALL' | 'BELUM EKSEKUSI' | 'SUDAH EKSEKUSI' | 'BUTUH PADAM' | 'TIDAK DAPAT IZIN' | 'KENDALA MATERIAL'>('ALL');
@@ -182,15 +195,27 @@ const DataViewPage: React.FC<DataViewPageProps> = ({ ulp, data, onBack, onAddTem
 
   return (
     <div className="min-h-screen bg-slate-50 pb-10">
-      <div className="flex items-center gap-4 mb-8">
+      <div className="flex items-center gap-3 mb-8">
         <button onClick={onBack} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 transition-all group">
           <span className="text-sm font-black text-slate-900 group-hover:-translate-x-1 transition-transform">←</span>
           <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Logout</span>
         </button>
-        <div className="flex-1">
-          <h2 className="text-lg font-bold text-slate-900 tracking-tight">Monitoring Data</h2>
-          <p className="text-[11px] text-indigo-600 font-bold uppercase tracking-wider">{ulp}</p>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-lg font-bold text-slate-900 tracking-tight truncate">Monitoring Data</h2>
+          <p className="text-[11px] text-indigo-600 font-bold uppercase tracking-wider truncate">{ulp}</p>
         </div>
+        {onRefreshMasterData && (
+          <button
+            type="button"
+            onClick={onRefreshMasterData}
+            disabled={isSyncingMasterData}
+            title="Muat ulang data & master data tanpa logout"
+            className="flex items-center gap-1.5 px-3 py-2.5 bg-white border border-blue-200 text-[#003b71] hover:bg-blue-50 rounded-xl shadow-sm active:scale-95 transition-all text-[9px] font-black uppercase tracking-wider disabled:opacity-60 cursor-pointer shrink-0"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncingMasterData ? 'animate-spin text-blue-600' : ''}`} />
+            <span className="hidden sm:inline">{isSyncingMasterData ? 'Memuat...' : 'Muat Ulang Data'}</span>
+          </button>
+        )}
       </div>
 
       <div className="flex bg-white border border-slate-200 p-1.5 rounded-2xl mb-6 shadow-sm gap-1">

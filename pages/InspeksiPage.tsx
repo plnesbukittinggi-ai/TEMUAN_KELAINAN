@@ -1,67 +1,76 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { LoginSession, TemuanData, Feeder, Keterangan, Tujuan } from '../types';
+import { LoginSession, TemuanData, Feeder, Keterangan, Tujuan, Pekerjaan } from '../types';
 import { compressImage, getDisplayImageUrl } from '../utils/image-utils';
+import {
+  filterKeteranganByPekerjaan,
+  getValidTujuanList,
+  normalizeString,
+  normalizeText
+} from '../utils/masterDataUtils';
+import { RefreshCw } from 'lucide-react';
 import ImageEditor from '../src/components/ImageEditor';
 
 interface InspeksiPageProps {
   session: LoginSession;
   feeders: Feeder[];
   keteranganList: Keterangan[];
+  pekerjaanList?: Pekerjaan[];
   tujuanList?: Tujuan[];
   onBack: () => void;
   onSave: (data: TemuanData) => void;
   historyData?: TemuanData[];
   initialData?: TemuanData; // Support for Edit mode
+  onRefreshMasterData?: () => void;
+  isSyncingMasterData?: boolean;
 }
 
-const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranganList, tujuanList = [], onBack, onSave, historyData = [], initialData }) => {
+const InspeksiPage: React.FC<InspeksiPageProps> = ({
+  session,
+  feeders,
+  keteranganList,
+  pekerjaanList = [],
+  tujuanList = [],
+  onBack,
+  onSave,
+  historyData = [],
+  initialData,
+  onRefreshMasterData,
+  isSyncingMasterData = false
+}) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   const [isManualGeotag, setIsManualGeotag] = useState(false);
   const [editingImage, setEditingImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const normalize = (s: any) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-  const filteredKeteranganList = useMemo(() => {
-    const list = keteranganList || [];
-    const targetIdNorm = normalize(session.idPekerjaan);
-    const targetNameNorm = normalize(session.pekerjaan);
-
-    const filtered = list.filter(k => {
-      if (targetIdNorm === 'pln') return true; // Show all if PLN mode
-      const currentKIdNorm = normalize(k.idPekerjaan);
-      const matchById = (targetIdNorm !== "" && currentKIdNorm === targetIdNorm);
-      const matchByName = (targetNameNorm !== "" && currentKIdNorm === targetNameNorm);
-      return matchById || matchByName;
-    });
-
-    // Jika sedang dalam mode edit, pastikan nilai keterangan yang ada saat ini
-    // tetap tersedia dalam dropdown meskipun filter id_pekerjaan mungkin tidak cocok
-    if (initialData?.keterangan) {
-      const isAlreadyInList = filtered.some(k => k.text === initialData.keterangan);
-      if (!isAlreadyInList) {
-        const existingKeterangan = list.find(k => k.text === initialData.keterangan);
-        if (existingKeterangan) {
-          filtered.push(existingKeterangan);
-        }
+  const availableFeeders = useMemo(() => {
+    const valid = (feeders || []).filter(f => f && normalizeString(f.name).length > 0);
+    if (initialData?.feeder && normalizeString(initialData.feeder)) {
+      const targetNorm = normalizeText(initialData.feeder);
+      if (!valid.some(f => normalizeText(f.name) === targetNorm)) {
+        return [
+          ...valid,
+          { id: `edit-feeder-${targetNorm}`, name: normalizeString(initialData.feeder), ulpId: '' }
+        ];
       }
     }
+    return valid;
+  }, [feeders, initialData?.feeder]);
 
-    return filtered;
-  }, [keteranganList, session, initialData]);
+  const filteredKeteranganList = useMemo(() => {
+    return filterKeteranganByPekerjaan(
+      keteranganList,
+      pekerjaanList,
+      session.idPekerjaan,
+      session.pekerjaan,
+      initialData?.keterangan
+    );
+  }, [keteranganList, pekerjaanList, session.idPekerjaan, session.pekerjaan, initialData?.keterangan]);
 
   const availableTujuan = useMemo(() => {
-    if (tujuanList && tujuanList.length > 0) {
-      return tujuanList;
-    }
-    return [
-      { id: 't1', name: 'YANDAL' },
-      { id: 't2', name: 'ROW' },
-      { id: 't3', name: 'HAR' },
-    ];
-  }, [tujuanList]);
+    return getValidTujuanList(tujuanList, initialData?.Team_Tujuan);
+  }, [tujuanList, initialData?.Team_Tujuan]);
 
   // Ensure prioritas is a number from the start
   const initialPrioritas = initialData?.prioritas !== undefined ? Number(initialData.prioritas) : 1;
@@ -141,7 +150,7 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
 
   return (
     <div className="pb-10">
-      <div className="flex items-center gap-4 mb-8">
+      <div className="flex items-center gap-3 mb-8">
         <button 
           onClick={onBack} 
           className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 active:scale-95 transition-all group"
@@ -149,12 +158,24 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
           <span className="text-sm font-black text-slate-900 group-hover:-translate-x-1 transition-transform">←</span>
           <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Kembali</span>
         </button>
-        <div className="flex-1">
-          <h2 className="text-lg font-bold text-slate-900 tracking-tight">{initialData ? 'Edit Data Temuan' : 'Formulir Temuan Baru'}</h2>
-          <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-widest">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-lg font-bold text-slate-900 tracking-tight truncate">{initialData ? 'Edit Data Temuan' : 'Formulir Temuan Baru'}</h2>
+          <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-widest truncate">
             {initialData ? 'MODE EDIT DATA' : formData.pekerjaan}
           </p>
         </div>
+        {onRefreshMasterData && (
+          <button
+            type="button"
+            onClick={onRefreshMasterData}
+            disabled={isSyncingMasterData}
+            title="Muat ulang Penyulang, Kelainan, dan Team Tujuan tanpa logout"
+            className="flex items-center gap-1.5 px-3 py-2.5 bg-white border border-blue-200 text-[#003b71] hover:bg-blue-50 rounded-xl shadow-sm active:scale-95 transition-all text-[9px] font-black uppercase tracking-wider disabled:opacity-60 cursor-pointer shrink-0"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncingMasterData ? 'animate-spin text-blue-600' : ''}`} />
+            <span className="hidden sm:inline">{isSyncingMasterData ? 'Memuat...' : 'Muat Ulang Data'}</span>
+          </button>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -199,8 +220,8 @@ const InspeksiPage: React.FC<InspeksiPageProps> = ({ session, feeders, keteranga
           <div>
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5 ml-1">Penyulang (Feeder) *</label>
             <select className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-indigo-500" value={formData.feeder} onChange={e => setFormData({ ...formData, feeder: e.target.value })}>
-              <option value="">-- Pilih Feeder --</option>
-              {feeders.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
+              <option value="">{availableFeeders.length === 0 ? '-- Penyulang Tidak Ditemukan (Klik Muat Ulang) --' : '-- Pilih Feeder --'}</option>
+              {availableFeeders.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
             </select>
           </div>
           <div>
