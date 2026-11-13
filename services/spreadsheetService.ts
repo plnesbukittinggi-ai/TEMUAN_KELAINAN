@@ -411,41 +411,64 @@ export const getLocalSimulatedRotationHistory = (): RotationHistoryItem[] => {
 };
 
 export const SpreadsheetService = {
-  async fetchAllData(): Promise<AppConfig> {
+  async fetchRemoteAllData(): Promise<{ source: 'GAS' | 'GVIZ'; raw: AppConfig }> {
     const url = getSpreadsheetUrl();
     const rawSpreadsheetId = (typeof window !== 'undefined' ? localStorage.getItem('imonex_spreadsheet_id') : '') || '';
     const cleanSpreadsheetId = rawSpreadsheetId.replace(/^https?:\/\/.*\/d\//, '').replace(/\/.*$/, '').trim();
 
-    // 1. Coba koneksi via Google Apps Script Web App
+    // 1. Coba koneksi via Google Apps Script Web App (dengan timeout agar tidak menggantung)
     if (url && !url.includes('YOUR_URL')) {
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), 25000) : null;
       try {
-        const fetchUrl = `${url}${url.includes('?') ? '&' : '?'}action=getAll`;
+        const fetchUrl = `${url}${url.includes('?') ? '&' : '?'}action=getAll&_t=${Date.now()}`;
         const response = await fetch(fetchUrl, {
           method: 'GET',
+          signal: controller ? controller.signal : undefined
         });
 
         if (response.ok) {
           const result = await response.json();
-          if (result && typeof result === 'object') {
-            // Simpan status kapasitas & registry jika dikembalikan oleh GAS
+          if (result && typeof result === 'object' && !Array.isArray(result) && result.success !== false && !result.error) {
             if (result.databaseCapacity) {
-              localStorage.setItem(getUlStorageKey('capacity_cache'), JSON.stringify(result.databaseCapacity));
+              try {
+                localStorage.setItem(getUlStorageKey('capacity_cache'), JSON.stringify(result.databaseCapacity));
+              } catch {}
             }
             if (result.databaseRegistry) {
-              localStorage.setItem(getUlStorageKey('registry'), JSON.stringify(result.databaseRegistry));
+              try {
+                localStorage.setItem(getUlStorageKey('registry'), JSON.stringify(result.databaseRegistry));
+              } catch {}
             }
-            return result;
+            return { source: 'GAS', raw: result };
           }
+          console.warn('Respons GAS tidak valid atau error:', result?.message || result?.error);
+        } else {
+          console.warn(`GAS Web App merespon HTTP ${response.status}`);
         }
       } catch (error: any) {
         console.warn('Google Apps Script Web App tidak merespon, mencoba membaca cadangan Spreadsheet...', error?.message || error);
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
       }
     }
 
     // 2. Fallback: Coba baca langsung dari Google Spreadsheet via GViz API jika ID Spreadsheet tersedia
     if (cleanSpreadsheetId) {
       try {
-        const [inspectors, ulpList, feeders, yandalList, harList, rowList, tujuanList, keteranganList, marqueeMessages, allData] = await Promise.all([
+        const [
+          inspectors,
+          ulpList,
+          feeders,
+          yandalList,
+          harList,
+          rowList,
+          tujuanList,
+          pekerjaanList,
+          keteranganList,
+          marqueeMessages,
+          allData
+        ] = await Promise.all([
           fetchSheetRowsGviz(cleanSpreadsheetId, 'Inspectors'),
           fetchSheetRowsGviz(cleanSpreadsheetId, 'ULP'),
           fetchSheetRowsGviz(cleanSpreadsheetId, 'Feeders'),
@@ -453,27 +476,32 @@ export const SpreadsheetService = {
           fetchSheetRowsGviz(cleanSpreadsheetId, 'HAR'),
           fetchSheetRowsGviz(cleanSpreadsheetId, 'ROW'),
           fetchSheetRowsGviz(cleanSpreadsheetId, 'Tujuan'),
+          fetchSheetRowsGviz(cleanSpreadsheetId, 'Pekerjaan'),
           fetchSheetRowsGviz(cleanSpreadsheetId, 'Keterangan'),
-          fetchSheetRowsGviz(cleanSpreadsheetId, 'MarqueeMessages'),
-          fetchSheetRowsGviz(cleanSpreadsheetId, 'AllData'),
+          fetchSheetRowsGviz(cleanSpreadsheetId, 'Messages'),
+          fetchSheetRowsGviz(cleanSpreadsheetId, 'Temuan'),
         ]);
 
-        if (inspectors.length > 0 || ulpList.length > 0 || allData.length > 0) {
+        if (inspectors.length > 0 || ulpList.length > 0 || feeders.length > 0 || keteranganList.length > 0) {
           const cap = getLocalSimulatedCapacity(allData.length);
           const reg = getLocalSimulatedRegistry();
           return {
-            inspectors,
-            ulpList,
-            feeders,
-            yandalList,
-            harList,
-            rowList,
-            tujuanList,
-            keteranganList,
-            marqueeMessages,
-            allData,
-            databaseCapacity: cap,
-            databaseRegistry: reg
+            source: 'GVIZ',
+            raw: {
+              inspectors,
+              ulpList,
+              feeders,
+              yandalList,
+              harList,
+              rowList,
+              tujuanList,
+              pekerjaanList,
+              keteranganList,
+              marqueeMessages,
+              allData,
+              databaseCapacity: cap,
+              databaseRegistry: reg
+            }
           };
         }
       } catch (gvizErr) {
@@ -481,28 +509,36 @@ export const SpreadsheetService = {
       }
     }
 
-    // 3. Fallback: Gunakan cache lokal jika ada
-    if (typeof window !== 'undefined') {
-      const cachedConfigStr = localStorage.getItem('imonex_cached_config');
-      if (cachedConfigStr) {
-        try {
-          const cached = JSON.parse(cachedConfigStr);
-          if (cached && typeof cached === 'object') {
-            const cap = getLocalSimulatedCapacity(cached.allData?.length || 0);
-            const reg = getLocalSimulatedRegistry();
-            return {
-              ...cached,
-              databaseCapacity: cached.databaseCapacity || cap,
-              databaseRegistry: cached.databaseRegistry || reg
-            };
+    throw new Error("Server Google Apps Script merespon 404 atau tidak dapat dijangkau.");
+  },
+
+  async fetchAllData(): Promise<AppConfig> {
+    try {
+      const { raw } = await this.fetchRemoteAllData();
+      return raw;
+    } catch (err) {
+      // Fallback: Gunakan cache lokal terakhir yang valid jika ada
+      if (typeof window !== 'undefined') {
+        const cachedConfigStr = localStorage.getItem('imonex_cached_config');
+        if (cachedConfigStr) {
+          try {
+            const cached = JSON.parse(cachedConfigStr);
+            if (cached && typeof cached === 'object') {
+              const cap = getLocalSimulatedCapacity(cached.allData?.length || 0);
+              const reg = getLocalSimulatedRegistry();
+              return {
+                ...cached,
+                databaseCapacity: cached.databaseCapacity || cap,
+                databaseRegistry: cached.databaseRegistry || reg
+              };
+            }
+          } catch {
+            // ignore error
           }
-        } catch {
-          // ignore error
         }
       }
+      throw err;
     }
-
-    throw new Error("Server Google Apps Script merespon 404 atau tidak dapat dijangkau.");
   },
 
   async addTemuan(data: TemuanData): Promise<ApiResponse> {
