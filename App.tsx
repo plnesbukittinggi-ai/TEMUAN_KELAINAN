@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { AppRole, TemuanData, LoginSession, Inspector, ULP, Feeder, Pekerjaan, Keterangan, Yandal, Har, Row, Tujuan, MarqueeMessage, InisiasiUnit } from './types';
 import { INITIAL_INSPECTORS, INITIAL_ULP, INITIAL_FEEDERS, INITIAL_KETERANGAN, INITIAL_PEKERJAAN, INITIAL_YANDAL, INITIAL_HAR, INITIAL_ROW, INITIAL_TUJUAN, APP_VERSION, HARAPAN1_LOGO_URL, SPREADSHEET_WEB_APP_URL } from './constants';
 import { Shield, Download, X, Smartphone, Settings, RefreshCw, AlertTriangle, CheckCircle2, Wifi, WifiOff, Globe, Database, Link, ExternalLink, Building2 } from 'lucide-react';
@@ -11,6 +11,13 @@ import {
   saveInisiasiUnit, 
   resetInisiasi 
 } from './services/spreadsheetService';
+import { MasterDataService } from './services/masterDataService';
+import {
+  MasterDataSnapshot,
+  DEFAULT_MASTER_DATA,
+  filterFeedersByUlp,
+  resolvePekerjaan
+} from './utils/masterDataUtils';
 import InisiasiPage from './pages/InisiasiPage';
 import LoginPage from './pages/LoginPage';
 import InspeksiPage from './pages/InspeksiPage';
@@ -43,9 +50,49 @@ const App: React.FC = () => {
   const [isSavingUrl, setIsSavingUrl] = useState<boolean>(false);
   const [urlSaveSuccess, setUrlSaveSuccess] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [masterFeedback, setMasterFeedback] = useState<{ type: 'success' | 'warning' | 'error'; text: string } | null>(null);
   
   const [editingData, setEditingData] = useState<TemuanData | null>(null);
   const [showUpdatePopup, setShowUpdatePopup] = useState<boolean>(false);
+
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestSnapshotRef = useRef<MasterDataSnapshot>({
+    inspectors,
+    ulpList,
+    feeders,
+    yandalList,
+    harList,
+    rowList,
+    tujuanList,
+    pekerjaanList,
+    keteranganList,
+    marqueeMessages
+  });
+
+  useEffect(() => {
+    latestSnapshotRef.current = {
+      inspectors,
+      ulpList,
+      feeders,
+      yandalList,
+      harList,
+      rowList,
+      tujuanList,
+      pekerjaanList,
+      keteranganList,
+      marqueeMessages
+    };
+  }, [inspectors, ulpList, feeders, yandalList, harList, rowList, tujuanList, pekerjaanList, keteranganList, marqueeMessages]);
+
+  const showMasterFeedback = (type: 'success' | 'warning' | 'error', text: string) => {
+    if (feedbackTimerRef.current) {
+      clearTimeout(feedbackTimerRef.current);
+    }
+    setMasterFeedback({ type, text });
+    feedbackTimerRef.current = setTimeout(() => {
+      setMasterFeedback(null);
+    }, 4500);
+  };
 
   // PWA states
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -116,12 +163,17 @@ const App: React.FC = () => {
     setShowInstallBtn(false);
   };
 
-  // Derived state to cleanup and simplify variables
+  // Derived state with normalized ULP & Feeder matching
   const activeMarqueeMessages = marqueeMessages ? marqueeMessages.filter(m => m.isActive) : [];
-  const sessionUlpData = session && session.ulp ? allData.filter(d => d.ulp === session.ulp) : [];
-  const filteredFeeders = session && session.ulp 
-    ? feeders.filter(f => f.ulpId === ulpList.find(u => u.name === session.ulp)?.id)
-    : [];
+  const sessionUlpData = useMemo(() => {
+    if (!session || !session.ulp) return [];
+    const target = session.ulp.trim().toLowerCase();
+    return allData.filter(d => String(d.ulp || '').trim().toLowerCase() === target);
+  }, [session, allData]);
+
+  const filteredFeeders = useMemo(() => {
+    return filterFeedersByUlp(feeders, ulpList, session?.ulp);
+  }, [feeders, ulpList, session?.ulp]);
 
   const RAW_LOGO_URL = "https://drive.google.com/file/d/1W_q1EgEvSsFH0d1bc7QtzbeOozfW9DtR/view?usp=sharing";
   
@@ -138,188 +190,83 @@ const App: React.FC = () => {
   const LOGO_URL = getDirectImageUrl(RAW_LOGO_URL);
   const HEADER_RIGHT_IMAGE_URL = HARAPAN1_LOGO_URL;
 
-  const refreshData = async (isBackground = false) => {
-    if (!isBackground) {
+  const applyMasterSnapshot = (snapshot: MasterDataSnapshot, nextAllData?: TemuanData[] | null) => {
+    setInspectors(snapshot.inspectors);
+    setUlpList(snapshot.ulpList);
+    setFeeders(snapshot.feeders);
+    setYandalList(snapshot.yandalList);
+    setHarList(snapshot.harList);
+    setRowList(snapshot.rowList);
+    setTujuanList(snapshot.tujuanList);
+    setPekerjaanList(snapshot.pekerjaanList);
+    setKeteranganList(snapshot.keteranganList);
+    setMarqueeMessages(snapshot.marqueeMessages);
+    if (nextAllData !== undefined && nextAllData !== null) {
+      setAllData(nextAllData);
+    }
+  };
+
+  const refreshData = async (
+    isBackground = false,
+    options?: { notifyUser?: boolean; forceNew?: boolean }
+  ) => {
+    if (!isBackground && !session) {
       setIsLoading(true);
     }
     setIsSyncing(true);
-    setConnectionError(false);
+    if (!isBackground) {
+      setConnectionError(false);
+    }
+
     try {
-      const config = await SpreadsheetService.fetchAllData() as any;
-      
-      // Simpan data mentah ke localStorage agar bisa diload secara instan lain kali
-      try {
-        localStorage.setItem('imonex_cached_config', JSON.stringify(config));
-        localStorage.setItem('imonex_cache_timestamp', Date.now().toString());
-      } catch (cacheErr) {
-        console.warn('Gagal menyimpan cache ke localStorage:', cacheErr);
+      const result = await MasterDataService.syncMasterData(
+        () => SpreadsheetService.fetchRemoteAllData(),
+        latestSnapshotRef.current,
+        { forceNew: options?.forceNew }
+      );
+
+      if (result.status === 'STALE_IGNORED') {
+        return;
       }
-      
-      const normalize = (input: any, label: string) => {
-        if (!input) return [];
-        
-        let arr: any[] = [];
-        
-        // Handle { headers, values } format
-        if (input.headers && Array.isArray(input.values)) {
-          const headers = input.headers.map((h: string) => h.toLowerCase().replace(/_/g, '').replace(/\s/g, ''));
-          arr = input.values.map((row: any[]) => {
-            const obj: any = {};
-            row.forEach((cell, i) => {
-              const header = headers[i];
-              let mappedKey = input.headers[i];
-              if (header === 'ulpid' || header === 'idulp') mappedKey = 'ulpId';
-              else if (header === 'idpekerjaan') mappedKey = 'idPekerjaan';
-              else if (header === 'notiang') mappedKey = 'noTiang';
-              else if (header === 'nowo') mappedKey = 'noWO';
-              else if (header === 'fototemuan') mappedKey = 'fotoTemuan';
-              else if (header === 'fotoeksekusi') mappedKey = 'fotoEksekusi';
-              else if (header === 'timeksekusi') mappedKey = 'timEksekusi';
-              else if (header === 'tanggaleksekusi') mappedKey = 'tanggalEksekusi';
-              else if (header === 'namayandal1') mappedKey = 'namaYandal1';
-              else if (header === 'namayandal2') mappedKey = 'namaYandal2';
-              else if (header === 'nama' || header === 'name') mappedKey = 'name';
-              else if (header === 'isactive') mappedKey = 'isActive';
-              obj[mappedKey] = cell;
-            });
-            return obj;
-          });
-        } else if (Array.isArray(input)) {
-          arr = input;
-        } else if (input.data && Array.isArray(input.data)) {
-          arr = input.data;
-        } else {
-          console.warn(`Data for ${label} is not in a recognized format:`, input);
-          return [];
+
+      applyMasterSnapshot(result.snapshot, result.allData);
+      setIsOfflineMode(result.isOffline);
+
+      if (result.status === 'SUCCESS') {
+        setConnectionError(false);
+        setConnectionErrorMessage('');
+        if (options?.notifyUser) {
+          showMasterFeedback('success', 'Data master berhasil dimuat ulang.');
         }
-
-        const normalized = arr.map((item, index) => {
-          const newItem: any = {};
-          newItem.id = item.id || item.ID || `item-${index}`;
-          
-          for (const key in item) {
-            const val = item[key];
-            const lowerKey = key.toLowerCase().replace(/_/g, '').replace(/\s/g, '');
-            
-            let mappedKey = key;
-            if (lowerKey === 'ulpid' || lowerKey === 'idulp') mappedKey = 'ulpId';
-            else if (lowerKey === 'idpekerjaan') mappedKey = 'idPekerjaan';
-            else if (lowerKey === 'notiang') mappedKey = 'noTiang';
-            else if (lowerKey === 'nowo') mappedKey = 'noWO';
-            else if (lowerKey === 'fototemuan') mappedKey = 'fotoTemuan';
-            else if (lowerKey === 'fotoeksekusi') mappedKey = 'fotoEksekusi';
-            else if (lowerKey === 'timeksekusi') mappedKey = 'timEksekusi';
-            else if (lowerKey === 'tanggaleksekusi') mappedKey = 'tanggalEksekusi';
-            else if (lowerKey === 'namayandal1') mappedKey = 'namaYandal1';
-            else if (lowerKey === 'namayandal2') mappedKey = 'namaYandal2';
-            else if (lowerKey === 'nama' || lowerKey === 'name') mappedKey = 'name';
-            else if (lowerKey === 'isactive') mappedKey = 'isActive';
-            else if (lowerKey === 'har') mappedKey = 'HAR';
-            else if (lowerKey === 'row') mappedKey = 'ROW';
-            else if (lowerKey === 'teamtujuan') mappedKey = 'Team_Tujuan';
-            
-            let finalVal = val;
-            if (mappedKey === 'isActive') {
-              finalVal = val === true || val === 'TRUE' || val === 'true';
-            }
-            newItem[mappedKey] = finalVal;
-          }
-          return newItem;
-        });
-        console.log(`Normalized ${label}:`, normalized.length, "items.");
-        return normalized;
-      };
-
-      // Extremely aggressive key finding
-      const findDataInConfig = (obj: any, targetKey: string): any => {
-        if (!obj || typeof obj !== 'object') return undefined;
-        
-        const lowerTarget = targetKey.toLowerCase().replace(/list$/, '');
-        
-        // 1. Try direct match (case insensitive, ignoring 'List' suffix)
-        const keys = Object.keys(obj);
-        let foundKey = keys.find(k => {
-          const kLower = k.toLowerCase().replace(/list$/, '');
-          return kLower === lowerTarget;
-        });
-        
-        if (foundKey) return obj[foundKey];
-        
-        // 2. Try partial match
-        foundKey = keys.find(k => k.toLowerCase().includes(lowerTarget));
-        if (foundKey) return obj[foundKey];
-        
-        // 3. Deep search (one level)
-        for (const k of keys) {
-          if (obj[k] && typeof obj[k] === 'object' && !Array.isArray(obj[k])) {
-            const deepResult: any = findDataInConfig(obj[k], targetKey);
-            if (deepResult) return deepResult;
-          }
+      } else if (result.status === 'PARTIAL') {
+        setConnectionError(false);
+        setConnectionErrorMessage('');
+        if (options?.notifyUser) {
+          showMasterFeedback('warning', 'Sebagian respons server kosong; data master sebelumnya dipertahankan.');
         }
-        
-        return undefined;
-      };
-
-      const inspectorsData = findDataInConfig(config, 'inspectors');
-      if (inspectorsData) setInspectors(normalize(inspectorsData, 'Inspectors'));
-      
-      const ulpData = findDataInConfig(config, 'ulpList');
-      if (ulpData) setUlpList(normalize(ulpData, 'ULP'));
-      
-      const feedersData = findDataInConfig(config, 'feeders');
-      if (feedersData) setFeeders(normalize(feedersData, 'Feeders'));
-      
-      const yandalData = findDataInConfig(config, 'yandalList');
-      if (yandalData) setYandalList(normalize(yandalData, 'Yandal'));
-
-      const harData = findDataInConfig(config, 'harList');
-      if (harData) setHarList(normalize(harData, 'HAR'));
-
-      const rowData = findDataInConfig(config, 'rowList');
-      if (rowData) setRowList(normalize(rowData, 'ROW'));
-
-      const tujuanData = findDataInConfig(config, 'tujuanList');
-      if (tujuanData) setTujuanList(normalize(tujuanData, 'Tujuan'));
-      
-      const pekerjaanData = findDataInConfig(config, 'pekerjaanList');
-      if (pekerjaanData) setPekerjaanList(normalize(pekerjaanData, 'Pekerjaan'));
-      
-      const keteranganData = findDataInConfig(config, 'keteranganList');
-      if (keteranganData) setKeteranganList(normalize(keteranganData, 'Keterangan'));
-      
-      const marqueeData = findDataInConfig(config, 'marqueeMessages');
-      if (marqueeData) setMarqueeMessages(normalize(marqueeData, 'MarqueeMessages'));
-      
-      const allDataItems = findDataInConfig(config, 'allData');
-      if (allDataItems) setAllData(normalize(allDataItems, 'AllData'));
-      
-      setIsOfflineMode(false);
-      setConnectionErrorMessage('');
-    } catch (err: any) {
-      console.error("Connection failed:", err);
-      const errMsg = err?.message || 'Server Merespon: 404';
-      setConnectionErrorMessage(errMsg);
-      setIsOfflineMode(true);
-      
-      // Pastikan data awal lokal tersedia agar aplikasi tetap fungsional
-      setInspectors(prev => prev && prev.length > 0 ? prev : INITIAL_INSPECTORS);
-      setUlpList(prev => prev && prev.length > 0 ? prev : INITIAL_ULP);
-      setFeeders(prev => prev && prev.length > 0 ? prev : INITIAL_FEEDERS);
-      setYandalList(prev => prev && prev.length > 0 ? prev : INITIAL_YANDAL);
-      setHarList(prev => prev && prev.length > 0 ? prev : INITIAL_HAR);
-      setRowList(prev => prev && prev.length > 0 ? prev : INITIAL_ROW);
-      setTujuanList(prev => prev && prev.length > 0 ? prev : INITIAL_TUJUAN);
-      setPekerjaanList(prev => prev && prev.length > 0 ? prev : INITIAL_PEKERJAAN);
-      setKeteranganList(prev => prev && prev.length > 0 ? prev : INITIAL_KETERANGAN);
-
-      // Tampilkan layar konfigurasi error jika belum ada data dan bukan background sync
-      if (!isBackground) {
-        setConnectionError(true);
+      } else if (result.status === 'OFFLINE_CACHED') {
+        setConnectionError(false);
+        setConnectionErrorMessage(result.message);
+        if (options?.notifyUser) {
+          showMasterFeedback('warning', 'Server GAS gagal dijangkau; menggunakan data master terakhir yang valid.');
+        }
+      } else {
+        setConnectionErrorMessage(result.message);
+        if (!isBackground && !session) {
+          setConnectionError(true);
+        }
+        if (options?.notifyUser) {
+          showMasterFeedback('error', 'Gagal terhubung ke GAS; mempertahankan data master yang tersedia.');
+        }
       }
     } finally {
       setIsLoading(false);
-      setIsSyncing(false);
+      setIsSyncing(MasterDataService.isSyncInProgress());
     }
+  };
+
+  const handleRefreshMasterData = () => {
+    refreshData(true, { notifyUser: true });
   };
 
   useEffect(() => {
@@ -329,144 +276,22 @@ const App: React.FC = () => {
       return;
     }
 
-    // 1. Muat dari Cache Lokal Terlebih Dahulu agar Aplikasi Terbuka Instan
-    const cachedConfigStr = localStorage.getItem('imonex_cached_config');
-    let hasLoadedFromCache = false;
-    
-    if (cachedConfigStr) {
-      try {
-        const config = JSON.parse(cachedConfigStr);
-        
-        const normalize = (input: any, label: string) => {
-          if (!input) return [];
-          let arr: any[] = [];
-          if (input.headers && Array.isArray(input.values)) {
-            const headers = input.headers.map((h: string) => h.toLowerCase().replace(/_/g, '').replace(/\s/g, ''));
-            arr = input.values.map((row: any[]) => {
-              const obj: any = {};
-              row.forEach((cell, i) => {
-                const header = headers[i];
-                let mappedKey = input.headers[i];
-                if (header === 'ulpid' || header === 'idulp') mappedKey = 'ulpId';
-                else if (header === 'idpekerjaan') mappedKey = 'idPekerjaan';
-                else if (header === 'notiang') mappedKey = 'noTiang';
-                else if (header === 'nowo') mappedKey = 'noWO';
-                else if (header === 'fototemuan') mappedKey = 'fotoTemuan';
-                else if (header === 'fotoeksekusi') mappedKey = 'fotoEksekusi';
-                else if (header === 'timeksekusi') mappedKey = 'timEksekusi';
-                else if (header === 'tanggaleksekusi') mappedKey = 'tanggalEksekusi';
-                else if (header === 'namayandal1') mappedKey = 'namaYandal1';
-                else if (header === 'namayandal2') mappedKey = 'namaYandal2';
-                else if (header === 'nama' || header === 'name') mappedKey = 'name';
-                else if (header === 'isactive') mappedKey = 'isActive';
-                obj[mappedKey] = cell;
-              });
-              return obj;
-            });
-          } else if (Array.isArray(input)) {
-            arr = input;
-          } else if (input.data && Array.isArray(input.data)) {
-            arr = input.data;
-          } else {
-            return [];
-          }
+    // 1. Muat data master terakhir yang valid dari cache secara instan
+    const cached = MasterDataService.loadLastValidMasterData();
+    applyMasterSnapshot(cached.snapshot, cached.allData ?? undefined);
 
-          return arr.map((item, index) => {
-            const newItem: any = {};
-            newItem.id = item.id || item.ID || `item-${index}`;
-            for (const key in item) {
-              const val = item[key];
-              const lowerKey = key.toLowerCase().replace(/_/g, '').replace(/\s/g, '');
-              let mappedKey = key;
-              if (lowerKey === 'ulpid' || lowerKey === 'idulp') mappedKey = 'ulpId';
-              else if (lowerKey === 'idpekerjaan') mappedKey = 'idPekerjaan';
-              else if (lowerKey === 'notiang') mappedKey = 'noTiang';
-              else if (lowerKey === 'nowo') mappedKey = 'noWO';
-              else if (lowerKey === 'fototemuan') mappedKey = 'fotoTemuan';
-              else if (lowerKey === 'fotoeksekusi') mappedKey = 'fotoEksekusi';
-              else if (lowerKey === 'timeksekusi') mappedKey = 'timEksekusi';
-              else if (lowerKey === 'tanggaleksekusi') mappedKey = 'tanggalEksekusi';
-              else if (lowerKey === 'namayandal1') mappedKey = 'namaYandal1';
-              else if (lowerKey === 'namayandal2') mappedKey = 'namaYandal2';
-              else if (lowerKey === 'nama' || lowerKey === 'name') mappedKey = 'name';
-              else if (lowerKey === 'isactive') mappedKey = 'isActive';
-              else if (lowerKey === 'har') mappedKey = 'HAR';
-              else if (lowerKey === 'row') mappedKey = 'ROW';
-              else if (lowerKey === 'teamtujuan') mappedKey = 'Team_Tujuan';
-              
-              let finalVal = val;
-              if (mappedKey === 'isActive') {
-                finalVal = val === true || val === 'TRUE' || val === 'true';
-              }
-              newItem[mappedKey] = finalVal;
-            }
-            return newItem;
-          });
-        };
-
-        const findDataInConfig = (obj: any, targetKey: string): any => {
-          if (!obj || typeof obj !== 'object') return undefined;
-          const lowerTarget = targetKey.toLowerCase().replace(/list$/, '');
-          const keys = Object.keys(obj);
-          let foundKey = keys.find(k => k.toLowerCase().replace(/list$/, '') === lowerTarget);
-          if (foundKey) return obj[foundKey];
-          foundKey = keys.find(k => k.toLowerCase().includes(lowerTarget));
-          if (foundKey) return obj[foundKey];
-          for (const k of keys) {
-            if (obj[k] && typeof obj[k] === 'object' && !Array.isArray(obj[k])) {
-              const deepResult: any = findDataInConfig(obj[k], targetKey);
-              if (deepResult) return deepResult;
-            }
-          }
-          return undefined;
-        };
-
-        const inspectorsData = findDataInConfig(config, 'inspectors');
-        if (inspectorsData) setInspectors(normalize(inspectorsData, 'Inspectors'));
-        
-        const ulpData = findDataInConfig(config, 'ulpList');
-        if (ulpData) setUlpList(normalize(ulpData, 'ULP'));
-        
-        const feedersData = findDataInConfig(config, 'feeders');
-        if (feedersData) setFeeders(normalize(feedersData, 'Feeders'));
-        
-        const yandalData = findDataInConfig(config, 'yandalList');
-        if (yandalData) setYandalList(normalize(yandalData, 'Yandal'));
-
-        const harData = findDataInConfig(config, 'harList');
-        if (harData) setHarList(normalize(harData, 'HAR'));
-
-        const rowData = findDataInConfig(config, 'rowList');
-        if (rowData) setRowList(normalize(rowData, 'ROW'));
-
-        const tujuanData = findDataInConfig(config, 'tujuanList');
-        if (tujuanData) setTujuanList(normalize(tujuanData, 'Tujuan'));
-        
-        const pekerjaanData = findDataInConfig(config, 'pekerjaanList');
-        if (pekerjaanData) setPekerjaanList(normalize(pekerjaanData, 'Pekerjaan'));
-        
-        const keteranganData = findDataInConfig(config, 'keteranganList');
-        if (keteranganData) setKeteranganList(normalize(keteranganData, 'Keterangan'));
-        
-        const marqueeData = findDataInConfig(config, 'marqueeMessages');
-        if (marqueeData) setMarqueeMessages(normalize(marqueeData, 'MarqueeMessages'));
-        
-        const allDataItems = findDataInConfig(config, 'allData');
-        if (allDataItems) setAllData(normalize(allDataItems, 'AllData'));
-
-        setIsLoading(false);
-        hasLoadedFromCache = true;
-        console.log("Aplikasi berhasil memuat cache lokal secara instan!");
-      } catch (e) {
-        console.error("Gagal membaca cache lokal:", e);
-      }
+    if (cached.hasValidCache) {
+      setIsLoading(false);
     }
 
-    // 2. Lakukan Sinkronisasi Aktual dari Google Spreadsheet di Background
-    refreshData(hasLoadedFromCache);
+    // 2. Lakukan sinkronisasi aktual dari Google Spreadsheet di background (atau foreground jika belum ada cache)
+    refreshData(cached.hasValidCache);
   }, [isInitialized]);
 
   const handleInisiasiComplete = async (unit: InisiasiUnit) => {
+    // Invalidate any in-flight request from previous unit before changing scope
+    MasterDataService.invalidatePendingRequests();
+
     const effectiveUrl = (unit.urlGAS && unit.urlGAS.trim()) ? unit.urlGAS.trim() : SPREADSHEET_WEB_APP_URL;
     const finalUnit: InisiasiUnit = { ...unit, urlGAS: effectiveUrl };
     saveInisiasiUnit(finalUnit);
@@ -477,9 +302,14 @@ const App: React.FC = () => {
     setCustomUrlInput(effectiveUrl);
     setSpreadsheetUrl(effectiveUrl);
     setConnectionError(false);
-    setIsLoading(true);
+
+    // Load cached valid data specifically for the newly selected unit (or baseline defaults)
+    const unitCached = MasterDataService.loadLastValidMasterData();
+    applyMasterSnapshot(unitCached.snapshot, unitCached.allData ?? []);
+
+    setIsLoading(!unitCached.hasValidCache);
     try {
-      await refreshData(false);
+      await refreshData(unitCached.hasValidCache, { forceNew: true });
     } catch (err) {
       console.error("Error refreshing data after inisiasi:", err);
     } finally {
@@ -563,8 +393,8 @@ const App: React.FC = () => {
     setEditingData(data);
     const executionStatuses = ['SUDAH EKSEKUSI', 'BUTUH PADAM', 'TIDAK DAPAT IZIN', 'KENDALA MATERIAL'];
     
-    // Temukan ID Pekerjaan dari list master berdasarkan nama di data temuan
-    const activePek = pekerjaanList.find(p => p.name === data.pekerjaan);
+    // Temukan ID Pekerjaan dari list master menggunakan pencocokan ternormalisasi
+    const activePek = resolvePekerjaan(pekerjaanList, undefined, data.pekerjaan);
 
     if (executionStatuses.includes(data.status)) {
       setSession({ ...session!, role: AppRole.EKSEKUSI, ulp: data.ulp });
@@ -594,6 +424,8 @@ const App: React.FC = () => {
           ulpList={ulpList} 
           pekerjaanList={pekerjaanList} 
           isLoading={isLoading}
+          isSyncing={isSyncing}
+          onRefreshMasterData={handleRefreshMasterData}
           marqueeMessages={marqueeMessages}
           activeUnitName={activeUnit ? activeUnit.namaUL : undefined}
         />
@@ -610,8 +442,11 @@ const App: React.FC = () => {
               onSave={handleAddTemuan}
               feeders={filteredFeeders}
               keteranganList={keteranganList}
+              pekerjaanList={pekerjaanList}
               tujuanList={tujuanList}
               initialData={editingData || undefined}
+              onRefreshMasterData={handleRefreshMasterData}
+              isSyncingMasterData={isSyncing}
             />
           </div>
         );
@@ -628,6 +463,8 @@ const App: React.FC = () => {
               harList={harList}
               rowList={rowList}
               ulpList={ulpList}
+              onRefreshMasterData={handleRefreshMasterData}
+              isSyncingMasterData={isSyncing}
             />
           </div>
         );
@@ -648,14 +485,30 @@ const App: React.FC = () => {
               marqueeMessages={marqueeMessages}
               onBack={handleLogout}
               onInisiasi={handleReInisiasi}
-              onUpdateInspectors={setInspectors}
-              onUpdateUlp={setUlpList}
-              onUpdateFeeders={setFeeders}
-              onUpdateYandal={setYandalList}
-              onUpdateMessages={setMarqueeMessages}
+              onUpdateInspectors={(data) => {
+                setInspectors(data);
+                MasterDataService.updateCachedMasterEntity('inspectors', data);
+              }}
+              onUpdateUlp={(data) => {
+                setUlpList(data);
+                MasterDataService.updateCachedMasterEntity('ulpList', data);
+              }}
+              onUpdateFeeders={(data) => {
+                setFeeders(data);
+                MasterDataService.updateCachedMasterEntity('feeders', data);
+              }}
+              onUpdateYandal={(data) => {
+                setYandalList(data);
+                MasterDataService.updateCachedMasterEntity('yandalList', data);
+              }}
+              onUpdateMessages={(data) => {
+                setMarqueeMessages(data);
+                MasterDataService.updateCachedMasterEntity('marqueeMessages', data);
+              }}
               currentRole={session!.role}
               onDeleteTemuans={handleDeleteTemuans}
-              onRefreshData={() => refreshData(false)}
+              onRefreshData={handleRefreshMasterData}
+              isSyncingMasterData={isSyncing}
             />
           </div>
         );
@@ -670,6 +523,8 @@ const App: React.FC = () => {
               onAddEksekusi={session!.team ? () => { setEditingData(null); setSession({ ...session!, role: AppRole.EKSEKUSI }); } : undefined}
               onEdit={startEdit}
               currentSession={session!}
+              onRefreshMasterData={handleRefreshMasterData}
+              isSyncingMasterData={isSyncing}
             />
           </div>
         );
@@ -971,6 +826,16 @@ const App: React.FC = () => {
               </button>
             )}
             <button
+              type="button"
+              onClick={handleRefreshMasterData}
+              disabled={isSyncing}
+              title="Muat Ulang Data Master tanpa keluar aplikasi"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 bg-white hover:bg-blue-50 text-[#003b71] border border-blue-200 rounded-xl shadow-sm active:scale-95 transition-all text-[9px] sm:text-[10px] font-black uppercase tracking-wider disabled:opacity-60 cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-blue-600' : 'text-[#003b71]'}`} />
+              <span className="hidden xs:inline">{isSyncing ? 'Memuat...' : 'Muat Ulang Master'}</span>
+            </button>
+            <button
               onClick={() => setShowUrlConfigModal(true)}
               title="Pengaturan Database"
               className="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center p-1.5 shadow-md border border-slate-100 flex-shrink-0 hover:scale-105 transition-transform"
@@ -1005,6 +870,25 @@ const App: React.FC = () => {
 
         </div>
       </header>
+
+      {masterFeedback && (
+        <div className="fixed top-20 right-4 z-[80] max-w-sm animate-slide-up">
+          <div className={`px-4 py-2.5 rounded-2xl shadow-xl border text-[11px] font-bold flex items-center gap-2 ${
+            masterFeedback.type === 'success'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : masterFeedback.type === 'warning'
+              ? 'bg-amber-50 border-amber-200 text-amber-800'
+              : 'bg-red-50 border-red-200 text-red-800'
+          }`}>
+            {masterFeedback.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            )}
+            <span>{masterFeedback.text}</span>
+          </div>
+        </div>
+      )}
 
       <div className="w-full bg-gradient-to-r from-amber-500/5 via-amber-500/10 to-amber-500/5 backdrop-blur-sm border-b border-amber-500/20 py-2 sm:py-2.5 shadow-sm relative z-30 flex items-center overflow-hidden">
         <div className="w-full max-w-full mx-auto flex items-center gap-3 px-4 sm:px-6 relative">
